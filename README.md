@@ -81,7 +81,7 @@
 ターミナルで以下を実行する:
 
 ```bash
-git clone https://github.com/knorq-ai/claude-bengo.git ~/.claude/plugins/claude-bengo
+git clone https://github.com/llamadrive/claude-bengo.git ~/.claude/plugins/claude-bengo
 ```
 
 Excel・Word 操作に必要なツール（xlsx-editor, docx-editor）はプラグイン読込時に自動設定される。

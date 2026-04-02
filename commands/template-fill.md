@@ -5,6 +5,11 @@ allowed-tools: Read, Write, Glob, Bash(cp:*), mcp__xlsx-editor__*
 
 登録済みXLSXテンプレートに、PDFや画像から抽出したデータを自動入力する。
 
-$ARGUMENTS にソースファイルパスが含まれる場合はそれを使用し、なければユーザーに確認する。
+$ARGUMENTS の指定方法:
+- ソースファイルのみ: `/template-fill 申立書.pdf` — テンプレートが1件なら自動選択、複数なら選択肢を表示
+- テンプレート名 + ソース: `/template-fill 財産目録 通帳.pdf` — テンプレートを明示指定
+- 複数ソース: `/template-fill 通帳1.pdf 通帳2.pdf 残高証明書.pdf` — 複数PDFからデータ統合
+- 追記モード: `/template-fill --continue 財産目録_filled.xlsx 保険証書.pdf` — 既存の入力済みファイルに追加入力
+- 指定なし: 対話で確認
 
 まず `skills/template-fill/SKILL.md` を Read ツールで読み込み、そこに記載された手順に従って実行する。

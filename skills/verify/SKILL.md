@@ -1,12 +1,12 @@
 ---
 name: verify
-description: This skill should be used when the user asks to "verify", "test", "check installation", "動作確認", "テスト", "ヘルスチェック", or wants to verify that the lawyerset plugin is working correctly.
+description: This skill should be used when the user asks to "verify", "test", "check installation", "動作確認", "テスト", "ヘルスチェック", or wants to verify that the claude-bengo plugin is working correctly.
 version: 1.0.0
 ---
 
 # 動作確認（verify）
 
-lawyerset プラグインの各機能が正常に動作するか確認する。
+claude-bengo プラグインの各機能が正常に動作するか確認する。
 
 ## モード
 
@@ -27,7 +27,7 @@ MCP サーバの疎通と fixtures の存在を確認する。
 **出力:**
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  lawyerset 動作確認レポート
+  claude-bengo 動作確認レポート
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [1] xlsx-editor MCP ............. OK
   [2] docx-editor MCP ............. OK
@@ -80,7 +80,7 @@ $ARGUMENTS に `template-fill`, `family-tree`, `typo-check`, `lawsuit-analysis` 
 **出力:**
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  lawyerset 動作確認レポート（全テスト）
+  claude-bengo 動作確認レポート（全テスト）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [1] MCP サーバ接続 ............. OK
   [2] /template-fill ............. OK (15/15 fields)

@@ -1,9 +1,9 @@
 {
-  "name": "lawyerset",
+  "name": "claude-bengo",
   "version": "1.0.0",
   "description": "Japanese law firm toolkit: court template filling, family tree analysis, legal document proofreading, and lawsuit analysis for Claude Code.",
   "author": {
-    "name": "lawyerset"
+    "name": "claude-bengo"
   },
   "keywords": ["legal", "japanese", "law", "court", "proofreading", "family-tree", "lawsuit"]
 }

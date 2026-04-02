@@ -1,4 +1,4 @@
-# LawyerSet — Claude Code Plugin for Japanese Law Firms
+# claude-bengo — Claude Code Plugin for Japanese Law Firms
 
 ## 初回利用時の案内
 

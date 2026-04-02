@@ -1,6 +1,6 @@
 ---
 name: template-fill
-description: This skill should be used when the user asks to "fill a template", "テンプレート入力", "書式入力", "裁判所書類の作成", "テンプレートに入力", "書式に記入", "この書式に入れて", "PDFからテンプレートに", "書類を作成して", or wants to auto-populate court documents from source materials.
+description: This skill should be used when the user asks to "fill a template", "テンプレート入力", "書式入力", "裁判所書類の作成", "テンプレートに入力", "書式に記入", "この書式に入れて", "PDFからテンプレートに", "書類を作成して", "これも追加して", "このデータも入れて", "追加の資料を反映して", or wants to auto-populate or incrementally add data to court documents.
 version: 1.0.0
 ---
 
@@ -45,10 +45,16 @@ Glob で `templates/*.yaml` を検索し、`_schema.yaml` を除外する。
 テンプレートXLSXファイル（`templates/{id}.xlsx`）を出力先にコピーする（Bash の `cp`）。
 出力ファイル名: `{元テンプレート名}_filled.xlsx`（またはユーザー指定）
 
-**追記モード（`--continue` 指定時）:**
-既存の入力済みXLSXファイルをそのまま使用する（新規コピーしない）。
-既に値が入っているセルは上書きしない。空セルまたは `[要確認]` のセルのみに書き込む。
-追記モードでは `mcp__xlsx-editor__read_sheet` で既存データを先に確認し、未入力のフィールドのみを対象とする。
+**追記モード（以下のいずれかで自動判定）:**
+- `$ARGUMENTS` に `--continue` と既存XLSXパスが含まれる場合
+- 同一会話内で既にテンプレート入力を行っており、ユーザーが「追加して」「これも入れて」「反映して」等の追記を示唆する発言をした場合
+- ユーザーが既存の `_filled.xlsx` ファイルを指定した場合
+
+追記モードの動作:
+- 既存の入力済みXLSXファイルをそのまま使用する（新規コピーしない）
+- `mcp__xlsx-editor__read_sheet` で既存データを先に確認する
+- 既に値が入っているセルは上書きしない。空セルまたは `[要確認]` のセルのみに書き込む
+- 新たに入力したセルのみをサマリーに表示する
 
 ### Step 5: ソース文書からのデータ抽出
 

@@ -1,0 +1,93 @@
+# LawyerSet テンプレート定義スキーマ
+#
+# このファイルはフォーマット仕様のドキュメントであり、実テンプレートではない。
+# テンプレートは /template-create コマンドで自動生成されるか、手動で作成する。
+# 各テンプレートは {id}.yaml + {id}.xlsx のペアで管理する。
+#
+# 使用方法:
+#   1. /template-create でXLSXからテンプレートを登録する
+#   2. /template-list で登録済みテンプレートを確認する
+#   3. /template-fill でソース文書からデータを抽出しテンプレートに入力する
+
+# --- テンプレート定義の構造 ---
+
+id: string           # 一意識別子。ファイル名と一致する（例: "traffic-accident-complaint"）
+title: string        # テンプレート名（日本語。例: "交通事故訴状"）
+description: string  # 説明（1-2文）
+category: string     # カテゴリ（自由記述: 民事訴訟, 家事事件, 交通事故, 相続, 労働, 破産 等）
+templateFile: string # ベースXLSXファイル名（同ディレクトリ内。例: "traffic-accident-complaint.xlsx"）
+
+fields:              # 入力フィールドのリスト
+  - id: string       # フィールドID（英数字スネークケース。例: "plaintiff_name"）
+    label: string    # 表示名（日本語。例: "原告氏名"）
+    type: string     # フィールドタイプ: text | number | date | textarea | select | table
+    required: boolean # 必須フィールドか（true / false）
+
+    # --- 単一セルフィールド（type が table 以外の場合） ---
+    position:          # セル位置（1-indexed）
+      row: number      # 行番号（1から開始）
+      column: number   # 列番号（1=A, 2=B, 3=C, ...）
+
+    # --- テーブルフィールド（type が table の場合） ---
+    range:             # テーブル範囲（1-indexed）
+      headerRow: number    # ヘッダ行（列ラベルがある行。例: №, 名称, 金額 等）
+      dataStartRow: number # データ開始行（最初のデータを書き込む行。headerRow + 1 が一般的）
+      startColumn: number
+      endRow: number       # データ最終行（この行以降にはデータを書かない）
+      endColumn: number
+    columns:           # テーブルの列定義
+      - id: string     # 列ID（英数字スネークケース）
+        label: string  # 列名（日本語）
+        type: string   # 列のデータ型: text | number | date
+        description: string # 列の説明（任意）
+
+    # --- 選択フィールド（type が select の場合） ---
+    options:           # 選択肢のリスト
+      - string
+
+# --- 例 ---
+#
+# id: evidence-list
+# title: 証拠説明書
+# description: 証拠一覧を管理するテンプレート
+# category: 民事訴訟
+# templateFile: evidence-list.xlsx
+# fields:
+#   - id: case_number
+#     label: 事件番号
+#     type: text
+#     required: true
+#     position:
+#       row: 2
+#       column: 3
+#   - id: evidence_table
+#     label: 証拠一覧
+#     type: table
+#     required: true
+#     range:
+#       headerRow: 5       # 行5にヘッダ（号証, 標目, 作成日, ...）
+#       dataStartRow: 6    # 行6からデータを書き込む
+#       startColumn: 1
+#       endRow: 30
+#       endColumn: 5
+#     columns:
+#       - id: evidence_no
+#         label: 号証
+#         type: text
+#         description: 甲第○号証
+#       - id: title
+#         label: 標目
+#         type: text
+#         description: 証拠の名称
+#       - id: date
+#         label: 作成日
+#         type: date
+#         description: 証拠の作成日
+#       - id: author
+#         label: 作成者
+#         type: text
+#         description: 証拠の作成者
+#       - id: summary
+#         label: 立証趣旨
+#         type: text
+#         description: 何を立証するための証拠か

@@ -1,0 +1,11 @@
+{
+  "_description": "テンプレート入力テスト: 模擬訴状PDFから証拠説明書テンプレートへの入力期待値",
+  "_note": "source-complaint.pdf, template-complaint.xlsx, template-complaint.yaml をfixturesに配置してテストする",
+  "fields": {
+    "case_number": { "value": "令和６年（ワ）第１２３号", "row": 2, "column": 3 },
+    "court_name": { "value": "東京地方裁判所", "row": 1, "column": 3 },
+    "plaintiff_name": { "value": "甲野太郎", "row": 3, "column": 3 },
+    "defendant_name": { "value": "乙野花子", "row": 4, "column": 3 },
+    "filing_date": { "value": "令和６年４月１日", "row": 5, "column": 3 }
+  }
+}

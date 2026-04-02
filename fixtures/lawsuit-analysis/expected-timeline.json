@@ -1,0 +1,12 @@
+{
+  "_description": "訴訟分析テスト: 模擬貸金返還請求事件のタイムライン期待値",
+  "_note": "complaint.pdf, answer.pdf をfixturesに配置してテストする",
+  "timeline": [
+    { "id": "e1", "date": "2022-03-01", "title": "金銭消費貸借契約", "description": "甲野太郎が乙野花子に500万円を貸し付けた", "category": "契約関連", "importance": 9 },
+    { "id": "e2", "date": "2022-06-15", "title": "一部弁済（200万円）", "description": "乙野花子が200万円を弁済した（被告主張、原告は否認）", "category": "事実関係", "importance": 8 },
+    { "id": "e3", "date": "2023-03-01", "title": "弁済期到来", "description": "金銭消費貸借契約に基づく弁済期が到来した", "category": "契約関連", "importance": 7 },
+    { "id": "e4", "date": "2023-05-10", "title": "催告書送付", "description": "甲野太郎が乙野花子に対し催告書を内容証明郵便で送付した", "category": "法的手続き", "importance": 6 },
+    { "id": "e5", "date": "2023-08-01", "title": "訴訟提起", "description": "甲野太郎が東京地方裁判所に訴訟を提起した", "category": "法的手続き", "importance": 8 },
+    { "id": "e6", "date": "2023-09-15", "title": "答弁書提出", "description": "乙野花子が答弁書を提出し、一部弁済の抗弁を主張した", "category": "法的手続き", "importance": 7 }
+  ]
+}

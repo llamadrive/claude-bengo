@@ -1,0 +1,14 @@
+{
+  "_description": "訴訟分析テスト: 模擬貸金返還請求事件の登場人物・主張期待値",
+  "_note": "complaint.pdf, answer.pdf をfixturesに配置してテストする",
+  "characters": [
+    { "id": "p1", "name": "甲野太郎", "role": "原告", "description": "貸主。500万円の貸金返還を請求している。", "importance": 10 },
+    { "id": "p2", "name": "乙野花子", "role": "被告", "description": "借主。一部弁済を主張している。", "importance": 10 },
+    { "id": "p3", "name": "丙野三郎", "role": "証人", "description": "契約締結時の立会人。", "importance": 5 }
+  ],
+  "arguments": [
+    { "id": "a1", "title": "貸金返還請求", "description": "甲野太郎は乙野花子に対し500万円を貸し付けたと主張し、その全額の返還を求めている。", "party": "原告", "supporting_points": ["金銭消費貸借契約書（ev1）", "振込明細（ev2）"], "opposing_points": ["200万円の弁済済みを主張（被告）"], "ninhi": "一部認める" },
+    { "id": "a2", "title": "一部弁済の抗弁", "description": "乙野花子は2022年6月15日に200万円を弁済したと主張している。", "party": "被告", "supporting_points": ["領収書（ev3）"], "opposing_points": ["原告は弁済の事実を否認"], "ninhi": "否認" },
+    { "id": "a3", "title": "期限の利益喪失", "description": "弁済期経過後の催告により期限の利益が喪失したと主張している。", "party": "原告", "supporting_points": ["催告書（ev4）", "配達証明書（ev5）"], "opposing_points": [], "ninhi": "認める" }
+  ]
+}

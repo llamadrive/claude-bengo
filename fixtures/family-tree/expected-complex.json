@@ -1,0 +1,23 @@
+{
+  "_description": "家族関係テスト: 複雑家族（離婚・再婚・養子・死亡含む）の抽出期待値",
+  "_note": "koseki-complex.pdf をfixturesに配置してテストする",
+  "persons": [
+    { "id": "p1", "name": "甲野太郎", "role": "祖父", "birthday": "昭和10年5月1日", "deathDate": "平成25年2月14日" },
+    { "id": "p2", "name": "甲野はな", "role": "祖母", "birthday": "昭和12年8月20日" },
+    { "id": "p3", "name": "甲野次郎", "role": "父", "birthday": "昭和35年1月15日" },
+    { "id": "p4", "name": "乙野良子", "role": "母（前妻）", "birthday": "昭和38年6月10日" },
+    { "id": "p5", "name": "丙野美紀", "role": "母（後妻）", "birthday": "昭和40年9月3日" },
+    { "id": "p6", "name": "甲野一郎", "role": "長男", "birthday": "昭和63年7月10日" },
+    { "id": "p7", "name": "甲野二郎", "role": "次男", "birthday": "平成3年4月22日" },
+    { "id": "p8", "name": "甲野春子", "role": "養女", "birthday": "平成5年12月1日" }
+  ],
+  "relationships": [
+    { "type": "spouse", "person1Id": "p1", "person2Id": "p2" },
+    { "type": "parent-child", "person1Id": "p1", "person2Id": "p3" },
+    { "type": "spouse", "person1Id": "p3", "person2Id": "p4", "details": "離婚" },
+    { "type": "spouse", "person1Id": "p3", "person2Id": "p5", "details": "再婚" },
+    { "type": "parent-child", "person1Id": "p3", "person2Id": "p6" },
+    { "type": "parent-child", "person1Id": "p3", "person2Id": "p7" },
+    { "type": "parent-child", "person1Id": "p3", "person2Id": "p8", "details": "養子" }
+  ]
+}

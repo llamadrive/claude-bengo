@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>相続関係説明図</title>
+  <style>
+    @page { size: A3 landscape; margin: 15mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Yu Mincho', 'Hiragino Mincho ProN', 'MS PMincho', serif;
+      font-size: 11pt; line-height: 1.5; color: #000; background: #fff;
+    }
+    .page { max-width: 1200px; margin: 0 auto; padding: 20px 40px; }
+    .title { text-align: center; font-size: 16pt; font-weight: bold; letter-spacing: 0.5em; margin-bottom: 40px; }
+    .blank-notice { text-align: center; font-size: 11pt; letter-spacing: 0.3em; margin-top: 40px; }
+    svg text { font-family: 'Yu Mincho', 'Hiragino Mincho ProN', 'MS PMincho', serif; }
+    @media print { .toolbar { display: none !important; } }
+    .toolbar {
+      position: fixed; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 100;
+    }
+    .toolbar button {
+      background: #fff; border: 1px solid #ccc; padding: 6px 14px;
+      font-size: 12px; cursor: pointer; font-family: sans-serif;
+    }
+    .toolbar button:hover { background: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <script type="application/json" id="graph-data">__GRAPH_DATA__</script>
+
+  <div class="toolbar">
+    <button onclick="window.print()">印刷 / PDF出力</button>
+  </div>
+
+  <div class="page">
+    <div class="title">相 続 関 係 説 明 図</div>
+    <div id="diagram"></div>
+    <div class="blank-notice">以 下 余 白</div>
+  </div>
+
+  <script>
+    (function() {
+      var dataEl = document.getElementById('graph-data');
+      if (!dataEl) return;
+      var data = JSON.parse(dataEl.textContent);
+      var persons = data.persons || [];
+      var rels = data.relationships || [];
+
+      function esc(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(String(s)));
+        return d.innerHTML;
+      }
+
+      // ─── Layout constants ───
+      var LINE_H = 22;
+      var NAME_SIZE = 16;
+      var NAME_LINE_H = 22;
+      var DBL_GAP = 4;
+      var HORIZ_Y_GAP = 90;
+      var CHILD_V_GAP = 30;
+      var GEN_X_STEP = 340;   // horizontal step per generation
+      var S = 'stroke="#000" stroke-width="1.2"';
+
+      // ─── Build tree structure ───
+      var decedent = persons.find(function(p) { return p.deathDate; }) || persons[0];
+      var spouseRel = rels.find(function(r) {
+        return r.type === 'spouse' && (r.person1Id === decedent.id || r.person2Id === decedent.id);
+      });
+      var spouse = null;
+      if (spouseRel) {
+        var sid = spouseRel.person1Id === decedent.id ? spouseRel.person2Id : spouseRel.person1Id;
+        spouse = persons.find(function(p) { return p.id === sid; });
+      }
+
+      // Find children of a person (or their spouse)
+      function findChildren(parentId, spouseId) {
+        var pids = [parentId];
+        if (spouseId) pids.push(spouseId);
+        var kids = [];
+        rels.forEach(function(r) {
+          if (r.type === 'parent-child' && pids.indexOf(r.person1Id) >= 0) {
+            var c = persons.find(function(p) { return p.id === r.person2Id; });
+            if (c && kids.indexOf(c) < 0) kids.push(c);
+          }
+        });
+        return kids;
+      }
+
+      // Find spouse of a person (excluding the root decedent's spouse which is handled separately)
+      function findSpouse(personId) {
+        var rel = rels.find(function(r) {
+          return r.type === 'spouse' && r.person1Id !== decedent.id && r.person2Id !== decedent.id &&
+            (r.person1Id === personId || r.person2Id === personId);
+        });
+        if (!rel) return null;
+        var sid = rel.person1Id === personId ? rel.person2Id : rel.person1Id;
+        return persons.find(function(p) { return p.id === sid; });
+      }
+
+      // ─── Rendering helpers ───
+      function blockHeight(p) {
+        var n = 0;
+        if (p.address) n++;
+        if (p.birthday) n++;
+        if (p.deathDate) n++;
+        n++; // role
+        return n * LINE_H + NAME_LINE_H;
+      }
+
+      function renderBlock(p, x, topY, roleLabel) {
+        var lines = [];
+        var y = topY;
+        if (p.address) {
+          var lbl = roleLabel === '被相続人' ? '最後の住所' : '住所';
+          lines.push('<text x="'+x+'" y="'+y+'" font-size="11pt">'+lbl+'　'+esc(p.address)+'</text>');
+          y += LINE_H;
+        }
+        if (p.birthday) {
+          lines.push('<text x="'+x+'" y="'+y+'" font-size="11pt">出生　'+esc(p.birthday)+'</text>');
+          y += LINE_H;
+        }
+        if (p.deathDate) {
+          lines.push('<text x="'+x+'" y="'+y+'" font-size="11pt">死亡　'+esc(p.deathDate)+'</text>');
+          y += LINE_H;
+        }
+        lines.push('<text x="'+(x+8)+'" y="'+y+'" font-size="11pt">（'+esc(roleLabel)+'）</text>');
+        y += LINE_H;
+        lines.push('<text x="'+x+'" y="'+y+'" font-size="'+NAME_SIZE+'pt" font-weight="bold" letter-spacing="0.2em">'+esc(p.name)+'</text>');
+        var nameBaseY = y;
+        y += NAME_LINE_H;
+        return { svgLines: lines, nameBaseY: nameBaseY, blockEndY: y };
+      }
+
+      // ─── Measure height of a child slot (child + optional spouse + sub-children) ───
+      var SPOUSE_GAP = 90;  // gap between child and their spouse (same as root HORIZ_Y_GAP)
+
+      function measureChildSlot(c) {
+        var h = blockHeight(c);
+        var sp = findSpouse(c.id);
+        if (sp) h += SPOUSE_GAP + blockHeight(sp);
+        var grandkids = findChildren(c.id, sp ? sp.id : null);
+        if (grandkids.length > 0) {
+          var subH = measureChildGroup(grandkids);
+          h = Math.max(h, subH);
+        }
+        return h;
+      }
+
+      function measureChildGroup(childList) {
+        var total = 0;
+        childList.forEach(function(c, i) {
+          if (i > 0) total += CHILD_V_GAP;
+          total += measureChildSlot(c);
+        });
+        return total;
+      }
+
+      // ─── Recursive: render children at given X, starting at startY ───
+      function renderChildGroup(childList, textX, startY) {
+        var parts = [];
+        var nameYs = [];
+        var cy = startY;
+
+        childList.forEach(function(c, i) {
+          if (i > 0) cy += CHILD_V_GAP;
+
+          // Render this child's text block
+          var cb = renderBlock(c, textX, cy, c.role || '相続人');
+          parts.push(cb.svgLines.join('\n'));
+          nameYs.push(cb.nameBaseY);
+
+          // Check for spouse of this child
+          var childSpouse = findSpouse(c.id);
+          var connectorY = cb.nameBaseY; // Y from which grandchildren branch
+
+          if (childSpouse) {
+            // Render spouse below with mini double-line
+            var spTopY = cb.blockEndY + SPOUSE_GAP;
+            var spBlock = renderBlock(childSpouse, textX, spTopY, childSpouse.role || '配偶者');
+            parts.push(spBlock.svgLines.join('\n'));
+
+            // Mini double-line between child and spouse (same offset as root: slightly right of text start)
+            var miniDblX = textX + 20;
+            var miniGapTop = cb.blockEndY + 5;
+            var miniGapBot = spTopY - 25;
+            parts.push('<line x1="'+(miniDblX - DBL_GAP)+'" y1="'+miniGapTop+'" x2="'+(miniDblX - DBL_GAP)+'" y2="'+miniGapBot+'" '+S+'/>');
+            parts.push('<line x1="'+(miniDblX + DBL_GAP)+'" y1="'+miniGapTop+'" x2="'+(miniDblX + DBL_GAP)+'" y2="'+miniGapBot+'" '+S+'/>');
+
+            // Connector Y for grandchildren = midpoint of the gap
+            connectorY = cb.blockEndY + SPOUSE_GAP / 2;
+          }
+
+          // Grandchildren
+          var grandkids = findChildren(c.id, childSpouse ? childSpouse.id : null);
+          if (grandkids.length > 0) {
+            var gcTextX = textX + GEN_X_STEP;
+            var gcTrunkX = gcTextX - 30;
+            var gcResult = renderChildGroup(grandkids, gcTextX, cy);
+            parts.push(gcResult.svgParts.join('\n'));
+
+            // Horizontal line from child area to grandchild trunk
+            parts.push('<line x1="'+(textX + 180)+'" y1="'+connectorY+'" x2="'+gcTrunkX+'" y2="'+connectorY+'" '+S+'/>');
+
+            // Vertical trunk for grandchildren
+            var gcTrunkTop = Math.min(connectorY, gcResult.nameYs[0]);
+            var gcTrunkBot = Math.max(connectorY, gcResult.nameYs[gcResult.nameYs.length - 1]);
+            parts.push('<line x1="'+gcTrunkX+'" y1="'+gcTrunkTop+'" x2="'+gcTrunkX+'" y2="'+gcTrunkBot+'" '+S+'/>');
+
+            // Horizontal branches to each grandchild
+            gcResult.nameYs.forEach(function(gny) {
+              parts.push('<line x1="'+gcTrunkX+'" y1="'+gny+'" x2="'+(gcTextX - 5)+'" y2="'+gny+'" '+S+'/>');
+            });
+          }
+
+          cy += measureChildSlot(c);
+        });
+
+        return { svgParts: parts, nameYs: nameYs, endY: cy };
+      }
+
+      // ─── Main layout ───
+      var TEXT_X = 60;
+      var CHILD_TEXT_X = 480;
+      var TRUNK_X = CHILD_TEXT_X - 30;
+      var DBL_X = 80;
+
+      // Decedent block
+      var decTopY = 20;
+      var dec = renderBlock(decedent, TEXT_X, decTopY, '被相続人');
+
+      // Spouse block
+      var spouseTopY = dec.blockEndY + HORIZ_Y_GAP;
+      var sp = spouse ? renderBlock(spouse, TEXT_X, spouseTopY, spouse.role || '相続人') : null;
+
+      // Midpoint of double-line gap
+      var dblMidY = dec.blockEndY + HORIZ_Y_GAP / 2;
+
+      // Children of decedent
+      var children = findChildren(decedent.id, spouse ? spouse.id : null);
+
+      // Measure and center children
+      var totalChildH = children.length > 0 ? measureChildGroup(children) : 0;
+      var childGroupTopY = dblMidY - totalChildH / 2;
+      if (childGroupTopY < 10) childGroupTopY = 10;
+
+      // Render children recursively
+      var childResult = children.length > 0 ? renderChildGroup(children, CHILD_TEXT_X, childGroupTopY) : { svgParts: [], nameYs: [], endY: childGroupTopY };
+
+      // SVG height
+      var svgH = Math.max(sp ? sp.blockEndY : dec.blockEndY, childResult.endY) + 30;
+
+      // ─── Assemble SVG ───
+      var out = [];
+      out.push('<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 1400 '+svgH+'" style="overflow:visible">');
+
+      out.push(dec.svgLines.join('\n'));
+      if (sp) out.push(sp.svgLines.join('\n'));
+
+      // Double vertical line
+      if (spouse) {
+        var gapTop = dec.blockEndY + 5;
+        var gapBot = spouseTopY - 25;
+        out.push('<line x1="'+(DBL_X - DBL_GAP)+'" y1="'+gapTop+'" x2="'+(DBL_X - DBL_GAP)+'" y2="'+gapBot+'" '+S+'/>');
+        out.push('<line x1="'+(DBL_X + DBL_GAP)+'" y1="'+gapTop+'" x2="'+(DBL_X + DBL_GAP)+'" y2="'+gapBot+'" '+S+'/>');
+        if (children.length > 0) {
+          out.push('<line x1="'+(DBL_X + DBL_GAP)+'" y1="'+dblMidY+'" x2="'+TRUNK_X+'" y2="'+dblMidY+'" '+S+'/>');
+        }
+      } else if (children.length > 0) {
+        out.push('<line x1="'+(TEXT_X + 200)+'" y1="'+dec.nameBaseY+'" x2="'+TRUNK_X+'" y2="'+dec.nameBaseY+'" '+S+'/>');
+      }
+
+      // Children text + sub-trees
+      out.push(childResult.svgParts.join('\n'));
+
+      // Main trunk for direct children
+      if (childResult.nameYs.length > 0) {
+        var trunkTop = Math.min(spouse ? dblMidY : dec.nameBaseY, childResult.nameYs[0]);
+        var trunkBot = childResult.nameYs[childResult.nameYs.length - 1];
+        out.push('<line x1="'+TRUNK_X+'" y1="'+trunkTop+'" x2="'+TRUNK_X+'" y2="'+trunkBot+'" '+S+'/>');
+        childResult.nameYs.forEach(function(cny) {
+          out.push('<line x1="'+TRUNK_X+'" y1="'+cny+'" x2="'+(CHILD_TEXT_X - 5)+'" y2="'+cny+'" '+S+'/>');
+        });
+      }
+
+      out.push('</svg>');
+      document.getElementById('diagram').innerHTML = out.join('\n');
+    })();
+  </script>
+</body>
+</html>

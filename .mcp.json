@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "xlsx-editor": {
+      "command": "npx",
+      "args": ["-y", "xlsx-mcp-server"]
+    },
+    "docx-editor": {
+      "command": "npx",
+      "args": ["-y", "docx-mcp-server"]
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "_description": "誤字脱字チェックテスト: 模擬準備書面の意図的誤りに対する期待検出結果",
+  "_note": "brief-with-errors.docx をfixturesに配置してテストする",
+  "corrections": [
+    { "originalText": "暇疵", "suggestedText": "瑕疵", "type": "typo", "reason": "法律用語の誤字", "confidence": 0.99 },
+    { "originalText": "行なう", "suggestedText": "行う", "type": "typo", "reason": "送り仮名", "confidence": 0.98 },
+    { "originalText": "取消す", "suggestedText": "取り消す", "type": "typo", "reason": "送り仮名", "confidence": 0.95 },
+    { "originalText": "できるものとする", "suggestedText": "できる", "type": "grammar", "reason": "ものとするの誤用", "confidence": 0.95 },
+    { "originalText": "Aその他のB", "suggestedText": "Aその他B", "type": "grammar", "reason": "その他/その他の（並列関係）", "confidence": 0.90 },
+    { "originalText": "また", "suggestedText": "又は", "type": "grammar", "reason": "漢字で書く接続詞", "confidence": 0.85 },
+    { "originalText": "民法709条", "suggestedText": "民法第709条", "type": "grammar", "reason": "法令引用形式", "confidence": 0.92 },
+    { "originalText": "３名", "suggestedText": "３人", "type": "grammar", "reason": "人数の単位", "confidence": 0.95 },
+    { "originalText": "ケ月", "suggestedText": "か月", "type": "typo", "reason": "か月/箇月の表記", "confidence": 0.98 },
+    { "originalText": "遺留分減殺", "suggestedText": "遺留分侵害額", "type": "grammar", "reason": "2020年民法改正", "confidence": 0.88 },
+    { "originalText": "一つ目の理由であるが、二つ目の理由であるが", "suggestedText": "一文中のが重複", "type": "grammar", "reason": "がの用法", "confidence": 0.90 },
+    { "originalText": "であるから…であるので…であるから", "suggestedText": "理由接続詞の重複", "type": "grammar", "reason": "から/のでの重複", "confidence": 0.85 }
+  ],
+  "inconsistencies": [
+    { "variants": ["原告", "申立人"], "suggestedText": "原告", "reason": "同一当事者に対して異なる呼称が使用されている", "type": "inconsistency", "confidence": 0.92 },
+    { "variants": ["本件事故", "本件交通事故"], "suggestedText": "本件事故", "reason": "同一事故に対して異なる表記が使用されている", "type": "inconsistency", "confidence": 0.90 },
+    { "variants": ["取消し", "取り消し"], "suggestedText": "取消し", "reason": "送り仮名の表記が統一されていない", "type": "inconsistency", "confidence": 0.88 }
+  ]
+}

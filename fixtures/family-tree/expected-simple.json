@@ -1,0 +1,15 @@
+{
+  "_description": "家族関係テスト: 核家族4人の模擬戸籍からの抽出期待値",
+  "_note": "koseki-simple.pdf をfixturesに配置してテストする",
+  "persons": [
+    { "id": "p1", "name": "甲野太郎", "role": "父", "birthday": "昭和35年1月15日" },
+    { "id": "p2", "name": "甲野花子", "role": "母", "birthday": "昭和37年3月20日" },
+    { "id": "p3", "name": "甲野一郎", "role": "長男", "birthday": "昭和63年7月10日" },
+    { "id": "p4", "name": "甲野美咲", "role": "長女", "birthday": "平成2年11月5日" }
+  ],
+  "relationships": [
+    { "type": "spouse", "person1Id": "p1", "person2Id": "p2" },
+    { "type": "parent-child", "person1Id": "p1", "person2Id": "p3" },
+    { "type": "parent-child", "person1Id": "p1", "person2Id": "p4" }
+  ]
+}

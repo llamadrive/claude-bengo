@@ -1,0 +1,70 @@
+id: evidence-list
+title: 証拠説明書
+description: 証拠一覧を管理するテンプレート
+category: 民事訴訟
+templateFile: evidence-list.xlsx
+
+fields:
+  - id: case_number
+    label: 事件番号
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 3
+
+  - id: court_name
+    label: 裁判所
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 3
+
+  - id: plaintiff_name
+    label: 原告
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 3
+
+  - id: defendant_name
+    label: 被告
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 3
+
+  - id: evidence_table
+    label: 証拠一覧
+    type: table
+    required: true
+    range:
+      headerRow: 7
+      dataStartRow: 8
+      startColumn: 1
+      endRow: 9
+      endColumn: 5
+    columns:
+      - id: evidence_no
+        label: 号証
+        type: text
+        description: 甲第○号証
+      - id: title
+        label: 標目
+        type: text
+        description: 証拠の名称
+      - id: date
+        label: 作成日
+        type: date
+        description: 証拠の作成日
+      - id: author
+        label: 作成者
+        type: text
+        description: 証拠の作成者
+      - id: purpose
+        label: 立証趣旨
+        type: text
+        description: 何を立証するための証拠か

@@ -107,13 +107,22 @@ git clone https://github.com/llamadrive/claude-bengo.git ~/.claude/plugins/claud
 
 ### 使ってみる
 
-Claude Code を起動し、以下を入力する:
+Claude Code を起動し、普通に日本語で話しかけるだけで動く:
 
 ```
-/verify                              ← 動作確認
-/typo-check 準備書面.docx            ← まずは校正を試す
-/family-tree 戸籍謄本.pdf            ← 相続関係説明図を作成
-/template-create 財産目録.xlsx       ← 書式を登録して自動入力
+「この準備書面をチェックして」          ← 法律文書の校正
+「戸籍謄本から相続関係説明図を作って」  ← 家族関係図の生成
+「民法709条を見せて」                  ← 法令条文の検索
+「この財産目録に通帳のデータを入れて」  ← 裁判所書式の自動入力
+```
+
+スラッシュコマンドでも実行可能:
+
+```
+/typo-check 準備書面.docx
+/family-tree 戸籍謄本.pdf
+/law-search 民法709条
+/template-create 財産目録.xlsx
 ```
 
 ---

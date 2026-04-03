@@ -17,6 +17,7 @@ $ARGUMENTS の値に応じて3つのモードで動作する:
 MCP サーバの疎通と fixtures の存在を確認する。
 
 **手順:**
+0. プラグインの更新を確認する: `Bash(git -C {plugin_dir} fetch --dry-run 2>&1)` で更新の有無を確認する。更新がある場合は「新しいバージョンが利用可能。`cd ~/.claude/plugins/claude-bengo && git pull` で更新できる。」と案内する。
 1. `mcp__xlsx-editor__get_workbook_info` を任意の fixtures XLSX に対して呼び出し、応答を確認する。
 2. `mcp__docx-editor__get_document_info` を任意の fixtures DOCX に対して呼び出し、応答を確認する。
 3. `mcp__html-report__get_component_examples` を呼び出し、応答を確認する。

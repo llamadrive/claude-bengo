@@ -84,7 +84,7 @@
 git clone https://github.com/llamadrive/claude-bengo.git ~/.claude/plugins/claude-bengo
 ```
 
-Excel・Word 操作に必要なツール（xlsx-editor, docx-editor）はプラグイン読込時に自動設定される。
+必要なツール（xlsx-editor, docx-editor, html-report）は全てプラグイン読込時に自動設定される。
 
 ### 使ってみる
 
@@ -185,7 +185,7 @@ claude-bengo/
 |--------|-------------|---------|
 | xlsx-editor | `xlsx-mcp-server` | ✅ `.mcp.json` で自動 |
 | docx-editor | `docx-mcp-server` | ✅ `.mcp.json` で自動 |
-| html-report | `html-report-server` | ⚠ npm 未公開（`/lawsuit-analysis` のみ必要） |
+| html-report | `html-report-server` | ✅ `.mcp.json` で自動 |
 
 ### テンプレートYAML仕様
 

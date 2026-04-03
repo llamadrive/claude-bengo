@@ -7,6 +7,10 @@
     "docx-editor": {
       "command": "npx",
       "args": ["-y", "docx-mcp-server"]
+    },
+    "html-report": {
+      "command": "npx",
+      "args": ["-y", "html-report-server"]
     }
   }
 }

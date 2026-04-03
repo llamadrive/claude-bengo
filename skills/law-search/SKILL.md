@@ -30,13 +30,25 @@ e-Gov 法令 API を使用して、日本の法令条文を検索・取得・表
 
 ### Step 2: 法令 ID の解決
 
-`skills/law-search/references/egov-api-guide.md` を Read ツールで読み込み、法令名から法令 ID を取得する。
+**2段階で法令 ID を解決する:**
 
-主要法令（民法、刑法、会社法、民事訴訟法 等）は ID マッピングテーブルに含まれている。
+**Step 2a: 略称・別名の解決**
+`skills/law-search/references/egov-api-guide.md` を Read ツールで読み込み、略称マッピング（民訴法→民事訴訟法 等）とキーワード→条文マッピングを確認する。
 
-マッピングにない法令の場合:
+**Step 2b: 法令 ID の検索**
+`skills/law-search/references/law-id-list.tsv` に対して Grep ツールで法令名を検索する。このファイルには全2,078件の日本の法律の ID と正式名称が含まれている。
+
+```
+Grep: pattern="民法", path="skills/law-search/references/law-id-list.tsv"
+```
+
+結果例: `129AC0000000089	民法`
+
+**重要:** `law-id-list.tsv` は157KBあるため、**Read ツールで全文読込しない**。必ず Grep で部分検索する。
+
+Grep で見つからない場合:
 - ユーザーに正式名称を確認する
-- 類似する法令名を提案する（例: "個人情報" → "個人情報の保護に関する法律"）
+- 部分一致で候補を提示する（例: Grep で "個人情報" → "個人情報の保護に関する法律" がヒット）
 
 ### Step 3a: 条文取得（条番号指定あり）
 

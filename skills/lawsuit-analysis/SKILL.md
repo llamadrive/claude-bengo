@@ -33,7 +33,7 @@ version: 1.0.0
 
 ### Step 3: 構造化データの抽出
 
-以下のスキーマで情報を抽出する。詳細は `references/extraction-schema.md` を参照する。
+以下のスキーマで情報を抽出する。詳細は `skills/lawsuit-analysis/references/extraction-schema.md` を Read ツールで読み込んで参照する。
 
 ```json
 {
@@ -93,7 +93,7 @@ version: 1.0.0
 
 ### Step 4: HTMLレポート生成
 
-`mcp__html-report__render_report` でレポートを生成する。レポート構造の詳細は `references/report-structure-guide.md` を参照する。
+`mcp__html-report__render_report` でレポートを生成する。レポート構造の詳細は `skills/lawsuit-analysis/references/report-structure-guide.md` を Read ツールで読み込んで参照する。
 
 推奨ブロック構成:
 1. **ヘッダ**: 事件名、事件番号

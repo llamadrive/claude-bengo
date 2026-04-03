@@ -123,14 +123,14 @@ WebFetch: https://laws.e-gov.go.jp/api/1/articles;lawId=129AC0000000089;article=
 
 **1. 一時ディレクトリを作成し、法令XMLをダウンロード:**
 ```bash
-mkdir -p .claude-bengo-tmp && curl -s "https://laws.e-gov.go.jp/api/1/lawdata/{lawId}" -o .claude-bengo-tmp/law_{lawId}.xml
+mkdir -p .claude-bengo-tmp && curl -s "https://laws.e-gov.go.jp/api/1/lawdata/{lawId}" -o /tmp/claude-bengo/law_{lawId}.xml
 ```
-`.claude-bengo-tmp/` はユーザーの作業ディレクトリ（カレントディレクトリ）に作成される。プラグインディレクトリ内ではない。
+`/tmp/claude-bengo/` はOS一時ディレクトリ内のサブフォルダ。再起動時に自動削除される。ユーザーの作業ディレクトリやプラグインディレクトリには書き込まない。
 例: `curl -s "https://laws.e-gov.go.jp/api/1/lawdata/129AC0000000089" -o /tmp/law_129AC0000000089.xml`
 
 **2. 条文見出し（ArticleCaption）をキーワードで Grep 検索:**
 ```bash
-grep -o 'ArticleCaption>[^<]*{keyword}[^<]*<' .claude-bengo-tmp/law_{lawId}.xml
+grep -o 'ArticleCaption>[^<]*{keyword}[^<]*<' /tmp/claude-bengo/law_{lawId}.xml
 ```
 例: 「監護」で検索 → 「（離婚後の子の監護に関する事項の定め等）」「（子の監護に要する費用の分担の定めがない場合の特例）」等がヒット
 
@@ -138,7 +138,7 @@ grep -o 'ArticleCaption>[^<]*{keyword}[^<]*<' .claude-bengo-tmp/law_{lawId}.xml
 ```bash
 python3 -c "
 import re
-with open('.claude-bengo-tmp/law_{lawId}.xml') as f: xml = f.read()
+with open('/tmp/claude-bengo/law_{lawId}.xml') as f: xml = f.read()
 for num, cap in re.findall(r'Article[^>]*Num=\"([^\"]+)\"[^>]*>.*?<ArticleCaption>([^<]*)</ArticleCaption>', xml, re.DOTALL):
     if '{keyword}' in cap: print(f'第{num}条\t{cap}')
 "
@@ -148,7 +148,7 @@ for num, cap in re.findall(r'Article[^>]*Num=\"([^\"]+)\"[^>]*>.*?<ArticleCaptio
 
 **5. 検索完了後、一時ファイルを削除する:**
 ```bash
-rm .claude-bengo-tmp/law_{lawId}.xml
+rm /tmp/claude-bengo/law_{lawId}.xml
 ```
 
 **利点:**
@@ -159,10 +159,9 @@ rm .claude-bengo-tmp/law_{lawId}.xml
 
 **注意:**
 - ダウンロードは 1法令あたり 1-5MB。大きな法令は数秒かかる
-- 検索完了後は `rm .claude-bengo-tmp/law_{lawId}.xml` で削除する
-- 同一法令を繰り返し検索する場合は、一時ファイルを会話中保持してもよい
-- 会話終了時にユーザーに「`.claude-bengo-tmp/` に一時ファイルが残っている。削除するか？」と確認する
-- ディレクトリが空になったら `rmdir .claude-bengo-tmp` で削除する
+- 検索完了後は `rm /tmp/claude-bengo/law_{lawId}.xml` で削除する
+- 同一法令を繰り返し検索する場合は、一時ファイルを会話中保持してもよい（再ダウンロード不要）
+- `/tmp/claude-bengo/` はOS再起動時に自動削除されるため、手動削除は必須ではない
 
 ### Step 3d: 法令名の候補提案
 

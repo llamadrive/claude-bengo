@@ -117,30 +117,49 @@ WebFetch: https://laws.e-gov.go.jp/api/1/articles;lawId=129AC0000000089;article=
 
 ### Step 3c: トピック検索（条番号不明の場合）
 
-条番号がわからない場合、以下の3段階で条文を特定する:
+条番号がわからない場合、**法令XMLを一時ファイルにダウンロードし、条文見出しをローカル検索する**。
 
-**Stage 1: キーワードマッピング（即座に回答）**
-`references/egov-api-guide.md` のキーワード→条文マッピングで既知のトピックを解決する。
+**手順:**
 
-**Stage 2: 条文見出しスキャン（API呼び出し）**
-マッピングにない場合、関連する条番号範囲を推定し、条文を数条ずつ取得して見出し（ArticleCaption）を確認する。
+**1. 法令XMLを /tmp にダウンロード:**
+```bash
+curl -s "https://laws.e-gov.go.jp/api/1/lawdata/{lawId}" -o /tmp/law_{lawId}.xml
+```
+例: `curl -s "https://laws.e-gov.go.jp/api/1/lawdata/129AC0000000089" -o /tmp/law_129AC0000000089.xml`
 
-手順:
-1. ユーザーのトピックから、法令内のおおよその位置を推定する（例: 「子の監護」→ 民法の親族編・第4章 離婚付近 → 766条前後）
-2. 推定した条番号の前後5条を1条ずつ WebFetch で取得する
-3. 各条の ArticleCaption（見出し）を確認する
-4. 一致する条文が見つかったらそれを表示する
-5. 見つからない場合は範囲を広げて再検索する（例: 766条の枝番 → 766_2, 766_3 を確認）
+**2. 条文見出し（ArticleCaption）をキーワードで Grep 検索:**
+```bash
+grep -o 'ArticleCaption>[^<]*{keyword}[^<]*<' /tmp/law_{lawId}.xml
+```
+例: 「監護」で検索 → 「（離婚後の子の監護に関する事項の定め等）」「（子の監護に要する費用の分担の定めがない場合の特例）」等がヒット
 
-**重要: 枝番号の確認**
-近年の法改正で追加された条文は枝番号を持つ（例: 第766条の2, 第766条の3）。
-メインの条文で見つからない場合は、`article=766_2`, `article=766_3` のように枝番を順次確認する。
+**3. 条番号も一緒に抽出する場合（python3 使用）:**
+```bash
+python3 -c "
+import re
+with open('/tmp/law_{lawId}.xml') as f: xml = f.read()
+for num, cap in re.findall(r'Article[^>]*Num=\"([^\"]+)\"[^>]*>.*?<ArticleCaption>([^<]*)</ArticleCaption>', xml, re.DOTALL):
+    if '{keyword}' in cap: print(f'第{num}条\t{cap}')
+"
+```
 
-**Stage 3: Claude の法律知識で推定**
-Stage 1, 2 で見つからない場合:
-- Claude の訓練データに含まれる法律知識を活用して推定する
-- 「○○法第○条あたりと思われるが、確認するか？」と提案する
-- ユーザーの確認後に Step 3a で取得する
+**4. ヒットした条文を Step 3a の方法で取得する**（WebFetch で `/articles` エンドポイント）
+
+**5. 検索完了後、一時ファイルを削除する:**
+```bash
+rm /tmp/law_{lawId}.xml
+```
+
+**利点:**
+- 法令全文をコンテキストに載せない（/tmp にダウンロードして Bash/Grep で検索）
+- 1050条の民法でも全条文見出しを一瞬で検索可能
+- 枝番号（第766条の3 等）も漏れなくヒットする
+- WebFetch のトークン制限の影響を受けない
+
+**注意:**
+- ダウンロードは 1法令あたり 1-5MB。大きな法令は数秒かかる
+- 検索完了後は必ず `/tmp/law_*.xml` を削除する
+- 同一法令を繰り返し検索する場合は、一時ファイルを会話中保持してもよい（会話終了時に削除を案内する）
 
 ### Step 3d: 法令名の候補提案
 

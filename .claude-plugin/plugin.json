@@ -1,9 +1,25 @@
 {
   "name": "claude-bengo",
+  "description": "Japanese law firm plugin for Claude Code — court template filling, family tree generation (相続関係説明図), legal document proofreading, and lawsuit analysis",
   "version": "1.0.0",
-  "description": "Japanese law firm toolkit: court template filling, family tree analysis, legal document proofreading, and lawsuit analysis for Claude Code.",
   "author": {
-    "name": "claude-bengo"
+    "name": "LlamaDrive",
+    "url": "https://llama-drive.com"
   },
-  "keywords": ["legal", "japanese", "law", "court", "proofreading", "family-tree", "lawsuit"]
+  "homepage": "https://github.com/llamadrive/claude-bengo",
+  "repository": "https://github.com/llamadrive/claude-bengo",
+  "license": "MIT",
+  "keywords": [
+    "legal",
+    "japanese",
+    "law",
+    "lawyer",
+    "court",
+    "proofreading",
+    "family-tree",
+    "lawsuit",
+    "弁護士",
+    "法律",
+    "裁判所"
+  ]
 }

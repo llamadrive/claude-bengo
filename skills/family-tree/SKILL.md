@@ -106,7 +106,7 @@ version: 1.0.0
 ### Step 4: HTML生成
 
 1. `assets/family-tree-template.html` を Read ツールで読み込む。
-2. テンプレート内の `__GRAPH_DATA__` を Step 3 で構築したJSONデータ（`JSON.stringify(data, null, 2)`）で置換する。
+2. テンプレート内の `__GRAPH_DATA__` を Step 3 で構築したJSONデータで置換する。**置換前に、JSON文字列中の `</script>` を `<\/script>` にエスケープすること**（HTMLパーサーがscriptタグを誤終了させるのを防ぐため）。
 3. Write ツールで `family_tree_{YYYY-MM-DD}.html` として出力する。
 4. ユーザーに「ブラウザで開くとインタラクティブな家族関係図が表示されます」と案内する。
 

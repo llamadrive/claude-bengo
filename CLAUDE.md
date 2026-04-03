@@ -41,7 +41,7 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 ## ファイル読取
 
 - **PDF**: Claude の vision 機能で直接読み取る（Read ツールで開く）。大量ページのPDFは `pages` パラメータで10ページ以内ずつ分割して読み取る（例: `pages: "1-10"`, `pages: "11-20"`）。
-- **DOCX**: `mcp__docx-editor__read_document` でパラグラフ単位のテキストを取得する。
+- **DOCX**: `mcp__docx-editor__read_document` でパラグラフ単位のテキストを取得する。大きな文書（50ブロック超）は `start_paragraph` / `end_paragraph` パラメータで50ブロックずつ分割して読み取る。
 - **XLSX**: `mcp__xlsx-editor__read_sheet` でセルデータを取得する。大きなシート（50行以上または結合セルが多い場合）は `range` パラメータで分割して読み取る（例: `range: "A1:N30"`, `range: "A31:N60"`）。全体を一括読取するとトークン制限を超える場合がある。まず `get_workbook_info` でシートのサイズを確認し、必要に応じて分割する。
 
 ## 出力命名規則

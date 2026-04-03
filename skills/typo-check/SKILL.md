@@ -12,7 +12,15 @@ version: 1.0.0
 
 ### Step 1: 文書読取
 
-DOCX ファイルのパスをユーザーに確認し、`mcp__docx-editor__read_document` で全パラグラフを取得する。
+DOCX ファイルのパスをユーザーに確認し、`mcp__docx-editor__read_document` でパラグラフを取得する。
+
+**大きな文書の分割読取:**
+まず `start_paragraph: 0, end_paragraph: 1` で total blocks 数を確認する。
+- **50ブロック以下**: 一括読取で問題ない
+- **50ブロック超**: `start_paragraph` / `end_paragraph` パラメータで50ブロックずつ分割して読み取る
+  - 例: `start_paragraph: 0, end_paragraph: 50` → `start_paragraph: 50, end_paragraph: 100` → ...
+  - 各チャンクごとに Step 3-4 の分析を実施し、結果を統合する
+- 分割時は前のチャンクの最後の2-3パラグラフを次のチャンクの冒頭で重複読取する（文脈の連続性を保つため）
 
 テキスト直貼りの場合は DOCX ファイルなしで分析のみ実施し、修正適用はスキップする。
 

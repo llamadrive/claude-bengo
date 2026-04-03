@@ -1,6 +1,9 @@
 # Test artifacts
 test-run/
 
+# Internal docs (not published)
+docs/
+
 # OS files
 .DS_Store
 Thumbs.db

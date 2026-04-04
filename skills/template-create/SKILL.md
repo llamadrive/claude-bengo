@@ -86,7 +86,7 @@ version: 1.0.0
 
 ### Step 6: YAML保存
 
-確定したフィールド定義をYAML形式で `templates/{id}.yaml` に Write ツールで保存する。
+確定したフィールド定義をYAML形式で `templates/{id}.yaml` に Write ツールで保存する（ユーザーの作業ディレクトリ内。プラグインディレクトリではない）。`templates/` ディレクトリが存在しない場合は `mkdir -p templates` で作成する。
 
 YAML形式は `templates/_schema.yaml` に準拠する。
 

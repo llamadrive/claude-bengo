@@ -10,17 +10,15 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 1: 文書読取とコピー作成
+### Step 1: 文書読取
 
-DOCX ファイルのパスをユーザーに確認する。
+DOCX ファイルのパスをユーザーに確認し、`mcp__docx-editor__read_document` でパラグラフを取得する。
 
-**元ファイルは直接編集しない。** まず Bash の `cp` でコピーを作成する:
-```bash
-cp 準備書面.docx 準備書面_reviewed.docx
-```
-ファイル名は `{元ファイル名}_reviewed.docx`（CLAUDE.md の命名規則に従う）。
+**元ファイルを直接編集する。** ただし、全ての変更は必ず以下のいずれかの方法で記録する:
+- **修正履歴（Track Changes）**: `edit_paragraph` に `track_changes: true` を指定。Word で開くと赤字の取消線/挿入が表示され、弁護士が1件ずつ「承諾」「元に戻す」を選択できる
+- **コメント**: `add_comment` で修正理由や注意点を付記。Word のコメント欄に表示される
 
-コピーしたファイルに対して `mcp__docx-editor__read_document` でパラグラフを取得する。以降の全ての編集はコピーに対して行う。
+**絶対にしてはならないこと:** `track_changes: false` での編集（変更が追跡されず、弁護士が気づかないまま内容が変わる）
 
 **大きな文書の分割読取:**
 まず `start_paragraph: 0, end_paragraph: 1` で total blocks 数を確認する。

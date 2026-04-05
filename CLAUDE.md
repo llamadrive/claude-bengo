@@ -73,6 +73,12 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 
 ## テンプレート
 
-テンプレートは `templates/` ディレクトリに `{id}.yaml` + `{id}.xlsx` のペアで管理する。
-ユーザーが `/template-create` で自由に登録する。
-フォーマット仕様は `templates/_schema.yaml` を参照する。
+テンプレートはユーザーの**作業ディレクトリ**内の `templates/` に `{id}.yaml` + `{id}.xlsx` のペアで保存される（プラグインディレクトリ内ではない）。
+
+- `/template-create` で新規登録
+- `/template-list` で一覧表示
+- `/template-fill` で選択・入力
+
+テンプレートは作業ディレクトリに紐づく。別のディレクトリに同じテンプレートを使いたい場合は `templates/` フォルダごとコピーする。共通テンプレートをよく使う場合は、ホームディレクトリに共通 `templates/` を作成し、各案件フォルダからシンボリックリンクを張る方法もある。
+
+フォーマット仕様はプラグインの `templates/_schema.yaml` を参照する。

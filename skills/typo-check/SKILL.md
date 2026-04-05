@@ -10,9 +10,17 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 1: 文書読取
+### Step 1: 文書読取とコピー作成
 
-DOCX ファイルのパスをユーザーに確認し、`mcp__docx-editor__read_document` でパラグラフを取得する。
+DOCX ファイルのパスをユーザーに確認する。
+
+**元ファイルは直接編集しない。** まず Bash の `cp` でコピーを作成する:
+```bash
+cp 準備書面.docx 準備書面_reviewed.docx
+```
+ファイル名は `{元ファイル名}_reviewed.docx`（CLAUDE.md の命名規則に従う）。
+
+コピーしたファイルに対して `mcp__docx-editor__read_document` でパラグラフを取得する。以降の全ての編集はコピーに対して行う。
 
 **大きな文書の分割読取:**
 まず `start_paragraph: 0, end_paragraph: 1` で total blocks 数を確認する。

@@ -1,6 +1,6 @@
 ---
 description: 法律文書の誤字脱字・表記揺れを校正（修正履歴付き）
-allowed-tools: Read, Write, Glob, mcp__docx-editor__*
+allowed-tools: Read, Write, Glob, Bash(cp:*), mcp__docx-editor__*
 ---
 
 DOCX法律文書を日本語法律文書作成ルールに照合し、誤字脱字・文法エラー・表記揺れを検出する。

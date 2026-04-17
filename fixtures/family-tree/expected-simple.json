@@ -1,15 +1,76 @@
 {
-  "_description": "家族関係テスト: 核家族4人の模擬戸籍からの抽出期待値",
-  "_note": "koseki-simple.pdf をfixturesに配置してテストする",
+  "_description": "戸籍全部事項証明書（大阪市北区・永和家・サンプル）からの抽出期待値",
+  "_source": "koseki-simple.pdf (sha256: 1ac504844a2750b2f6a080b551b702e4062094a6a07886baa78403c37a71ed5d)",
+  "_issued": "平成27年11月2日 大阪市北区長",
+  "_scenario": "被相続人=永和進（存命のため生前対策シミュレーション用）、書式=標準（相続関係説明図）",
+  "_notes": "尊属 4 名（永和隆・はる、池島俊夫・雪子）は戸籍の【父】【母】欄および従前戸籍欄から抽出された参照人物。標準書式では描画されないが、抽出段階では JSON に含める。",
   "persons": [
-    { "id": "p1", "name": "甲野太郎", "role": "父", "birthday": "昭和35年1月15日" },
-    { "id": "p2", "name": "甲野花子", "role": "母", "birthday": "昭和37年3月20日" },
-    { "id": "p3", "name": "甲野一郎", "role": "長男", "birthday": "昭和63年7月10日" },
-    { "id": "p4", "name": "甲野美咲", "role": "長女", "birthday": "平成2年11月5日" }
+    {
+      "id": "p1",
+      "name": "永和 進",
+      "role": "本人（筆頭者）",
+      "birthday": "昭和11年1月30日",
+      "address": "大阪市北区桜町一丁目2304番地",
+      "deathDate": null
+    },
+    {
+      "id": "p2",
+      "name": "永和 晶子（旧姓 池島）",
+      "role": "配偶者",
+      "birthday": "昭和11年7月12日",
+      "address": "大阪市北区桜町一丁目2304番地",
+      "deathDate": null
+    },
+    {
+      "id": "p3",
+      "name": "永和 稔",
+      "role": "長男",
+      "birthday": "昭和45年10月23日",
+      "address": "大阪市北区桜町一丁目2304番地",
+      "deathDate": null
+    },
+    {
+      "id": "p4",
+      "name": "永和 隆",
+      "role": "父（進の父）",
+      "birthday": null,
+      "address": "大阪市北区桜町一丁目2304番地（従前戸籍）",
+      "deathDate": null
+    },
+    {
+      "id": "p5",
+      "name": "永和 はる",
+      "role": "母（進の母）",
+      "birthday": null,
+      "address": null,
+      "deathDate": null
+    },
+    {
+      "id": "p6",
+      "name": "池島 俊夫",
+      "role": "父（晶子の父）",
+      "birthday": null,
+      "address": "大阪府吹田市松原町64番地（晶子の従前戸籍）",
+      "deathDate": null
+    },
+    {
+      "id": "p7",
+      "name": "池島 雪子",
+      "role": "母（晶子の母）",
+      "birthday": null,
+      "address": null,
+      "deathDate": null
+    }
   ],
   "relationships": [
-    { "type": "spouse", "person1Id": "p1", "person2Id": "p2" },
-    { "type": "parent-child", "person1Id": "p1", "person2Id": "p3" },
-    { "type": "parent-child", "person1Id": "p1", "person2Id": "p4" }
+    { "type": "spouse",       "person1Id": "p1", "person2Id": "p2", "details": "昭和37年5月2日 婚姻（大阪市北区町受理）" },
+    { "type": "parent-child", "person1Id": "p1", "person2Id": "p3", "details": "長男" },
+    { "type": "parent-child", "person1Id": "p2", "person2Id": "p3", "details": "長男" },
+    { "type": "parent-child", "person1Id": "p4", "person2Id": "p1", "details": "長男（戸籍記載）" },
+    { "type": "parent-child", "person1Id": "p5", "person2Id": "p1", "details": "長男（戸籍記載）" },
+    { "type": "parent-child", "person1Id": "p6", "person2Id": "p2", "details": "二女（戸籍記載）" },
+    { "type": "parent-child", "person1Id": "p7", "person2Id": "p2", "details": "二女（戸籍記載）" },
+    { "type": "spouse",       "person1Id": "p4", "person2Id": "p5", "details": "進の父母（推定）" },
+    { "type": "spouse",       "person1Id": "p6", "person2Id": "p7", "details": "晶子の父母（推定）" }
   ]
 }

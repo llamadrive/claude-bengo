@@ -122,8 +122,25 @@ def _make_minimal_pdf(lines: List[str], title: str = "Synthetic Fixture") -> byt
     return header + body_bytes + xref_bytes + trailer
 
 
+STUB_MARKER = b"[SYNTHETIC STUB FIXTURE"
+
+
+def _is_stub_or_missing(path: Path) -> bool:
+    """Return True if path does not yet exist or is a stub we generated before."""
+    if not path.exists():
+        return True
+    try:
+        head = path.read_bytes()[:4096]
+    except OSError:
+        return True
+    return STUB_MARKER in head
+
+
 def _write_pdf(path: Path, lines: List[str], title: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if not _is_stub_or_missing(path):
+        print(f"  [SKIP] {path.relative_to(ROOT)} (real fixture present, {path.stat().st_size} bytes)")
+        return
     path.write_bytes(_make_minimal_pdf(lines, title))
     print(f"  [OK] {path.relative_to(ROOT)} ({path.stat().st_size} bytes)")
 
@@ -178,8 +195,22 @@ def _make_minimal_docx(paragraphs: List[str]) -> bytes:
     return buf.getvalue()
 
 
+def _docx_contains_stub_marker(path: Path) -> bool:
+    """Detect stub DOCX by scanning word/document.xml for the marker text."""
+    try:
+        with zipfile.ZipFile(path) as z:
+            if "word/document.xml" not in z.namelist():
+                return False
+            return b"[SYNTHETIC" in z.read("word/document.xml")[:8192]
+    except (zipfile.BadZipFile, OSError):
+        return False
+
+
 def _write_docx(path: Path, paragraphs: List[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists() and not _docx_contains_stub_marker(path):
+        print(f"  [SKIP] {path.relative_to(ROOT)} (real fixture present, {path.stat().st_size} bytes)")
+        return
     path.write_bytes(_make_minimal_docx(paragraphs))
     print(f"  [OK] {path.relative_to(ROOT)} ({path.stat().st_size} bytes)")
 

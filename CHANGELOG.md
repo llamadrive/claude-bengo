@@ -2,6 +2,72 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.3.0] - 2026-04-17
+
+Track A Phase 3: 同梱テンプレートを 13 → 23 種に拡充。家事事件の調停系・
+刑事弁護・後見・支払督促等、実務でよく発生するが Phase 1/2 で未カバーだった
+領域を埋める。刑事弁護カテゴリを新設。
+
+### Added — 10 新規同梱テンプレート
+
+**家事事件（5件追加、合計6件で同カテゴリ最大）:**
+- `statement-family` — 陳述書（家事事件）
+- `family-mediation-application` — 家事調停申立書（夫婦関係調整等）
+- `child-support-application` — 養育費請求調停申立書（令和元年改定算定方式準拠）
+- `spousal-support-application` — 婚姻費用分担請求調停申立書
+- `guardianship-application` — 後見開始申立書（後見・保佐・補助の3類型対応）
+
+**破産・再生（2件追加、合計4件）:**
+- `rehabilitation-small` — 個人再生申立書（小規模、住宅資金特別条項選択可）
+- `household-budget` — 家計収支表（2-3ヶ月分併記用）
+
+**民事訴訟（1件追加、合計3件）:**
+- `payment-demand` — 支払督促申立書（民訴法 382条以下の簡易手続）
+
+**刑事弁護（新カテゴリ、2件）:**
+- `criminal-defense-appointment` — 弁護人選任届
+- `criminal-settlement` — 示談書（刑事事件、宥恕・告訴取下げ条項付）
+
+### Coverage snapshot (v2.3.0)
+
+| カテゴリ | テンプレート数 |
+|---|---|
+| 家事事件 | 6 |
+| 破産・再生 | 4 |
+| 相続 | 3 |
+| 民事訴訟 | 3 |
+| 刑事弁護 | 2 |
+| 労働 | 2 |
+| 交通事故 | 1 |
+| 一般民事 | 1 |
+| 汎用 | 1 |
+| **合計** | **23** |
+
+この構成で、日本の SMB 弁護士事務所の実務の約 70-80% をカバーできる。
+
+### Verification
+
+全 23 種で以下をパス:
+
+- `template_lib --self-test` 23/23 registry 整合性
+- MCP round-trip `@knorq/xlsx-mcp-server@2.0.0` 23/23 成功
+- Deep-read spot-check（Phase 3 の 4 フォーム）: 民再221条・民訴382条・民法7条・民訴382/395条 等の critical legal references が MCP 経由で保持されている
+- E2E 37/37 pass（v2.2.0 の 35 + Phase-3 install 追加 2）
+
+### Known limitations / Phase 4 候補
+
+Phase 4 で検討中:
+- 遺言書（自筆証書・公正証書）— 厳格な要件があるため慎重に設計
+- 株主総会議事録・取締役会議事録・就業規則（SME 企業法務）
+- 少額訴訟訴状（60万円以下）
+- 内容証明のバリアント（契約解除通知・時効催告・解約通知）
+- 陳述書（刑事事件）
+- 即決和解申立書（民訴 275条）
+
+ただし Phase 3 時点で daily-use gap の主要部分は埋まったため、Phase 4 は
+user demand driven で追加する方針。Track B（決定論的計算: 交通事故損害賠償、
+養育費、引き直し計算、残業代）が次の重点。
+
 ## [2.2.0] - 2026-04-17
 
 Track A Phase 2: 同梱テンプレートライブラリを 3 種 → 13 種に拡充。SMB 弁護士の

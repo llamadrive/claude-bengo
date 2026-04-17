@@ -1,0 +1,90 @@
+id: payment-demand
+title: 支払督促申立書
+description: 金銭支払請求の簡易手続。書記官の書面審査のみで債務名義が得られる
+category: 民事訴訟
+templateFile: payment-demand.xlsx
+fields:
+  - id: court_name
+    label: "管轄簡易裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申立日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: creditor_name
+    label: "債権者氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: creditor_address
+    label: "債権者住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: debtor_name
+    label: "債務者氏名"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: debtor_address
+    label: "債務者住所"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: claim_amount
+    label: "請求金額（元本/円）"
+    type: number
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: interest_rate
+    label: "利率（年%）"
+    type: text
+    required: false
+    position:
+      row: 12
+      column: 2
+  - id: interest_start_date
+    label: "利息起算日"
+    type: date
+    required: false
+    position:
+      row: 13
+      column: 2
+  - id: claim_cause
+    label: "請求の原因"
+    type: textarea
+    required: true
+    position:
+      row: 15
+      column: 2
+  - id: court_fee
+    label: "申立手数料（印紙/円）"
+    type: number
+    required: true
+    position:
+      row: 17
+      column: 2
+  - id: postage_stamps
+    label: "連絡用郵便切手"
+    type: text
+    required: true
+    position:
+      row: 18
+      column: 2

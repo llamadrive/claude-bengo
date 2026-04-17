@@ -1,0 +1,108 @@
+id: guardianship-application
+title: 後見開始申立書
+description: 成年後見開始の審判申立書雛形。本人の住所地を管轄する家裁に提出
+category: 家事事件
+templateFile: guardianship-application.xlsx
+fields:
+  - id: court_name
+    label: "管轄家庭裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申立日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: guardianship_type
+    label: "申立の類型"
+    type: select
+    required: true
+    position:
+      row: 4
+      column: 2
+    options:
+      - "後見"
+      - "保佐"
+      - "補助"
+  - id: applicant_name
+    label: "申立人氏名"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: applicant_address
+    label: "申立人住所"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: applicant_relationship
+    label: "本人との関係"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: person_name
+    label: "本人氏名"
+    type: text
+    required: true
+    position:
+      row: 10
+      column: 2
+  - id: person_honseki
+    label: "本人本籍"
+    type: text
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: person_address
+    label: "本人住所"
+    type: text
+    required: true
+    position:
+      row: 12
+      column: 2
+  - id: person_birth
+    label: "本人生年月日"
+    type: date
+    required: true
+    position:
+      row: 13
+      column: 2
+  - id: person_current_location
+    label: "本人所在地（現在）"
+    type: text
+    required: false
+    position:
+      row: 14
+      column: 2
+  - id: reason_summary
+    label: "申立の実情"
+    type: textarea
+    required: true
+    position:
+      row: 16
+      column: 2
+  - id: candidate_name
+    label: "後見人候補者氏名"
+    type: text
+    required: false
+    position:
+      row: 18
+      column: 2
+  - id: candidate_relationship
+    label: "候補者と本人の関係"
+    type: text
+    required: false
+    position:
+      row: 19
+      column: 2

@@ -1,0 +1,108 @@
+id: criminal-defense-appointment
+title: 弁護人選任届
+description: 刑事事件の弁護人選任届。被疑者段階・被告人段階・公判段階で都度提出
+category: 刑事弁護
+templateFile: criminal-defense-appointment.xlsx
+fields:
+  - id: submission_target
+    label: "提出先"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "提出日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: case_type
+    label: "事件の段階"
+    type: select
+    required: true
+    position:
+      row: 4
+      column: 2
+    options:
+      - "被疑者段階"
+      - "被告人段階（起訴前）"
+      - "被告人段階（公判中）"
+  - id: case_number
+    label: "事件番号"
+    type: text
+    required: false
+    position:
+      row: 5
+      column: 2
+  - id: suspect_name
+    label: "被疑者・被告人氏名"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: suspect_address
+    label: "住所"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: suspect_birth
+    label: "生年月日"
+    type: date
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: offense
+    label: "罪名"
+    type: text
+    required: true
+    position:
+      row: 10
+      column: 2
+  - id: attorney_name
+    label: "弁護人氏名"
+    type: text
+    required: true
+    position:
+      row: 12
+      column: 2
+  - id: law_firm
+    label: "所属事務所"
+    type: text
+    required: true
+    position:
+      row: 13
+      column: 2
+  - id: firm_address
+    label: "事務所住所"
+    type: text
+    required: true
+    position:
+      row: 14
+      column: 2
+  - id: firm_phone
+    label: "事務所電話"
+    type: text
+    required: true
+    position:
+      row: 15
+      column: 2
+  - id: attorney_registration
+    label: "弁護士登録番号"
+    type: text
+    required: true
+    position:
+      row: 16
+      column: 2
+  - id: bar_association
+    label: "所属弁護士会"
+    type: text
+    required: true
+    position:
+      row: 17
+      column: 2

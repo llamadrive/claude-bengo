@@ -481,24 +481,31 @@ def scenario_template_install(c: Case, sandbox: Path) -> None:
         return
     entries = json.loads(out)
     ids = {e["id"] for e in entries}
-    # v2.2.0 ships 13 forms across 7 categories
+    # v2.3.0 ships 23 forms across 9 categories
     expected = {
+        # Phase 1
         "creditor-list", "estate-inventory", "settlement-traffic",
+        # Phase 2
         "divorce-agreement", "naiyou-shoumei", "overtime-calc-sheet",
         "complaint-loan-repayment", "answer-generic",
         "inheritance-renunciation", "inheritance-division-agreement",
         "power-of-attorney", "bankruptcy-dohaishi", "labor-tribunal-application",
+        # Phase 3
+        "statement-family", "family-mediation-application", "household-budget",
+        "rehabilitation-small", "criminal-defense-appointment", "criminal-settlement",
+        "guardianship-application", "payment-demand",
+        "child-support-application", "spousal-support-application",
     }
     if expected.issubset(ids):
         c.ok(f"10a.1 all {len(expected)} bundled templates present in registry", f"count={len(ids)}")
     else:
         c.ng("10a.1 bundled templates present", f"missing={expected - ids}")
 
-    # Categories are non-trivial
+    # Categories now include 刑事弁護
     cats = {e.get("category") for e in entries}
-    expected_cats = {"破産・再生", "相続", "交通事故", "家事事件", "一般民事", "民事訴訟", "労働", "汎用"}
+    expected_cats = {"破産・再生", "相続", "交通事故", "家事事件", "一般民事", "民事訴訟", "労働", "汎用", "刑事弁護"}
     if expected_cats.issubset(cats):
-        c.ok("10a.1b all 8 categories represented", f"cats={sorted(cats)}")
+        c.ok(f"10a.1b all {len(expected_cats)} categories represented", f"cats={sorted(cats)}")
     else:
         c.ng("10a.1b categories", f"missing={expected_cats - cats}")
 
@@ -548,6 +555,24 @@ def scenario_template_install(c: Case, sandbox: Path) -> None:
         c.ok("10a.6 install to ghost matter refused")
     else:
         c.ng("10a.6 ghost matter refusal", f"rc={rc} err={err[:200]}")
+
+    # install a Phase-3 form (different category) to ensure broad coverage works
+    rc, out, _ = run(
+        [PY, TEMPLATE_LIB, "install", "criminal-defense-appointment", "--matter", "smith-v-jones"],
+        env=env,
+    )
+    if rc == 0 and "criminal-defense-appointment.yaml" in out:
+        c.ok("10a.7 Phase-3 form (刑事) installs to matter")
+    else:
+        c.ng("10a.7 Phase-3 install", f"rc={rc}")
+
+    # list shows it after install
+    dst = sandbox / "matters" / "smith-v-jones" / "templates"
+    names = {p.name for p in dst.iterdir()}
+    if {"criminal-defense-appointment.yaml", "criminal-defense-appointment.xlsx"}.issubset(names):
+        c.ok("10a.8 installed Phase-3 form files exist")
+    else:
+        c.ng("10a.8 Phase-3 files", f"got={names}")
 
 
 def scenario_retention(c: Case, sandbox: Path) -> None:

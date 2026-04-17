@@ -1,0 +1,104 @@
+id: spousal-support-application
+title: 婚姻費用分担請求調停申立書
+description: 別居中の夫婦間における婚姻費用分担請求の調停申立書
+category: 家事事件
+templateFile: spousal-support-application.xlsx
+fields:
+  - id: court_name
+    label: "管轄家庭裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申立日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: applicant_name
+    label: "申立人氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: applicant_address
+    label: "申立人住所（現住）"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: applicant_income
+    label: "申立人年収（円）"
+    type: number
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: respondent_name
+    label: "相手方氏名"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: respondent_address
+    label: "相手方住所"
+    type: text
+    required: true
+    position:
+      row: 10
+      column: 2
+  - id: respondent_income
+    label: "相手方年収（円）"
+    type: number
+    required: false
+    position:
+      row: 11
+      column: 2
+  - id: marriage_date
+    label: "婚姻日"
+    type: date
+    required: true
+    position:
+      row: 13
+      column: 2
+  - id: separation_date
+    label: "別居開始日"
+    type: date
+    required: true
+    position:
+      row: 14
+      column: 2
+  - id: children_count
+    label: "未成年の子（人数）"
+    type: number
+    required: false
+    position:
+      row: 15
+      column: 2
+  - id: requested_monthly_amount
+    label: "請求月額（円）"
+    type: number
+    required: true
+    position:
+      row: 17
+      column: 2
+  - id: requested_start_date
+    label: "請求開始日"
+    type: date
+    required: true
+    position:
+      row: 18
+      column: 2
+  - id: application_reason
+    label: "申立の実情"
+    type: textarea
+    required: true
+    position:
+      row: 20
+      column: 2

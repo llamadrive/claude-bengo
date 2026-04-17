@@ -60,25 +60,37 @@ python3 skills/_lib/template_lib.py install <bundled-id>
   /template-fill       — ソース文書からこのテンプレートにデータを入力
 ```
 
-## 利用可能な同梱テンプレート（v2.2.0 現在）
+## 利用可能な同梱テンプレート（v2.3.0 現在）
+
+**23 種類 × 9 カテゴリ** を同梱。日常的な SMB 法律事務所の業務を広くカバー。
 
 | ID | カテゴリ | タイトル |
 |---|---|---|
 | `creditor-list` | 破産・再生 | 債権者一覧表 |
 | `bankruptcy-dohaishi` | 破産・再生 | 破産申立書（同時廃止型・個人） |
+| `rehabilitation-small` | 破産・再生 | 個人再生申立書（小規模再生） |
+| `household-budget` | 破産・再生 | 家計収支表 |
 | `estate-inventory` | 相続 | 遺産目録 |
 | `inheritance-renunciation` | 相続 | 相続放棄申述書 |
 | `inheritance-division-agreement` | 相続 | 遺産分割協議書 |
 | `settlement-traffic` | 交通事故 | 交通事故示談書（雛形） |
 | `divorce-agreement` | 家事事件 | 離婚協議書 |
+| `family-mediation-application` | 家事事件 | 家事調停申立書（夫婦関係調整等） |
+| `statement-family` | 家事事件 | 陳述書（家事事件） |
+| `child-support-application` | 家事事件 | 養育費請求調停申立書 |
+| `spousal-support-application` | 家事事件 | 婚姻費用分担請求調停申立書 |
+| `guardianship-application` | 家事事件 | 後見開始申立書 |
 | `naiyou-shoumei` | 一般民事 | 内容証明郵便（通知書） |
 | `complaint-loan-repayment` | 民事訴訟 | 訴状（貸金返還請求） |
 | `answer-generic` | 民事訴訟 | 答弁書（民事訴訟） |
+| `payment-demand` | 民事訴訟 | 支払督促申立書 |
 | `overtime-calc-sheet` | 労働 | 未払残業代計算書 |
 | `labor-tribunal-application` | 労働 | 労働審判申立書 |
+| `criminal-defense-appointment` | 刑事弁護 | 弁護人選任届 |
+| `criminal-settlement` | 刑事弁護 | 示談書（刑事事件） |
 | `power-of-attorney` | 汎用 | 委任状（弁護士） |
 
-**追加予定:** 養育費算定表、陳述書雛形（家事・刑事）、個人再生申立書、後見開始申立書、調停申立書、支払督促申立書、示談書（刑事弁護）、株主総会議事録、内容証明（貸金催告・解除通知等のバリアント）等。
+**追加予定（Phase 4, 検討中）:** 遺言書（自筆証書・公正証書）、株主総会議事録、取締役会議事録、就業規則、即決和解申立書、陳述書（刑事）、少額訴訟訴状、内容証明のバリアント（契約解除通知・時効催告・解約通知）等。
 
 同梱テンプレートは参考用の雛形である。**提出前に最新の裁判所ホームページ・法テラス様式を確認**すること。レイアウトが実際の書式と異なる場合がある。
 

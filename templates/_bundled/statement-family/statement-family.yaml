@@ -1,0 +1,69 @@
+id: statement-family
+title: 陳述書（家事事件）
+description: 家事調停・審判における当事者の陳述書。離婚・遺産分割・後見等で使用
+category: 家事事件
+templateFile: statement-family.xlsx
+fields:
+  - id: case_number
+    label: "事件番号"
+    type: text
+    required: false
+    position:
+      row: 2
+      column: 2
+  - id: case_type
+    label: "事件名"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: court_name
+    label: "家庭裁判所"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: party_role
+    label: "当事者の別"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: statement_author_name
+    label: "陳述者氏名"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: statement_author_birth
+    label: "生年月日"
+    type: date
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: statement_author_address
+    label: "住所"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: statement_body
+    label: "陳述内容"
+    type: textarea
+    required: true
+    position:
+      row: 12
+      column: 1
+  - id: declaration_date
+    label: "作成日"
+    type: date
+    required: true
+    position:
+      row: 29
+      column: 2

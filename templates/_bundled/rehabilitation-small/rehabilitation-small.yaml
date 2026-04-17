@@ -1,0 +1,104 @@
+id: rehabilitation-small
+title: 個人再生申立書（小規模再生）
+description: 民事再生法 221条以下の小規模個人再生申立書雛形。住宅資金特別条項の適用も選択可能
+category: 破産・再生
+templateFile: rehabilitation-small.xlsx
+fields:
+  - id: court_name
+    label: "管轄地方裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申立日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: applicant_name
+    label: "申立人氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: applicant_address
+    label: "申立人住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: applicant_birth
+    label: "申立人生年月日"
+    type: date
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: applicant_occupation
+    label: "職業・勤務先"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: monthly_income
+    label: "月収（手取り/円）"
+    type: number
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: total_debt_excluding_housing
+    label: "負債総額（住宅ローン除く/円）"
+    type: number
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: housing_loan
+    label: "住宅ローン残高（円）"
+    type: number
+    required: false
+    position:
+      row: 12
+      column: 2
+  - id: creditor_count
+    label: "債権者数"
+    type: number
+    required: true
+    position:
+      row: 13
+      column: 2
+  - id: estimated_min_payment
+    label: "最低弁済額（円）"
+    type: number
+    required: true
+    position:
+      row: 15
+      column: 2
+  - id: payment_plan_years
+    label: "弁済期間（年）"
+    type: number
+    required: true
+    position:
+      row: 16
+      column: 2
+  - id: housing_special_clause
+    label: "住宅資金特別条項の適用希望"
+    type: text
+    required: true
+    position:
+      row: 18
+      column: 2
+  - id: rehabilitation_reason
+    label: "再生に至った事情"
+    type: textarea
+    required: true
+    position:
+      row: 20
+      column: 2

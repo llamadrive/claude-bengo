@@ -1,0 +1,110 @@
+id: family-mediation-application
+title: 家事調停申立書（夫婦関係調整等）
+description: 離婚・養育費・面会交流・婚姻費用等の家事調停申立書雛形
+category: 家事事件
+templateFile: family-mediation-application.xlsx
+fields:
+  - id: court_name
+    label: "管轄家庭裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申立日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: mediation_type
+    label: "調停種別"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: applicant_name
+    label: "申立人氏名"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: applicant_address
+    label: "申立人住所"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: applicant_birth
+    label: "申立人生年月日"
+    type: date
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: applicant_occupation
+    label: "申立人職業"
+    type: text
+    required: false
+    position:
+      row: 9
+      column: 2
+  - id: respondent_name
+    label: "相手方氏名"
+    type: text
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: respondent_address
+    label: "相手方住所"
+    type: text
+    required: true
+    position:
+      row: 12
+      column: 2
+  - id: respondent_birth
+    label: "相手方生年月日"
+    type: date
+    required: false
+    position:
+      row: 13
+      column: 2
+  - id: children
+    label: "未成年の子"
+    type: table
+    required: false
+    range:
+      headerRow: 16
+      dataStartRow: 17
+      startColumn: 1
+      endRow: 21
+      endColumn: 3
+    columns:
+      - id: child_name
+        label: "氏名"
+        type: text
+      - id: child_birth
+        label: "生年月日"
+        type: date
+      - id: currently_with
+        label: "現在の監護者"
+        type: text
+  - id: application_summary
+    label: "申立の趣旨"
+    type: textarea
+    required: true
+    position:
+      row: 23
+      column: 2
+  - id: application_reason
+    label: "申立の実情"
+    type: textarea
+    required: true
+    position:
+      row: 25
+      column: 2

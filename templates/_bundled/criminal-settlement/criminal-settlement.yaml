@@ -1,0 +1,90 @@
+id: criminal-settlement
+title: 示談書（刑事事件）
+description: 刑事事件における被害者との示談書。宥恕・告訴取下げ条項を含むことが多い
+category: 刑事弁護
+templateFile: criminal-settlement.xlsx
+fields:
+  - id: victim_name
+    label: "被害者氏名"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 3
+  - id: victim_address
+    label: "被害者住所"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 3
+  - id: perpetrator_name
+    label: "加害者氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 3
+  - id: perpetrator_address
+    label: "加害者住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 3
+  - id: offense
+    label: "被疑事実・罪名"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 3
+  - id: incident_date
+    label: "事件発生日"
+    type: date
+    required: true
+    position:
+      row: 9
+      column: 3
+  - id: incident_summary
+    label: "事件の概要"
+    type: textarea
+    required: true
+    position:
+      row: 10
+      column: 3
+  - id: settlement_amount
+    label: "示談金（円）"
+    type: number
+    required: true
+    position:
+      row: 12
+      column: 3
+  - id: payment_method
+    label: "支払方法"
+    type: text
+    required: true
+    position:
+      row: 13
+      column: 3
+  - id: forgiveness
+    label: "宥恕条項"
+    type: text
+    required: true
+    position:
+      row: 15
+      column: 3
+  - id: withdrawal_of_charge
+    label: "告訴・被害届の取下げ"
+    type: text
+    required: false
+    position:
+      row: 16
+      column: 3
+  - id: settlement_date
+    label: "示談成立日"
+    type: date
+    required: true
+    position:
+      row: 19
+      column: 3

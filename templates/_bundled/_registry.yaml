@@ -171,3 +171,123 @@ templates:
     legal_basis: 労働審判法 5条・15条・33条、労働審判規則 9条
     author: LlamaDrive
     version: "1.0.0"
+
+  - id: statement-family
+    title: 陳述書（家事事件）
+    category: 家事事件
+    description: 家事調停・審判における当事者の陳述書。離婚・遺産分割・後見等で使用
+    use_cases: |
+      - 家事調停での事情説明
+      - 家事審判の資料
+      - 遺産分割調停での当事者主張
+    legal_basis: 家事事件手続法 56条、民事訴訟法 215条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: family-mediation-application
+    title: 家事調停申立書（夫婦関係調整等）
+    category: 家事事件
+    description: 離婚・養育費・面会交流・婚姻費用等の家事調停申立書雛形
+    use_cases: |
+      - 離婚調停の申立
+      - 調停前置主義に基づく訴訟前申立
+      - 夫婦関係の調整
+    legal_basis: 家事事件手続法 244条・255条・257条、家事審判規則 129条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: household-budget
+    title: 家計収支表
+    category: 破産・再生
+    description: 自己破産・個人再生の申立添付資料。通常2-3ヶ月分を並べて提出
+    use_cases: |
+      - 自己破産申立の添付資料
+      - 個人再生申立の添付資料
+      - 任意整理の返済計画作成時の現状把握
+    legal_basis: 破産規則 13条、民事再生規則 104条（添付資料の一般規定）
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: rehabilitation-small
+    title: 個人再生申立書（小規模再生）
+    category: 破産・再生
+    description: 民事再生法 221条以下の小規模個人再生申立書。住宅資金特別条項の選択可
+    use_cases: |
+      - 住宅ローンを維持したままの債務整理
+      - 自己破産に代わる選択肢
+      - 負債総額5,000万円以下の債務者
+    legal_basis: 民事再生法 221-245条、同規則 100条以下、民再 196-206条（住宅特別条項）
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: criminal-defense-appointment
+    title: 弁護人選任届
+    category: 刑事弁護
+    description: 刑事事件の弁護人選任届。被疑者段階・被告人段階・公判段階で都度提出
+    use_cases: |
+      - 被疑者段階の弁護人選任
+      - 起訴後の弁護人選任
+      - 上訴審の弁護人選任
+    legal_basis: 刑事訴訟法 30条・32条、刑訴規則 17条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: criminal-settlement
+    title: 示談書（刑事事件）
+    category: 刑事弁護
+    description: 刑事事件における被害者との示談書。宥恕・告訴取下げ条項を含む
+    use_cases: |
+      - 起訴前の不起訴処分獲得
+      - 起訴後の執行猶予・減刑獲得
+      - 親告罪における告訴取下げ
+    legal_basis: 民法 709条（損害賠償）、刑事訴訟法 262条（告訴取下げ）、量刑実務
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: guardianship-application
+    title: 後見開始申立書
+    category: 家事事件
+    description: 成年後見開始の審判申立書。後見・保佐・補助の類型に対応
+    use_cases: |
+      - 認知症の高齢者の成年後見
+      - 知的障害者の成年後見
+      - 精神障害者の保佐・補助
+    legal_basis: 民法 7条・11条・15条、家事事件手続法 117-136条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: payment-demand
+    title: 支払督促申立書
+    category: 民事訴訟
+    description: 金銭支払請求の簡易手続。書面審査のみで債務名義を取得
+    use_cases: |
+      - 売掛金・貸付金の回収
+      - 家賃滞納の請求
+      - 通常訴訟より費用・時間を抑えた回収
+    legal_basis: 民事訴訟法 382条以下、同 395条（異議時の通常訴訟移行）
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: child-support-application
+    title: 養育費請求調停申立書
+    category: 家事事件
+    description: 離婚後または別居中の養育費請求の調停申立書
+    use_cases: |
+      - 離婚後の養育費請求
+      - 協議不成立時の調停申立
+      - 既存の養育費取決めの変更請求
+    legal_basis: 民法 766条・877条、家事事件手続法 244条、令和元年改定算定方式
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: spousal-support-application
+    title: 婚姻費用分担請求調停申立書
+    category: 家事事件
+    description: 別居中の夫婦間における婚姻費用分担請求の調停申立書
+    use_cases: |
+      - 別居中の生活費請求
+      - 離婚調停と並行して申立
+      - 離婚前の経済的保護
+    legal_basis: 民法 760条、家事事件手続法 244条、令和元年改定婚姻費用算定方式
+    author: LlamaDrive
+    version: "1.0.0"

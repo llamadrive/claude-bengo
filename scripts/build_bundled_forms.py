@@ -1183,6 +1183,822 @@ def build_labor_tribunal(out_dir: Path) -> None:
     wb.save(out_dir / f"{tid}.xlsx")
 
 
+# ---------------------------------------------------------------------------
+# Form 14: 陳述書（家事）(statement-family)
+#
+# 法的根拠: 家事事件手続法 56条（書面の提出）、民事訴訟法 215条（書証）
+# 用途: 家事事件（離婚調停・遺産分割・後見等）の当事者の主張・事情を書面化
+# 構成: 氏名・住所・生年月日 / 本文 / 作成日 / 署名
+# ---------------------------------------------------------------------------
+
+
+def build_statement_family(out_dir: Path) -> None:
+    tid = "statement-family"
+    yaml_doc = {
+        "id": tid,
+        "title": "陳述書（家事事件）",
+        "description": "家事調停・審判における当事者の陳述書。離婚・遺産分割・後見等で使用",
+        "category": "家事事件",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "case_number", "label": "事件番号", "type": "text", "required": False, "position": {"row": 2, "column": 2}, "description": "例: 令和6年(家イ)第1234号"},
+            {"id": "case_type", "label": "事件名", "type": "text", "required": True, "position": {"row": 3, "column": 2}, "description": "例: 夫婦関係調整調停事件"},
+            {"id": "court_name", "label": "家庭裁判所", "type": "text", "required": True, "position": {"row": 4, "column": 2}},
+            {"id": "party_role", "label": "当事者の別", "type": "text", "required": True, "position": {"row": 6, "column": 2}, "description": "例: 申立人 / 相手方"},
+            {"id": "statement_author_name", "label": "陳述者氏名", "type": "text", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "statement_author_birth", "label": "生年月日", "type": "date", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "statement_author_address", "label": "住所", "type": "text", "required": True, "position": {"row": 9, "column": 2}},
+            {"id": "statement_body", "label": "陳述内容", "type": "textarea", "required": True, "position": {"row": 12, "column": 1}, "description": "時系列順に事実を記載。推測・伝聞と自己体験を区別すること"},
+            {"id": "declaration_date", "label": "作成日", "type": "date", "required": True, "position": {"row": 29, "column": 2}},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="陳述書")
+    wb.set_column_widths({1: 22, 2: 54})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "陳　述　書", bold=True)
+    wb.write_cell(2, 1, "事件番号:")
+    wb.write_cell(3, 1, "事件名:")
+    wb.write_cell(4, 1, "家庭裁判所:")
+
+    wb.merge(5, 1, 5, 2)
+    wb.write_cell(5, 1, "【陳述者】", bold=True)
+    wb.write_cell(6, 1, "当事者の別:")
+    wb.write_cell(7, 1, "氏名:")
+    wb.write_cell(8, 1, "生年月日:")
+    wb.write_cell(9, 1, "住所:")
+
+    wb.merge(10, 1, 10, 2)
+    wb.write_cell(10, 1, "【陳述内容】", bold=True)
+    wb.merge(11, 1, 11, 2)
+    wb.write_cell(11, 1, "次のとおり陳述する。", bold=False)
+    # 長文陳述ブロック（1 セル）
+    for r in range(12, 28):
+        wb.write_cell(r, 1, "")
+
+    wb.merge(28, 1, 28, 2)
+    wb.write_cell(28, 1, "【作成】", bold=True)
+    wb.write_cell(29, 1, "作成日:")
+    wb.merge(31, 1, 31, 2)
+    wb.write_cell(31, 1, "陳述者　署名：　　　　　　　　　　　　　　印", bold=False)
+
+    wb.merge(33, 1, 33, 2)
+    wb.write_cell(33, 1, "※ 家事事件手続法 56条（書面の提出）。推測・伝聞と自己体験を区別し、事実のみを記載する。")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 15: 家事調停申立書 (family-mediation-application)
+#
+# 法的根拠: 家事事件手続法 244条（調停の申立）、同 255条（申立書の記載事項）
+# 調停前置主義: 人事訴訟事件（離婚等）は原則として調停前置（家事事件手続法 257条）
+# 申立費用: 収入印紙 1,200円（夫婦関係調整等）、連絡用郵便切手
+# ---------------------------------------------------------------------------
+
+
+def build_family_mediation(out_dir: Path) -> None:
+    tid = "family-mediation-application"
+    yaml_doc = {
+        "id": tid,
+        "title": "家事調停申立書（夫婦関係調整等）",
+        "description": "離婚・養育費・面会交流・婚姻費用等の家事調停申立書雛形",
+        "category": "家事事件",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "court_name", "label": "管轄家庭裁判所", "type": "text", "required": True, "position": {"row": 2, "column": 2}, "description": "相手方の住所地を管轄する家裁（家事審判規則 129条）"},
+            {"id": "filing_date", "label": "申立日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "mediation_type", "label": "調停種別", "type": "text", "required": True, "position": {"row": 4, "column": 2}, "description": "例: 夫婦関係調整（離婚） / 養育費請求 / 婚姻費用分担 / 面会交流"},
+            {"id": "applicant_name", "label": "申立人氏名", "type": "text", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "applicant_address", "label": "申立人住所", "type": "text", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "applicant_birth", "label": "申立人生年月日", "type": "date", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "applicant_occupation", "label": "申立人職業", "type": "text", "required": False, "position": {"row": 9, "column": 2}},
+            {"id": "respondent_name", "label": "相手方氏名", "type": "text", "required": True, "position": {"row": 11, "column": 2}},
+            {"id": "respondent_address", "label": "相手方住所", "type": "text", "required": True, "position": {"row": 12, "column": 2}},
+            {"id": "respondent_birth", "label": "相手方生年月日", "type": "date", "required": False, "position": {"row": 13, "column": 2}},
+            {
+                "id": "children",
+                "label": "未成年の子",
+                "type": "table",
+                "required": False,
+                "range": {"headerRow": 16, "dataStartRow": 17, "startColumn": 1, "endRow": 21, "endColumn": 3},
+                "columns": [
+                    {"id": "child_name", "label": "氏名", "type": "text"},
+                    {"id": "child_birth", "label": "生年月日", "type": "date"},
+                    {"id": "currently_with", "label": "現在の監護者", "type": "text"},
+                ],
+            },
+            {"id": "application_summary", "label": "申立の趣旨", "type": "textarea", "required": True, "position": {"row": 23, "column": 2}, "description": "例: 1. 申立人と相手方は離婚する。 2. 長女○○の親権者を申立人と定める。"},
+            {"id": "application_reason", "label": "申立の実情", "type": "textarea", "required": True, "position": {"row": 25, "column": 2}, "description": "婚姻の経緯、現在の問題状況、別居・話合いの経緯等"},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="家事調停申立書")
+    wb.set_column_widths({1: 4, 2: 22, 3: 54})
+    wb.merge(1, 1, 1, 3)
+    wb.write_cell(1, 1, "家事調停申立書", bold=True)
+    wb.write_cell(2, 2, "管轄家庭裁判所:")
+    wb.write_cell(3, 2, "申立日:")
+    wb.write_cell(4, 2, "調停種別:")
+
+    wb.merge(5, 1, 5, 3)
+    wb.write_cell(5, 1, "【申立人】", bold=True)
+    for row, label in [(6, "氏名:"), (7, "住所:"), (8, "生年月日:"), (9, "職業:")]:
+        wb.write_cell(row, 2, label)
+
+    wb.merge(10, 1, 10, 3)
+    wb.write_cell(10, 1, "【相手方】", bold=True)
+    for row, label in [(11, "氏名:"), (12, "住所:"), (13, "生年月日:")]:
+        wb.write_cell(row, 2, label)
+
+    wb.merge(15, 1, 15, 3)
+    wb.write_cell(15, 1, "【未成年の子】", bold=True)
+    wb.write_row(16, 1, ["氏名", "生年月日", "現在の監護者"], bold=True)
+    for r in range(17, 22):
+        wb.write_cell(r, 1, "")
+
+    wb.merge(22, 1, 22, 3)
+    wb.write_cell(22, 1, "【申立の趣旨】", bold=True)
+    wb.write_cell(23, 2, "趣旨:")
+
+    wb.merge(24, 1, 24, 3)
+    wb.write_cell(24, 1, "【申立の実情】", bold=True)
+    wb.write_cell(25, 2, "実情:")
+
+    wb.merge(27, 1, 27, 3)
+    wb.write_cell(27, 1, "※ 管轄: 相手方の住所地の家庭裁判所（家事審判規則 129条）")
+    wb.merge(28, 1, 28, 3)
+    wb.write_cell(28, 1, "※ 手数料: 収入印紙 1,200円（事件類型により異なる）+ 連絡用郵便切手")
+    wb.merge(29, 1, 29, 3)
+    wb.write_cell(29, 1, "※ 調停前置: 人事訴訟事件は調停前置（家事事件手続法 257条）")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 16: 家計収支表 (household-budget)
+#
+# 用途: 自己破産・個人再生申立の添付資料
+# 期間: 通常 2-3ヶ月分を並べて提出する
+# ---------------------------------------------------------------------------
+
+
+def build_household_budget(out_dir: Path) -> None:
+    tid = "household-budget"
+    yaml_doc = {
+        "id": tid,
+        "title": "家計収支表",
+        "description": "自己破産・個人再生の申立添付資料。通常2-3ヶ月分を並べて提出",
+        "category": "破産・再生",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "applicant_name", "label": "申立人氏名", "type": "text", "required": True, "position": {"row": 2, "column": 2}},
+            {"id": "period_label", "label": "対象期間", "type": "text", "required": True, "position": {"row": 3, "column": 2}, "description": "例: 令和6年1月〜3月"},
+            {"id": "family_count", "label": "同居家族数（本人含む）", "type": "number", "required": True, "position": {"row": 4, "column": 2}},
+            {
+                "id": "income_table",
+                "label": "収入",
+                "type": "table",
+                "required": True,
+                "range": {"headerRow": 7, "dataStartRow": 8, "startColumn": 1, "endRow": 13, "endColumn": 5},
+                "columns": [
+                    {"id": "item", "label": "項目", "type": "text", "description": "給与/賞与/年金/事業収入/児童手当/その他"},
+                    {"id": "m1", "label": "1ヶ月目(円)", "type": "number"},
+                    {"id": "m2", "label": "2ヶ月目(円)", "type": "number"},
+                    {"id": "m3", "label": "3ヶ月目(円)", "type": "number"},
+                    {"id": "notes", "label": "備考", "type": "text"},
+                ],
+            },
+            {
+                "id": "expense_table",
+                "label": "支出",
+                "type": "table",
+                "required": True,
+                "range": {"headerRow": 16, "dataStartRow": 17, "startColumn": 1, "endRow": 35, "endColumn": 5},
+                "columns": [
+                    {"id": "item", "label": "項目", "type": "text", "description": "家賃/食費/水道光熱費/通信費/医療費/教育費/保険料/交通費/その他"},
+                    {"id": "m1", "label": "1ヶ月目(円)", "type": "number"},
+                    {"id": "m2", "label": "2ヶ月目(円)", "type": "number"},
+                    {"id": "m3", "label": "3ヶ月目(円)", "type": "number"},
+                    {"id": "notes", "label": "備考", "type": "text"},
+                ],
+            },
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="家計収支表")
+    wb.set_column_widths({1: 18, 2: 14, 3: 14, 4: 14, 5: 24})
+    wb.merge(1, 1, 1, 5)
+    wb.write_cell(1, 1, "家計収支表", bold=True)
+    wb.write_cell(2, 1, "申立人氏名:")
+    wb.write_cell(3, 1, "対象期間:")
+    wb.write_cell(4, 1, "同居家族数:")
+
+    wb.merge(6, 1, 6, 5)
+    wb.write_cell(6, 1, "【収入】", bold=True)
+    wb.write_row(7, 1, ["項目", "1ヶ月目(円)", "2ヶ月目(円)", "3ヶ月目(円)", "備考"], bold=True)
+    for r in range(8, 14):
+        wb.write_cell(r, 1, "")
+
+    wb.merge(14, 1, 14, 5)
+    wb.write_cell(14, 1, "【支出】", bold=True)
+    wb.write_row(15, 1, ["項目", "1ヶ月目(円)", "2ヶ月目(円)", "3ヶ月目(円)", "備考"], bold=True)
+    for r in range(16, 36):
+        wb.write_cell(r, 1, "")
+
+    wb.merge(37, 1, 37, 5)
+    wb.write_cell(37, 1, "【収支】", bold=True)
+    wb.write_cell(38, 1, "差引(収入-支出):")
+
+    wb.merge(40, 1, 40, 5)
+    wb.write_cell(40, 1, "※ 領収書・給与明細等、支出の裏付となる資料も合わせて提出すること")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 17: 個人再生申立書（小規模）(rehabilitation-small)
+#
+# 法的根拠: 民事再生法 221-245条（小規模個人再生）、同規則 100条以下
+# 要件:
+#   - 負債総額が住宅ローン除き 5,000万円以下
+#   - 将来において継続的に収入を得る見込みがある
+# 最低弁済額:
+#   - 100万円未満: 負債総額
+#   - 100-500万: 100万円
+#   - 500-1,500万: 負債総額の 1/5
+#   - 1,500-3,000万: 300万円
+#   - 3,000-5,000万: 負債総額の 1/10
+# 住宅資金特別条項: 住宅ローンは別枠で維持可能（民再 196-206条）
+# ---------------------------------------------------------------------------
+
+
+def build_rehabilitation_small(out_dir: Path) -> None:
+    tid = "rehabilitation-small"
+    yaml_doc = {
+        "id": tid,
+        "title": "個人再生申立書（小規模再生）",
+        "description": "民事再生法 221条以下の小規模個人再生申立書雛形。住宅資金特別条項の適用も選択可能",
+        "category": "破産・再生",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "court_name", "label": "管轄地方裁判所", "type": "text", "required": True, "position": {"row": 2, "column": 2}, "description": "申立人の住所地を管轄する地裁（民再 5条）"},
+            {"id": "filing_date", "label": "申立日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "applicant_name", "label": "申立人氏名", "type": "text", "required": True, "position": {"row": 5, "column": 2}},
+            {"id": "applicant_address", "label": "申立人住所", "type": "text", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "applicant_birth", "label": "申立人生年月日", "type": "date", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "applicant_occupation", "label": "職業・勤務先", "type": "text", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "monthly_income", "label": "月収（手取り/円）", "type": "number", "required": True, "position": {"row": 9, "column": 2}, "description": "将来の継続的収入見込みの根拠となる"},
+            {"id": "total_debt_excluding_housing", "label": "負債総額（住宅ローン除く/円）", "type": "number", "required": True, "position": {"row": 11, "column": 2}, "description": "5,000万円以下が要件"},
+            {"id": "housing_loan", "label": "住宅ローン残高（円）", "type": "number", "required": False, "position": {"row": 12, "column": 2}},
+            {"id": "creditor_count", "label": "債権者数", "type": "number", "required": True, "position": {"row": 13, "column": 2}},
+            {"id": "estimated_min_payment", "label": "最低弁済額（円）", "type": "number", "required": True, "position": {"row": 15, "column": 2}, "description": "負債総額に応じた法定基準（民再 231条2項）"},
+            {"id": "payment_plan_years", "label": "弁済期間（年）", "type": "number", "required": True, "position": {"row": 16, "column": 2}, "description": "原則3年、特別の事情により最長5年"},
+            {"id": "housing_special_clause", "label": "住宅資金特別条項の適用希望", "type": "text", "required": True, "position": {"row": 18, "column": 2}, "description": "はい / いいえ"},
+            {"id": "rehabilitation_reason", "label": "再生に至った事情", "type": "textarea", "required": True, "position": {"row": 20, "column": 2}, "description": "借入開始・返済困難化の経緯と今後の返済可能性"},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="個人再生申立書")
+    wb.set_column_widths({1: 26, 2: 52})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "小規模個人再生手続開始申立書", bold=True)
+    wb.write_cell(2, 1, "管轄地方裁判所:")
+    wb.write_cell(3, 1, "申立日:")
+
+    wb.merge(4, 1, 4, 2)
+    wb.write_cell(4, 1, "【申立人】", bold=True)
+    for row, label in [(5, "氏名:"), (6, "住所:"), (7, "生年月日:"), (8, "職業・勤務先:"), (9, "月収（手取り/円）:")]:
+        wb.write_cell(row, 1, label)
+
+    wb.merge(10, 1, 10, 2)
+    wb.write_cell(10, 1, "【負債・弁済計画の概要】", bold=True)
+    wb.write_cell(11, 1, "負債総額（住宅ローン除く/円）:")
+    wb.write_cell(12, 1, "住宅ローン残高（円）:")
+    wb.write_cell(13, 1, "債権者数:")
+    wb.write_cell(15, 1, "最低弁済額（円）:")
+    wb.write_cell(16, 1, "弁済期間（年）:")
+
+    wb.merge(17, 1, 17, 2)
+    wb.write_cell(17, 1, "【住宅資金特別条項】", bold=True)
+    wb.write_cell(18, 1, "適用希望:")
+
+    wb.merge(19, 1, 19, 2)
+    wb.write_cell(19, 1, "【再生に至った事情】", bold=True)
+    wb.write_cell(20, 1, "事情説明:")
+
+    wb.merge(22, 1, 22, 2)
+    wb.write_cell(22, 1, "【申立の趣旨】", bold=True)
+    wb.merge(23, 1, 23, 2)
+    wb.write_cell(23, 1, "1. 申立人について小規模個人再生手続を開始する。")
+    wb.merge(24, 1, 24, 2)
+    wb.write_cell(24, 1, "2.（住宅特別条項がある場合）住宅資金特別条項に基づく再生計画の認可を求める。")
+
+    wb.merge(26, 1, 26, 2)
+    wb.write_cell(26, 1, "【最低弁済額の法定基準（民再 231条2項）】", bold=True)
+    wb.merge(27, 1, 27, 2)
+    wb.write_cell(27, 1, "100万円未満: 負債総額 / 100-500万: 100万円 / 500-1,500万: 1/5 / 1,500-3,000万: 300万円 / 3,000-5,000万: 1/10")
+
+    wb.merge(29, 1, 29, 2)
+    wb.write_cell(29, 1, "※ 要件: 負債総額 5,000万円以下（住宅ローン除く）・将来継続的収入の見込み（民再 221条）")
+    wb.merge(30, 1, 30, 2)
+    wb.write_cell(30, 1, "※ 添付: 債権者一覧表・財産目録・家計収支表・給与明細等。`/template-install creditor-list household-budget` で取得可")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 18: 弁護人選任届 (criminal-defense-appointment)
+#
+# 法的根拠: 刑事訴訟法 30条（被告人・被疑者の弁護人選任）、32条、刑訴規則 17条
+# 提出先: 事件が係属している裁判所・検察庁・警察署
+# 連名: 被告人（または被疑者）と弁護人双方の署名押印
+# ---------------------------------------------------------------------------
+
+
+def build_criminal_defense_appointment(out_dir: Path) -> None:
+    tid = "criminal-defense-appointment"
+    yaml_doc = {
+        "id": tid,
+        "title": "弁護人選任届",
+        "description": "刑事事件の弁護人選任届。被疑者段階・被告人段階・公判段階で都度提出",
+        "category": "刑事弁護",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "submission_target", "label": "提出先", "type": "text", "required": True, "position": {"row": 2, "column": 2}, "description": "例: ○○地方裁判所 刑事部 御中 / ○○警察署長 殿"},
+            {"id": "filing_date", "label": "提出日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "case_type", "label": "事件の段階", "type": "select", "required": True, "position": {"row": 4, "column": 2}, "options": ["被疑者段階", "被告人段階（起訴前）", "被告人段階（公判中）"]},
+            {"id": "case_number", "label": "事件番号", "type": "text", "required": False, "position": {"row": 5, "column": 2}, "description": "例: 令和6年(わ)第1234号"},
+            {"id": "suspect_name", "label": "被疑者・被告人氏名", "type": "text", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "suspect_address", "label": "住所", "type": "text", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "suspect_birth", "label": "生年月日", "type": "date", "required": True, "position": {"row": 9, "column": 2}},
+            {"id": "offense", "label": "罪名", "type": "text", "required": True, "position": {"row": 10, "column": 2}, "description": "例: 窃盗 / 傷害 / 詐欺"},
+            {"id": "attorney_name", "label": "弁護人氏名", "type": "text", "required": True, "position": {"row": 12, "column": 2}},
+            {"id": "law_firm", "label": "所属事務所", "type": "text", "required": True, "position": {"row": 13, "column": 2}},
+            {"id": "firm_address", "label": "事務所住所", "type": "text", "required": True, "position": {"row": 14, "column": 2}},
+            {"id": "firm_phone", "label": "事務所電話", "type": "text", "required": True, "position": {"row": 15, "column": 2}},
+            {"id": "attorney_registration", "label": "弁護士登録番号", "type": "text", "required": True, "position": {"row": 16, "column": 2}},
+            {"id": "bar_association", "label": "所属弁護士会", "type": "text", "required": True, "position": {"row": 17, "column": 2}},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="弁護人選任届")
+    wb.set_column_widths({1: 22, 2: 52})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "弁護人選任届", bold=True)
+    wb.write_cell(2, 1, "提出先:")
+    wb.write_cell(3, 1, "提出日:")
+    wb.write_cell(4, 1, "事件の段階:")
+    wb.write_cell(5, 1, "事件番号:")
+
+    wb.merge(6, 1, 6, 2)
+    wb.write_cell(6, 1, "【被疑者・被告人】", bold=True)
+    for row, label in [(7, "氏名:"), (8, "住所:"), (9, "生年月日:"), (10, "罪名:")]:
+        wb.write_cell(row, 1, label)
+
+    wb.merge(11, 1, 11, 2)
+    wb.write_cell(11, 1, "【弁護人】", bold=True)
+    for row, label in [(12, "氏名:"), (13, "所属事務所:"), (14, "事務所住所:"),
+                        (15, "事務所電話:"), (16, "弁護士登録番号:"), (17, "所属弁護士会:")]:
+        wb.write_cell(row, 1, label)
+
+    wb.merge(19, 1, 19, 2)
+    wb.write_cell(19, 1, "上記の事件について、上記の弁護士を弁護人に選任する。", bold=True)
+
+    wb.merge(21, 1, 21, 2)
+    wb.write_cell(21, 1, "被疑者・被告人　署名：　　　　　　　　　　　　　　印")
+    wb.merge(22, 1, 22, 2)
+    wb.write_cell(22, 1, "弁護人　　　　　署名：　　　　　　　　　　　　　　印")
+
+    wb.merge(24, 1, 24, 2)
+    wb.write_cell(24, 1, "※ 提出は原則選任ごとに行う（被疑者段階→起訴後→上訴審で新たに提出）")
+    wb.merge(25, 1, 25, 2)
+    wb.write_cell(25, 1, "※ 法的根拠: 刑事訴訟法 30条・32条、刑訴規則 17条")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 19: 刑事示談書 (criminal-settlement)
+#
+# 法的根拠: 刑法上の一般情状酌量要素（量刑実務）、民法 709条
+# 目的: 被害者との合意による損害賠償・宥恕の書面化。量刑判断に大きく影響
+# 構成: 当事者 / 事件概要 / 示談金 / 宥恕・告訴取下げ / 清算条項
+# ---------------------------------------------------------------------------
+
+
+def build_criminal_settlement(out_dir: Path) -> None:
+    tid = "criminal-settlement"
+    yaml_doc = {
+        "id": tid,
+        "title": "示談書（刑事事件）",
+        "description": "刑事事件における被害者との示談書。宥恕・告訴取下げ条項を含むことが多い",
+        "category": "刑事弁護",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "victim_name", "label": "被害者氏名", "type": "text", "required": True, "position": {"row": 3, "column": 3}},
+            {"id": "victim_address", "label": "被害者住所", "type": "text", "required": True, "position": {"row": 4, "column": 3}},
+            {"id": "perpetrator_name", "label": "加害者氏名", "type": "text", "required": True, "position": {"row": 5, "column": 3}},
+            {"id": "perpetrator_address", "label": "加害者住所", "type": "text", "required": True, "position": {"row": 6, "column": 3}},
+            {"id": "offense", "label": "被疑事実・罪名", "type": "text", "required": True, "position": {"row": 8, "column": 3}},
+            {"id": "incident_date", "label": "事件発生日", "type": "date", "required": True, "position": {"row": 9, "column": 3}},
+            {"id": "incident_summary", "label": "事件の概要", "type": "textarea", "required": True, "position": {"row": 10, "column": 3}},
+            {"id": "settlement_amount", "label": "示談金（円）", "type": "number", "required": True, "position": {"row": 12, "column": 3}},
+            {"id": "payment_method", "label": "支払方法", "type": "text", "required": True, "position": {"row": 13, "column": 3}, "description": "例: 本日現金で支払済 / ○月○日までに指定口座振込"},
+            {"id": "forgiveness", "label": "宥恕条項", "type": "text", "required": True, "position": {"row": 15, "column": 3}, "description": "被害者が加害者を宥恕する旨。量刑上 critical"},
+            {"id": "withdrawal_of_charge", "label": "告訴・被害届の取下げ", "type": "text", "required": False, "position": {"row": 16, "column": 3}, "description": "親告罪・被害届の場合。例: 告訴を取り下げる / 既に取下げ済み"},
+            {"id": "settlement_date", "label": "示談成立日", "type": "date", "required": True, "position": {"row": 19, "column": 3}},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="刑事示談書")
+    wb.set_column_widths({1: 4, 2: 22, 3: 50})
+    wb.merge(1, 1, 1, 3)
+    wb.write_cell(1, 1, "示　談　書（刑事事件）", bold=True)
+
+    wb.merge(2, 1, 2, 3)
+    wb.write_cell(2, 1, "【当事者】", bold=True)
+    wb.write_cell(3, 2, "被害者氏名:")
+    wb.write_cell(4, 2, "被害者住所:")
+    wb.write_cell(5, 2, "加害者氏名:")
+    wb.write_cell(6, 2, "加害者住所:")
+
+    wb.merge(7, 1, 7, 3)
+    wb.write_cell(7, 1, "【事件の内容】", bold=True)
+    wb.write_cell(8, 2, "被疑事実・罪名:")
+    wb.write_cell(9, 2, "事件発生日:")
+    wb.write_cell(10, 2, "事件の概要:")
+
+    wb.merge(11, 1, 11, 3)
+    wb.write_cell(11, 1, "【示談金】", bold=True)
+    wb.write_cell(12, 2, "示談金（円）:")
+    wb.write_cell(13, 2, "支払方法:")
+
+    wb.merge(14, 1, 14, 3)
+    wb.write_cell(14, 1, "【宥恕・告訴取下げ】", bold=True)
+    wb.write_cell(15, 2, "宥恕条項:")
+    wb.write_cell(16, 2, "告訴取下げ:")
+
+    wb.merge(17, 1, 17, 3)
+    wb.write_cell(17, 1, "【清算条項】", bold=True)
+    wb.merge(18, 1, 18, 3)
+    wb.write_cell(18, 1, "被害者及び加害者は、本示談書に定めるもののほか、本件に関し互いに何らの請求もしないことを確認する。")
+    wb.write_cell(19, 2, "示談成立日:")
+
+    wb.merge(21, 1, 21, 3)
+    wb.write_cell(21, 1, "本示談書を 2 通作成し、被害者・加害者各 1 通を保有する。", bold=True)
+    wb.merge(23, 1, 23, 3)
+    wb.write_cell(23, 1, "被害者　署名：　　　　　　　　　　　　　　印")
+    wb.merge(24, 1, 24, 3)
+    wb.write_cell(24, 1, "加害者　署名：　　　　　　　　　　　　　　印")
+
+    wb.merge(26, 1, 26, 3)
+    wb.write_cell(26, 1, "※ 検察官・裁判所へ示談書を提出することで、不起訴処分・執行猶予・減刑の可能性が高まる")
+    wb.merge(27, 1, 27, 3)
+    wb.write_cell(27, 1, "※ 親告罪（名誉毀損・一部の性犯罪等）は告訴取下げが不起訴の要件となる")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 20: 後見開始申立書 (guardianship-application)
+#
+# 法的根拠: 民法 7条（成年後見開始）、家事事件手続法 117条以下
+# 管轄: 本人の住所地を管轄する家庭裁判所
+# 申立権者: 本人・配偶者・4親等内の親族・検察官等（民法 7条）
+# 必要書類: 申立書 + 診断書 + 本人・申立人の戸籍謄本 + 本人の登記されていないことの証明書等
+# ---------------------------------------------------------------------------
+
+
+def build_guardianship_application(out_dir: Path) -> None:
+    tid = "guardianship-application"
+    yaml_doc = {
+        "id": tid,
+        "title": "後見開始申立書",
+        "description": "成年後見開始の審判申立書雛形。本人の住所地を管轄する家裁に提出",
+        "category": "家事事件",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "court_name", "label": "管轄家庭裁判所", "type": "text", "required": True, "position": {"row": 2, "column": 2}, "description": "本人の住所地を管轄する家裁"},
+            {"id": "filing_date", "label": "申立日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "guardianship_type", "label": "申立の類型", "type": "select", "required": True, "position": {"row": 4, "column": 2}, "options": ["後見", "保佐", "補助"]},
+            {"id": "applicant_name", "label": "申立人氏名", "type": "text", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "applicant_address", "label": "申立人住所", "type": "text", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "applicant_relationship", "label": "本人との関係", "type": "text", "required": True, "position": {"row": 8, "column": 2}, "description": "例: 長男 / 配偶者 / 兄"},
+            {"id": "person_name", "label": "本人氏名", "type": "text", "required": True, "position": {"row": 10, "column": 2}},
+            {"id": "person_honseki", "label": "本人本籍", "type": "text", "required": True, "position": {"row": 11, "column": 2}},
+            {"id": "person_address", "label": "本人住所", "type": "text", "required": True, "position": {"row": 12, "column": 2}},
+            {"id": "person_birth", "label": "本人生年月日", "type": "date", "required": True, "position": {"row": 13, "column": 2}},
+            {"id": "person_current_location", "label": "本人所在地（現在）", "type": "text", "required": False, "position": {"row": 14, "column": 2}, "description": "入院・入所先等、住所と異なる場合"},
+            {"id": "reason_summary", "label": "申立の実情", "type": "textarea", "required": True, "position": {"row": 16, "column": 2}, "description": "本人の状態（認知症の程度・時期）、日常生活への影響、必要とする支援"},
+            {"id": "candidate_name", "label": "後見人候補者氏名", "type": "text", "required": False, "position": {"row": 18, "column": 2}, "description": "候補者がいる場合のみ。家裁の判断により第三者が選任されることもある"},
+            {"id": "candidate_relationship", "label": "候補者と本人の関係", "type": "text", "required": False, "position": {"row": 19, "column": 2}},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="後見開始申立書")
+    wb.set_column_widths({1: 22, 2: 54})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "後見・保佐・補助開始申立書", bold=True)
+    wb.write_cell(2, 1, "管轄家庭裁判所:")
+    wb.write_cell(3, 1, "申立日:")
+    wb.write_cell(4, 1, "申立の類型:")
+
+    wb.merge(5, 1, 5, 2)
+    wb.write_cell(5, 1, "【申立人】", bold=True)
+    for row, label in [(6, "氏名:"), (7, "住所:"), (8, "本人との関係:")]:
+        wb.write_cell(row, 1, label)
+
+    wb.merge(9, 1, 9, 2)
+    wb.write_cell(9, 1, "【本人】", bold=True)
+    for row, label in [(10, "氏名:"), (11, "本籍:"), (12, "住所:"), (13, "生年月日:"), (14, "現在の所在地:")]:
+        wb.write_cell(row, 1, label)
+
+    wb.merge(15, 1, 15, 2)
+    wb.write_cell(15, 1, "【申立の実情】", bold=True)
+    wb.write_cell(16, 1, "本人の状態・申立理由:")
+
+    wb.merge(17, 1, 17, 2)
+    wb.write_cell(17, 1, "【後見人候補者】", bold=True)
+    wb.write_cell(18, 1, "候補者氏名:")
+    wb.write_cell(19, 1, "本人との関係:")
+
+    wb.merge(21, 1, 21, 2)
+    wb.write_cell(21, 1, "【申立の趣旨】", bold=True)
+    wb.merge(22, 1, 22, 2)
+    wb.write_cell(22, 1, "1. 本人について後見（保佐・補助）を開始する。")
+    wb.merge(23, 1, 23, 2)
+    wb.write_cell(23, 1, "2. 後見人（保佐人・補助人）として上記候補者を選任する。")
+
+    wb.merge(25, 1, 25, 2)
+    wb.write_cell(25, 1, "※ 添付書類: 診断書・本人の戸籍謄本・住民票・登記されていないことの証明書・申立人の戸籍謄本等")
+    wb.merge(26, 1, 26, 2)
+    wb.write_cell(26, 1, "※ 法的根拠: 民法 7条・11条・15条、家事事件手続法 117-136条")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 21: 支払督促申立書 (payment-demand)
+#
+# 法的根拠: 民事訴訟法 382条以下
+# 特徴: 書面審査のみで債務名義が得られる簡易手続。相手方が異議を出すと通常訴訟に移行
+# 管轄: 債務者の住所地を管轄する簡易裁判所の書記官
+# 手数料: 通常訴訟の 1/2
+# ---------------------------------------------------------------------------
+
+
+def build_payment_demand(out_dir: Path) -> None:
+    tid = "payment-demand"
+    yaml_doc = {
+        "id": tid,
+        "title": "支払督促申立書",
+        "description": "金銭支払請求の簡易手続。書記官の書面審査のみで債務名義が得られる",
+        "category": "民事訴訟",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "court_name", "label": "管轄簡易裁判所", "type": "text", "required": True, "position": {"row": 2, "column": 2}, "description": "債務者の住所地の簡易裁判所（民訴 383条）"},
+            {"id": "filing_date", "label": "申立日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "creditor_name", "label": "債権者氏名", "type": "text", "required": True, "position": {"row": 5, "column": 2}},
+            {"id": "creditor_address", "label": "債権者住所", "type": "text", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "debtor_name", "label": "債務者氏名", "type": "text", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "debtor_address", "label": "債務者住所", "type": "text", "required": True, "position": {"row": 9, "column": 2}},
+            {"id": "claim_amount", "label": "請求金額（元本/円）", "type": "number", "required": True, "position": {"row": 11, "column": 2}},
+            {"id": "interest_rate", "label": "利率（年%）", "type": "text", "required": False, "position": {"row": 12, "column": 2}, "description": "例: 年3% / 年15%"},
+            {"id": "interest_start_date", "label": "利息起算日", "type": "date", "required": False, "position": {"row": 13, "column": 2}},
+            {"id": "claim_cause", "label": "請求の原因", "type": "textarea", "required": True, "position": {"row": 15, "column": 2}, "description": "金銭消費貸借・立替金・売買代金等、債権発生の原因と経緯"},
+            {"id": "court_fee", "label": "申立手数料（印紙/円）", "type": "number", "required": True, "position": {"row": 17, "column": 2}, "description": "通常訴訟の 1/2"},
+            {"id": "postage_stamps", "label": "連絡用郵便切手", "type": "text", "required": True, "position": {"row": 18, "column": 2}, "description": "裁判所指定額（通常 1,000円程度）"},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="支払督促申立書")
+    wb.set_column_widths({1: 22, 2: 54})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "支払督促申立書", bold=True)
+    wb.write_cell(2, 1, "管轄簡易裁判所:")
+    wb.write_cell(3, 1, "申立日:")
+
+    wb.merge(4, 1, 4, 2)
+    wb.write_cell(4, 1, "【債権者】", bold=True)
+    wb.write_cell(5, 1, "氏名:")
+    wb.write_cell(6, 1, "住所:")
+
+    wb.merge(7, 1, 7, 2)
+    wb.write_cell(7, 1, "【債務者】", bold=True)
+    wb.write_cell(8, 1, "氏名:")
+    wb.write_cell(9, 1, "住所:")
+
+    wb.merge(10, 1, 10, 2)
+    wb.write_cell(10, 1, "【請求の趣旨】", bold=True)
+    wb.write_cell(11, 1, "請求金額（元本/円）:")
+    wb.write_cell(12, 1, "利率:")
+    wb.write_cell(13, 1, "利息起算日:")
+
+    wb.merge(14, 1, 14, 2)
+    wb.write_cell(14, 1, "【請求の原因】", bold=True)
+    wb.write_cell(15, 1, "原因の説明:")
+
+    wb.merge(16, 1, 16, 2)
+    wb.write_cell(16, 1, "【費用】", bold=True)
+    wb.write_cell(17, 1, "申立手数料（印紙/円）:")
+    wb.write_cell(18, 1, "連絡用郵便切手:")
+
+    wb.merge(20, 1, 20, 2)
+    wb.write_cell(20, 1, "【手続の注意】", bold=True)
+    wb.merge(21, 1, 21, 2)
+    wb.write_cell(21, 1, "※ 根拠: 民事訴訟法 382条以下。書面審査のみで債務名義が得られる簡易手続")
+    wb.merge(22, 1, 22, 2)
+    wb.write_cell(22, 1, "※ 債務者が支払督促送達後 2 週間以内に異議を申し立てない場合、仮執行宣言の申立が可能")
+    wb.merge(23, 1, 23, 2)
+    wb.write_cell(23, 1, "※ 異議が出た場合、通常訴訟に移行（民訴 395条）")
+    wb.merge(24, 1, 24, 2)
+    wb.write_cell(24, 1, "※ 60万円以下の金銭請求は少額訴訟のほうが適する場合もある（民訴 368条）")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 22: 養育費請求調停申立書 (child-support-application)
+#
+# 法的根拠: 民法 766条（離婚後の子の監護）、民法 877条（親族の扶養義務）、
+#           家事事件手続法 244条
+# 算定: 令和元年改定の標準算定方式（東京・大阪家裁）が実務上の基準
+# ---------------------------------------------------------------------------
+
+
+def build_child_support_application(out_dir: Path) -> None:
+    tid = "child-support-application"
+    yaml_doc = {
+        "id": tid,
+        "title": "養育費請求調停申立書",
+        "description": "離婚後または別居中の養育費請求の調停申立書。令和元年改定算定表を踏まえて金額を提示",
+        "category": "家事事件",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "court_name", "label": "管轄家庭裁判所", "type": "text", "required": True, "position": {"row": 2, "column": 2}, "description": "相手方の住所地の家裁"},
+            {"id": "filing_date", "label": "申立日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "applicant_name", "label": "申立人（権利者）氏名", "type": "text", "required": True, "position": {"row": 5, "column": 2}},
+            {"id": "applicant_address", "label": "申立人住所", "type": "text", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "applicant_income", "label": "申立人年収（円）", "type": "number", "required": True, "position": {"row": 7, "column": 2}, "description": "給与所得者は源泉徴収票の支払金額、自営業者は所得金額"},
+            {"id": "respondent_name", "label": "相手方（義務者）氏名", "type": "text", "required": True, "position": {"row": 9, "column": 2}},
+            {"id": "respondent_address", "label": "相手方住所", "type": "text", "required": True, "position": {"row": 10, "column": 2}},
+            {"id": "respondent_income", "label": "相手方年収（円）", "type": "number", "required": False, "position": {"row": 11, "column": 2}, "description": "不明な場合は推定額＋根拠を別途説明"},
+            {
+                "id": "children",
+                "label": "対象となる子",
+                "type": "table",
+                "required": True,
+                "range": {"headerRow": 14, "dataStartRow": 15, "startColumn": 1, "endRow": 19, "endColumn": 3},
+                "columns": [
+                    {"id": "child_name", "label": "氏名", "type": "text"},
+                    {"id": "child_birth", "label": "生年月日", "type": "date"},
+                    {"id": "child_age", "label": "年齢", "type": "number"},
+                ],
+            },
+            {"id": "requested_monthly_amount", "label": "請求月額（子1人あたり/円）", "type": "number", "required": True, "position": {"row": 21, "column": 2}, "description": "令和元年改定算定表による概算額"},
+            {"id": "requested_start_date", "label": "請求開始日", "type": "date", "required": True, "position": {"row": 22, "column": 2}, "description": "原則、調停申立の月から"},
+            {"id": "requested_end_date", "label": "請求終了時点", "type": "text", "required": True, "position": {"row": 23, "column": 2}, "description": "例: 子が満20歳に達する月 / 大学卒業"},
+            {"id": "application_reason", "label": "申立の実情", "type": "textarea", "required": True, "position": {"row": 25, "column": 2}, "description": "離婚・別居の経緯、現在の監護状況、任意の話合いが不調に至った事情等"},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="養育費調停申立書")
+    wb.set_column_widths({1: 4, 2: 24, 3: 54})
+    wb.merge(1, 1, 1, 3)
+    wb.write_cell(1, 1, "養育費請求調停申立書", bold=True)
+    wb.write_cell(2, 2, "管轄家庭裁判所:")
+    wb.write_cell(3, 2, "申立日:")
+
+    wb.merge(4, 1, 4, 3)
+    wb.write_cell(4, 1, "【申立人（権利者）】", bold=True)
+    for row, label in [(5, "氏名:"), (6, "住所:"), (7, "年収（円）:")]:
+        wb.write_cell(row, 2, label)
+
+    wb.merge(8, 1, 8, 3)
+    wb.write_cell(8, 1, "【相手方（義務者）】", bold=True)
+    for row, label in [(9, "氏名:"), (10, "住所:"), (11, "年収（円）:")]:
+        wb.write_cell(row, 2, label)
+
+    wb.merge(13, 1, 13, 3)
+    wb.write_cell(13, 1, "【対象となる子】", bold=True)
+    wb.write_row(14, 1, ["氏名", "生年月日", "年齢"], bold=True)
+    for r in range(15, 20):
+        wb.write_cell(r, 1, "")
+
+    wb.merge(20, 1, 20, 3)
+    wb.write_cell(20, 1, "【請求内容】", bold=True)
+    wb.write_cell(21, 2, "請求月額（子1人/円）:")
+    wb.write_cell(22, 2, "請求開始日:")
+    wb.write_cell(23, 2, "請求終了時点:")
+
+    wb.merge(24, 1, 24, 3)
+    wb.write_cell(24, 1, "【申立の実情】", bold=True)
+    wb.write_cell(25, 2, "経緯・現状:")
+
+    wb.merge(27, 1, 27, 3)
+    wb.write_cell(27, 1, "※ 金額算定: 令和元年改定の標準算定方式（東京・大阪家裁）が実務上の基準。`/traffic-damage-calc` の次に Track B で `/child-support-calc` を実装予定")
+    wb.merge(28, 1, 28, 3)
+    wb.write_cell(28, 1, "※ 手数料: 収入印紙 1,200円 + 連絡用郵便切手")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 23: 婚姻費用分担請求調停申立書 (spousal-support-application)
+#
+# 法的根拠: 民法 760条（夫婦間の費用分担）、家事事件手続法 244条
+# 特徴: 離婚前の別居中に請求する。養育費と異なり未成年の子がいなくても成立
+# ---------------------------------------------------------------------------
+
+
+def build_spousal_support_application(out_dir: Path) -> None:
+    tid = "spousal-support-application"
+    yaml_doc = {
+        "id": tid,
+        "title": "婚姻費用分担請求調停申立書",
+        "description": "別居中の夫婦間における婚姻費用分担請求の調停申立書",
+        "category": "家事事件",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "court_name", "label": "管轄家庭裁判所", "type": "text", "required": True, "position": {"row": 2, "column": 2}},
+            {"id": "filing_date", "label": "申立日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "applicant_name", "label": "申立人氏名", "type": "text", "required": True, "position": {"row": 5, "column": 2}},
+            {"id": "applicant_address", "label": "申立人住所（現住）", "type": "text", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "applicant_income", "label": "申立人年収（円）", "type": "number", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "respondent_name", "label": "相手方氏名", "type": "text", "required": True, "position": {"row": 9, "column": 2}},
+            {"id": "respondent_address", "label": "相手方住所", "type": "text", "required": True, "position": {"row": 10, "column": 2}},
+            {"id": "respondent_income", "label": "相手方年収（円）", "type": "number", "required": False, "position": {"row": 11, "column": 2}},
+            {"id": "marriage_date", "label": "婚姻日", "type": "date", "required": True, "position": {"row": 13, "column": 2}},
+            {"id": "separation_date", "label": "別居開始日", "type": "date", "required": True, "position": {"row": 14, "column": 2}},
+            {"id": "children_count", "label": "未成年の子（人数）", "type": "number", "required": False, "position": {"row": 15, "column": 2}, "description": "同居する未成年の子"},
+            {"id": "requested_monthly_amount", "label": "請求月額（円）", "type": "number", "required": True, "position": {"row": 17, "column": 2}, "description": "令和元年改定算定表（婚姻費用）"},
+            {"id": "requested_start_date", "label": "請求開始日", "type": "date", "required": True, "position": {"row": 18, "column": 2}, "description": "原則、調停申立の月から"},
+            {"id": "application_reason", "label": "申立の実情", "type": "textarea", "required": True, "position": {"row": 20, "column": 2}, "description": "別居の経緯、現在の生活状況、話合いの経緯等"},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="婚姻費用申立書")
+    wb.set_column_widths({1: 22, 2: 54})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "婚姻費用分担請求調停申立書", bold=True)
+    wb.write_cell(2, 1, "管轄家庭裁判所:")
+    wb.write_cell(3, 1, "申立日:")
+
+    wb.merge(4, 1, 4, 2)
+    wb.write_cell(4, 1, "【申立人】", bold=True)
+    for row, label in [(5, "氏名:"), (6, "住所（現住）:"), (7, "年収（円）:")]:
+        wb.write_cell(row, 1, label)
+
+    wb.merge(8, 1, 8, 2)
+    wb.write_cell(8, 1, "【相手方】", bold=True)
+    for row, label in [(9, "氏名:"), (10, "住所:"), (11, "年収（円）:")]:
+        wb.write_cell(row, 1, label)
+
+    wb.merge(12, 1, 12, 2)
+    wb.write_cell(12, 1, "【婚姻関係・別居状況】", bold=True)
+    for row, label in [(13, "婚姻日:"), (14, "別居開始日:"), (15, "未成年の子（人数）:")]:
+        wb.write_cell(row, 1, label)
+
+    wb.merge(16, 1, 16, 2)
+    wb.write_cell(16, 1, "【請求内容】", bold=True)
+    wb.write_cell(17, 1, "請求月額（円）:")
+    wb.write_cell(18, 1, "請求開始日:")
+
+    wb.merge(19, 1, 19, 2)
+    wb.write_cell(19, 1, "【申立の実情】", bold=True)
+    wb.write_cell(20, 1, "経緯・現状:")
+
+    wb.merge(22, 1, 22, 2)
+    wb.write_cell(22, 1, "※ 法的根拠: 民法 760条（夫婦間の費用分担）")
+    wb.merge(23, 1, 23, 2)
+    wb.write_cell(23, 1, "※ 金額算定: 令和元年改定・婚姻費用標準算定方式")
+    wb.merge(24, 1, 24, 2)
+    wb.write_cell(24, 1, "※ 離婚前の別居中に請求。離婚後は `child-support-application`（養育費）を使用")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
 def main() -> int:
     builders = [
         # Phase 1 (v2.1.0)
@@ -1200,6 +2016,17 @@ def main() -> int:
         ("power-of-attorney", build_power_of_attorney),
         ("bankruptcy-dohaishi", build_bankruptcy_dohaishi),
         ("labor-tribunal-application", build_labor_tribunal),
+        # Phase 3 (v2.3.0)
+        ("statement-family", build_statement_family),
+        ("family-mediation-application", build_family_mediation),
+        ("household-budget", build_household_budget),
+        ("rehabilitation-small", build_rehabilitation_small),
+        ("criminal-defense-appointment", build_criminal_defense_appointment),
+        ("criminal-settlement", build_criminal_settlement),
+        ("guardianship-application", build_guardianship_application),
+        ("payment-demand", build_payment_demand),
+        ("child-support-application", build_child_support_application),
+        ("spousal-support-application", build_spousal_support_application),
     ]
     for tid, builder in builders:
         out_dir = BUNDLED / tid

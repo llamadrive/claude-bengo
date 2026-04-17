@@ -1,0 +1,81 @@
+id: household-budget
+title: 家計収支表
+description: 自己破産・個人再生の申立添付資料。通常2-3ヶ月分を並べて提出
+category: 破産・再生
+templateFile: household-budget.xlsx
+fields:
+  - id: applicant_name
+    label: "申立人氏名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: period_label
+    label: "対象期間"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: family_count
+    label: "同居家族数（本人含む）"
+    type: number
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: income_table
+    label: "収入"
+    type: table
+    required: true
+    range:
+      headerRow: 7
+      dataStartRow: 8
+      startColumn: 1
+      endRow: 13
+      endColumn: 5
+    columns:
+      - id: item
+        label: "項目"
+        type: text
+        description: "給与/賞与/年金/事業収入/児童手当/その他"
+      - id: m1
+        label: "1ヶ月目(円)"
+        type: number
+      - id: m2
+        label: "2ヶ月目(円)"
+        type: number
+      - id: m3
+        label: "3ヶ月目(円)"
+        type: number
+      - id: notes
+        label: "備考"
+        type: text
+  - id: expense_table
+    label: "支出"
+    type: table
+    required: true
+    range:
+      headerRow: 16
+      dataStartRow: 17
+      startColumn: 1
+      endRow: 35
+      endColumn: 5
+    columns:
+      - id: item
+        label: "項目"
+        type: text
+        description: "家賃/食費/水道光熱費/通信費/医療費/教育費/保険料/交通費/その他"
+      - id: m1
+        label: "1ヶ月目(円)"
+        type: number
+      - id: m2
+        label: "2ヶ月目(円)"
+        type: number
+      - id: m3
+        label: "3ヶ月目(円)"
+        type: number
+      - id: notes
+        label: "備考"
+        type: text

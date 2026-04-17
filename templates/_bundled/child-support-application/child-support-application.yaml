@@ -1,0 +1,110 @@
+id: child-support-application
+title: 養育費請求調停申立書
+description: 離婚後または別居中の養育費請求の調停申立書。令和元年改定算定表を踏まえて金額を提示
+category: 家事事件
+templateFile: child-support-application.xlsx
+fields:
+  - id: court_name
+    label: "管轄家庭裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申立日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: applicant_name
+    label: "申立人（権利者）氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: applicant_address
+    label: "申立人住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: applicant_income
+    label: "申立人年収（円）"
+    type: number
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: respondent_name
+    label: "相手方（義務者）氏名"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: respondent_address
+    label: "相手方住所"
+    type: text
+    required: true
+    position:
+      row: 10
+      column: 2
+  - id: respondent_income
+    label: "相手方年収（円）"
+    type: number
+    required: false
+    position:
+      row: 11
+      column: 2
+  - id: children
+    label: "対象となる子"
+    type: table
+    required: true
+    range:
+      headerRow: 14
+      dataStartRow: 15
+      startColumn: 1
+      endRow: 19
+      endColumn: 3
+    columns:
+      - id: child_name
+        label: "氏名"
+        type: text
+      - id: child_birth
+        label: "生年月日"
+        type: date
+      - id: child_age
+        label: "年齢"
+        type: number
+  - id: requested_monthly_amount
+    label: "請求月額（子1人あたり/円）"
+    type: number
+    required: true
+    position:
+      row: 21
+      column: 2
+  - id: requested_start_date
+    label: "請求開始日"
+    type: date
+    required: true
+    position:
+      row: 22
+      column: 2
+  - id: requested_end_date
+    label: "請求終了時点"
+    type: text
+    required: true
+    position:
+      row: 23
+      column: 2
+  - id: application_reason
+    label: "申立の実情"
+    type: textarea
+    required: true
+    position:
+      row: 25
+      column: 2

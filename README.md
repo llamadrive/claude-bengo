@@ -396,6 +396,8 @@ python3 ~/.claude/plugins/claude-bengo/skills/_lib/audit.py export --format csv 
 | `/inheritance-calc` | 法定相続分の自動計算（民法準拠、代襲・再代襲・半血・放棄対応） | — |
 | `/traffic-damage-calc` | 交通事故損害賠償額の決定論的計算（赤い本基準、入通院慰謝料・後遺障害逸失利益・過失相殺） | ✅ |
 | `/child-support-calc` | 養育費・婚姻費用の決定論的計算（令和元年改定算定方式、基礎収入・生活費指数・1000円単位丸め） | ✅ |
+| `/debt-recalc` | 利息制限法 引き直し計算（残元本・過払金・民法704条の年5%利息、取引台帳付） | ✅ |
+| `/overtime-calc` | 未払残業代の決定論計算（労基法37条、時間外1.25/60h超1.5/深夜+0.25/休日1.35、時効3年判定） | ✅ |
 | `/law-search` | 法令条文の検索・参照（e-Gov API） | — |
 | `/verify` | 動作確認 | — |
 | `/bengo-update` | プラグインを署名付きタグから更新 | — |

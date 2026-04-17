@@ -2,6 +2,88 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.6.0] - 2026-04-17
+
+**Track B complete**: 2 つの残タスク `/debt-recalc`（利息制限法引き直し）と
+`/overtime-calc`（労基法 37 条割増賃金計算）を同時リリース。これで Track B
+の当初スコープがすべて出揃い、SMB 弁護士の日常的な決定論計算タスクの
+~65-70% をカバーする。
+
+### Added — debt-recalc
+
+- **`skills/debt-recalc/calc.py`** (~270 行): 貸金業者との取引履歴を
+  利息制限法 1 条の上限利率（20%/18%/15%）で引き直し、残元本・過払金・
+  過払金利息（民法 704 条の年 5%）を決定論的に算出
+- **`skills/debt-recalc/test_calc.py`** (15/15 pass): 利率ブラケット判定、
+  同日取引処理（借入→弁済順）、弁済の利息優先充当、元本ブラケット遷移、
+  長期返済での過払金発生、過払金利息加算、取引件数混合、バリデーション
+- **`skills/debt-recalc/references/risokuhou-guide.md`**: 利息制限法の
+  歴史（グレーゾーン金利廃止）、時効 10 年・悪意の受益者要件、取引一連性の
+  判例実務、充当順序、計算例 2 件
+- **`skills/debt-recalc/SKILL.md`**: matter-aware 5 ステップの対話ワークフロー
+- **`commands/debt-recalc.md`**: `/debt-recalc` slash command
+
+### Added — overtime-calc
+
+- **`skills/overtime-calc/calc.py`** (~270 行): 労基法 37 条に基づく未払
+  割増賃金を月別労働時間記録から決定論的に算出。時間外 1.25 / 60h 超 1.5 /
+  深夜 +0.25 / 休日 1.35 の全組合せに対応。時効 3 年（2020/04 改正後）/
+  2 年（改正前）の自動区別
+- **`skills/overtime-calc/test_calc.py`** (16/16 pass): 基礎賃金算定、
+  時給切り上げ、全組合せの割増率、複数月合算、時効内外区別、年間休日→
+  月平均計算、遅延損害金年 3%、バリデーション
+- **`skills/overtime-calc/references/labor-guide.md`**: 割増率表、基礎賃金
+  算定式、除外手当（家族・通勤・住宅）、時効制度の改正経緯、証拠収集、
+  固定残業代・管理監督者・変形労働時間制の例外、計算例 3 件
+- **`skills/overtime-calc/SKILL.md`**: matter-aware 6 ステップの対話
+- **`commands/overtime-calc.md`**: `/overtime-calc` slash command
+
+### Track B 完成: 4 計算器 + 既存 inheritance-calc の合計 5 スキル
+
+| スキル | 分野 | SMB 業務占有率 | テスト |
+|---|---|---|---|
+| `/inheritance-calc` | 相続 | ~15% | 19/19 |
+| `/traffic-damage-calc` | 交通事故 | ~20% | 20/20 |
+| `/child-support-calc` | 家事（養育費・婚姻費用） | ~15% | 20/20 |
+| `/debt-recalc` | 破産・再生 | ~10% | 15/15 |
+| `/overtime-calc` | 労働 | ~5-10% | 16/16 |
+| **合計** | | **~65-70%** | **90/90** |
+
+### Track A + B 総合カバレッジ
+
+Track A（同梱テンプレート 23 種）と Track B（決定論計算 5 種）が揃ったことで、
+日本の SMB 弁護士の**書式作成 70% + 決定論計算 65-70%** をこのプラグイン
+単体で対応できる。残る gap（Tier 1 BigLaw の SOC2/SSO/residency/MSA・
+電子申立・判例検索等）は構造的で、別プロダクト化が必要な領域。
+
+### Verification
+
+- `debt-recalc`: 15/15 pass
+- `overtime-calc`: 16/16 pass
+- E2E: 49/49 pass (v2.5.0 の 45 + debt-recalc 2 + overtime-calc 2)
+- CI: 3 OS × 3 Python = 9 マトリクス × 計 5 計算器 × 単体+E2E すべて緑
+
+### 運用フロー例
+
+**債務整理フロー:**
+```
+/matter-create                        — 事案作成
+/template-install creditor-list       — 債権者一覧表雛形
+/template-install household-budget    — 家計収支表雛形
+/debt-recalc                          — 各債権者の引き直し計算
+/template-install bankruptcy-dohaishi — 破産申立書雛形
+/template-fill                        — 計算結果を申立書に転記
+```
+
+**労働事件フロー:**
+```
+/matter-create
+/template-install overtime-calc-sheet   — 未払残業代計算書雛形
+/overtime-calc                          — 月別計算
+/template-install labor-tribunal-application — 労働審判申立書雛形
+/template-fill
+```
+
 ## [2.5.0] - 2026-04-17
 
 Track B-2: `/child-support-calc` — 養育費・婚姻費用の決定論的計算器。

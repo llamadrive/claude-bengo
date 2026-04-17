@@ -685,6 +685,65 @@ def scenario_child_support_calc(c: Case, sandbox: Path) -> None:
         c.ng("12.5 self-test", f"rc={rc}")
 
 
+def scenario_debt_recalc(c: Case, sandbox: Path) -> None:
+    section("13. Track B-3: debt-recalc")
+    DR = str(ROOT / "skills" / "debt-recalc" / "calc.py")
+
+    # 2015/02/15 から毎月 2 万返済を 48 ヶ月（過払金発生想定）
+    from datetime import date as _date
+    txs = [{"date": "2015-01-15", "type": "borrowing", "amount": 500_000}]
+    for i in range(48):
+        y = 2015 + (1 + i) // 12
+        m = (1 + i) % 12 + 1
+        txs.append({"date": f"{y}-{m:02d}-15", "type": "payment", "amount": 20_000})
+    payload = {"transactions": txs}
+    rc, out, err = run([PY, DR, "calc", "--json", json.dumps(payload)])
+    if rc == 0:
+        r = json.loads(out)
+        if r["summary"]["overpayment_principal"] > 0:
+            c.ok(f"13.1 長期返済で過払金発生",
+                 f"元本 {r['summary']['overpayment_principal']:,}")
+        else:
+            c.ng("13.1 overpayment", "過払金発生せず")
+    else:
+        c.ng("13.1 debt-recalc", f"rc={rc} err={err[:200]}")
+
+    rc, out, _ = run([PY, DR, "--self-test"], timeout=30)
+    if rc == 0 and "15 passed" in out:
+        c.ok("13.2 内蔵 self-test 15/15")
+    else:
+        c.ng("13.2 self-test", f"rc={rc}")
+
+
+def scenario_overtime_calc(c: Case, sandbox: Path) -> None:
+    section("14. Track B-4: overtime-calc")
+    OC = str(ROOT / "skills" / "overtime-calc" / "calc.py")
+
+    payload = {
+        "employee": {"monthly_salary": 300_000},
+        "work_hours": {"monthly_scheduled_hours": 150},
+        "monthly_records": [
+            {"year_month": "2024-04", "legal_overtime_h": 30},
+        ],
+        "options": {"filing_date": "2024-06-01"},
+    }
+    rc, out, err = run([PY, OC, "calc", "--json", json.dumps(payload)])
+    if rc == 0:
+        r = json.loads(out)
+        if r["summary"]["total_unpaid_within_statute"] == 75_000:
+            c.ok("14.1 時間外 30h × 2000 × 1.25 = 75,000")
+        else:
+            c.ng("14.1 basic overtime", f"got {r['summary']['total_unpaid_within_statute']}")
+    else:
+        c.ng("14.1 overtime-calc", f"rc={rc} err={err[:200]}")
+
+    rc, out, _ = run([PY, OC, "--self-test"], timeout=30)
+    if rc == 0 and "16 passed" in out:
+        c.ok("14.2 内蔵 self-test 16/16")
+    else:
+        c.ng("14.2 self-test", f"rc={rc}")
+
+
 def scenario_retention(c: Case, sandbox: Path) -> None:
     section("10b. Audit: KEEP env prunes old rotations")
     log = sandbox / "keep-test-audit.jsonl"
@@ -731,6 +790,8 @@ def main() -> int:
         scenario_template_install(c, sandbox)
         scenario_traffic_damage_calc(c, sandbox)
         scenario_child_support_calc(c, sandbox)
+        scenario_debt_recalc(c, sandbox)
+        scenario_overtime_calc(c, sandbox)
         scenario_retention(c, sandbox)
     finally:
         if args.keep:

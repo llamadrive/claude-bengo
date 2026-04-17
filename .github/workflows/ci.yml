@@ -37,6 +37,12 @@ jobs:
       - name: Run child-support-calc unit tests
         run: python3 skills/child-support-calc/test_calc.py
 
+      - name: Run debt-recalc unit tests
+        run: python3 skills/debt-recalc/test_calc.py
+
+      - name: Run overtime-calc unit tests
+        run: python3 skills/overtime-calc/test_calc.py
+
       - name: Run matter.py self-tests
         run: python3 skills/_lib/matter.py --self-test
 

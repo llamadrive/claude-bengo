@@ -306,6 +306,14 @@ Claude Code を起動し、普通に日本語で話しかけるだけで動く:
 - Anthropic の最新のデータ保持・プライバシー条項は https://www.anthropic.com/legal を参照。本ドキュメントの記載と乖離がある場合は公式文書を優先する。
 - Claude Code 経由での API 利用は、Anthropic のプラットフォーム規約に従う。
 
+**本プラグインのエンドポイント中立性:**
+- 本プラグインは markdown + Python スクリプトの集合体であり、**どの Claude エンドポイントに対しても同一に動作する**。処理リージョンは「どのプラグインを使うか」ではなく「Claude Code をどう設定するか」で決まる。
+- 上記表は**既定の Anthropic API 直結構成**の内容。法律事務所が JP リージョン内での処理を要件とする場合、以下の選択肢がある:
+  - **AWS Bedrock** 経由で Claude を ap-northeast-1（東京）で実行
+  - **Google Vertex AI** 経由で Claude を asia-northeast1（東京）で実行
+- いずれも Claude Code 側の環境変数・認証設定で切替える。設定方法は Anthropic 公式ドキュメント（https://docs.anthropic.com 参照）の Claude Code 節を確認してほしい。本プラグインは切替え先のエンドポイントを問わず同一に動作する。
+- Bedrock / Vertex 経由での利用は、各クラウドプロバイダーとの契約（BAA / DPA 相当）に従う。LlamaDrive との契約ではない点に留意。
+
 ### 個人情報保護法 §25（委託先監督義務）チェックリスト
 
 本プラグインを業務で使用する法律事務所向けの委託先評価シートの雛形:

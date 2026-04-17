@@ -88,16 +88,28 @@ Anthropic の minor hardening 項目を一括対応。これにより OpenAI は
     強化で silent ではなくなる）
   - ❌ 23-form PII exhaust: 構造的。US residency 対応が必要 → Tier 1 領域
 
-### 未対応（Tier 1 構造的ブロッカー、本 release 範囲外）
+### 未対応（プラグイン範囲外）
 
-- US data residency（Anthropic API)
-- SSO / 弁護士登録番号 binding
-- 企業 MSA / DPA 法人格
-- WORM 監査ログ（local 削除は依然可能、external export が前提）
-- iManage / D1-Law / Westlaw-Japan integration
-- 企業法務 (契約書レビュー・株主総会議事録) の深堀り
+- **データ residency**: ~~構造的ブロッカー~~ → **訂正: Claude Code 側の設定次第**。
+  AWS Bedrock ap-northeast-1 or Google Vertex AI asia-northeast1 経由で Claude を
+  動かせば JP region 内処理が可能。本プラグインはエンドポイント中立（markdown +
+  Python スクリプトの集合体）のため、どの Claude エンドポイントでも同一に動作する。
+  詳細は README.md の「本プラグインのエンドポイント中立性」節を参照。
+- **SSO / 弁護士登録番号 binding**: プラグインにアイデンティティ層がない。
+  これは Claude Code 側・事務所 IdP 側の問題。
+- **企業 MSA / DPA 法人格**: LlamaDrive と 四大 の間の契約事項。
+  Bedrock / Vertex 経由なら AWS / Google との契約で代替可能。
+- **WORM 監査ログ**: 本プラグインのハッシュチェーンは local なので `rm` 可能。
+  外部 append-only ストレージ（S3 Object Lock 等）への export を前提とする運用が必要。
+- **iManage / D1-Law / Westlaw-Japan integration**: プラグイン範囲外。
+- **企業法務 (契約書レビュー・株主総会議事録) の深堀り**: 別プラグイン／skill で
+  対応可能だが、本 release では未対応。
 
-いずれも Path C-enterprise（別 SaaS 製品）で対応する領域。
+**過去リリースのノート訂正:** これまでの triple-PE レビューで私が
+「US residency は Tier 1 structural blocker」と繰り返し述べたが、これは
+**不正確**。データ residency は Claude Code の configuration に従う
+ので、事務所側で Bedrock Tokyo / Vertex Tokyo に設定すれば JP 内処理になる。
+プラグインが US 固定を強制しているわけではない。
 
 ## [2.6.0] - 2026-04-17
 

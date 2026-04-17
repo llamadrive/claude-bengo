@@ -625,6 +625,66 @@ def scenario_traffic_damage_calc(c: Case, sandbox: Path) -> None:
         c.ng("11.3 self-test", f"rc={rc}")
 
 
+def scenario_child_support_calc(c: Case, sandbox: Path) -> None:
+    section("12. Track B-2: child-support-calc")
+    CSC = str(ROOT / "skills" / "child-support-calc" / "calc.py")
+
+    # 養育費: 算定表 4-6 万円範囲内
+    payload = {
+        "kind": "child_support",
+        "obligor": {"annual_income": 5_000_000, "income_type": "salary"},
+        "obligee": {"annual_income": 1_000_000, "income_type": "salary"},
+        "children": [{"age": 10}],
+    }
+    rc, out, err = run([PY, CSC, "calc", "--json", json.dumps(payload)])
+    if rc == 0:
+        r = json.loads(out)
+        if 40_000 <= r["monthly_amount"] <= 60_000:
+            c.ok("12.1 養育費 義務者500万/権利者100万/子1人(10歳) 算定表範囲内",
+                 f"月額 {r['monthly_amount']:,}")
+        else:
+            c.ng("12.1 養育費範囲", f"got {r['monthly_amount']:,}")
+    else:
+        c.ng("12.1 child-support calc", f"rc={rc} err={err[:200]}")
+
+    # 婚姻費用: 算定表 8-10 万円範囲内
+    payload2 = dict(payload, kind="spousal_support")
+    rc, out, _ = run([PY, CSC, "calc", "--json", json.dumps(payload2)])
+    r = json.loads(out)
+    if 70_000 <= r["monthly_amount"] <= 110_000:
+        c.ok("12.2 婚姻費用 同条件 算定表範囲内", f"月額 {r['monthly_amount']:,}")
+    else:
+        c.ng("12.2 婚姻費用範囲", f"got {r['monthly_amount']:,}")
+
+    # バリデーション: kind 不正
+    rc, _, err = run([PY, CSC, "calc", "--json",
+                      json.dumps({"kind": "foo",
+                                  "obligor": {"annual_income": 0, "income_type": "salary"},
+                                  "obligee": {"annual_income": 0, "income_type": "salary"}})])
+    if rc != 0 and "kind は" in err:
+        c.ok("12.3 kind バリデーション")
+    else:
+        c.ng("12.3 validation", f"rc={rc}")
+
+    # 20 歳の子 → エラー
+    rc, _, err = run([PY, CSC, "calc", "--json",
+                      json.dumps({"kind": "child_support",
+                                  "obligor": {"annual_income": 500_0000, "income_type": "salary"},
+                                  "obligee": {"annual_income": 0, "income_type": "salary"},
+                                  "children": [{"age": 20}]})])
+    if rc != 0 and "20 歳以上" in err:
+        c.ok("12.4 子 20 歳以上を拒否")
+    else:
+        c.ng("12.4 age validation", f"rc={rc}")
+
+    # Self-test 20/20
+    rc, out, _ = run([PY, CSC, "--self-test"], timeout=30)
+    if rc == 0 and "20 passed" in out:
+        c.ok("12.5 内蔵 self-test 20/20")
+    else:
+        c.ng("12.5 self-test", f"rc={rc}")
+
+
 def scenario_retention(c: Case, sandbox: Path) -> None:
     section("10b. Audit: KEEP env prunes old rotations")
     log = sandbox / "keep-test-audit.jsonl"
@@ -670,6 +730,7 @@ def main() -> int:
         scenario_permissions(c, sandbox)
         scenario_template_install(c, sandbox)
         scenario_traffic_damage_calc(c, sandbox)
+        scenario_child_support_calc(c, sandbox)
         scenario_retention(c, sandbox)
     finally:
         if args.keep:

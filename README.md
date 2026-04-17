@@ -395,6 +395,7 @@ python3 ~/.claude/plugins/claude-bengo/skills/_lib/audit.py export --format csv 
 | `/lawsuit-analysis` | 訴訟文書の分析レポート生成 | ✅ |
 | `/inheritance-calc` | 法定相続分の自動計算（民法準拠、代襲・再代襲・半血・放棄対応） | — |
 | `/traffic-damage-calc` | 交通事故損害賠償額の決定論的計算（赤い本基準、入通院慰謝料・後遺障害逸失利益・過失相殺） | ✅ |
+| `/child-support-calc` | 養育費・婚姻費用の決定論的計算（令和元年改定算定方式、基礎収入・生活費指数・1000円単位丸め） | ✅ |
 | `/law-search` | 法令条文の検索・参照（e-Gov API） | — |
 | `/verify` | 動作確認 | — |
 | `/bengo-update` | プラグインを署名付きタグから更新 | — |

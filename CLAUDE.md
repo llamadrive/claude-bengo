@@ -23,6 +23,7 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 
 ■ 機密データ対応のコマンド（アクティブ事案が必要）:
   /traffic-damage-calc — 交通事故損害賠償を赤い本基準で決定論的に計算する
+  /child-support-calc  — 養育費・婚姻費用を令和元年改定算定方式で計算する
 
 ■ 事案設定不要なコマンド:
   /law-search      — e-Gov法令APIから条文を検索・参照する（2,078法令対応）

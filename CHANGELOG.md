@@ -2,6 +2,75 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.5.0] - 2026-04-17
+
+Track B-2: `/child-support-calc` — 養育費・婚姻費用の決定論的計算器。
+家事事件（SMB 実務の ~15%）のコア計算を令和元年改定算定方式で自動化。
+Track A Phase 3 で追加した `child-support-application`・`divorce-agreement`・
+`family-mediation-application` 等の書式と直接連携する。
+
+### Added — child-support-calc
+
+- **`skills/child-support-calc/calc.py`** (~300 行): 令和元年改定標準算定方式
+  に基づく決定論的計算。Fraction ベースで exact math。養育費（民法 766・
+  877 条）と婚姻費用（民法 760 条）の両方に対応。
+- **`skills/child-support-calc/test_calc.py`** (20/20 pass): 算定表の
+  代表的セルを網羅。給与/自営の基礎収入割合・子の指数（0-14 歳=62、
+  15-19 歳=85）・1,000 円単位丸め・算定表範囲内の値一致・高額所得警告・
+  権利者＞義務者ケース・子 3 人までの扶養・年収上昇に伴う単調増加
+- **`skills/child-support-calc/references/santei-hyou.md`**: 基礎収入割合
+  テーブル（給与・自営）、生活費指数、計算例（養育費・婚姻費用）、
+  個別加算事由（住宅ローン・私立学校費用・医療費等）の解説
+- **`skills/child-support-calc/SKILL.md`**: matter-aware 対話ワークフロー
+- **`commands/child-support-calc.md`**: `/child-support-calc` slash command
+
+### 計算式（実装）
+
+**養育費:**
+```
+義務者基礎収入 = 義務者年収 × 基礎収入割合（給与42% or 自営54% 等）
+子の標準生活費 = 義務者基礎収入 × Σ(子指数) / (100 + Σ(子指数))
+義務者分担（年） = 子の標準生活費 × 義務者基礎収入 / (両親基礎収入合計)
+月額 = 年額 / 12 → 1,000 円単位に四捨五入
+```
+
+**婚姻費用:**
+```
+権利者世帯の生活費 = (義務者+権利者基礎収入) × (100 + Σ子指数) / (200 + Σ子指数)
+義務者分担（年） = 権利者世帯の生活費 - 権利者基礎収入
+月額 = 年額 / 12 → 1,000 円単位
+```
+
+### 対応範囲外
+
+- 住宅ローン負担調整（義務者が家を出て払い続ける場合の流儀は複数）
+- 私立学校費用・塾費用・医療費等の個別加算
+- 再婚・養子縁組による扶養義務変動
+- 義務者の生活保護受給者化（警告のみ、月額 0 を返す）
+- 算定表範囲外（義務者給与 2,000 万超・自営 1,567 万超）: 計算は試みるが警告
+
+### Verification
+
+- `test_calc.py`: 20/20 pass（1000円単位丸めあるので算定表の 2 万円セル内で
+  整合）
+- E2E 12.1-12.5: 養育費算定表範囲内、婚姻費用算定表範囲内、kind バリデー
+  ション、20 歳子拒否、self-test 実行
+- 合計 45/45 pass (v2.4.0 の 40 + 新規 5)
+
+### 運用フロー（典型）
+
+```
+/matter-create                        — 事案作成
+/template-install divorce-agreement   — 離婚協議書雛形
+/template-install child-support-application   — 調停申立書雛形
+/child-support-calc                   — 月額算出（決定論）
+/template-fill                        — 算定結果を書式に転記
+```
+
+Track B 残:
+- `/debt-recalc` — 利息制限法引き直し（破産・再生の中核計算）
+- `/overtime-calc` — 労基法 37 条の割増賃金
+
 ## [2.4.0] - 2026-04-17
 
 Track B-1: `/traffic-damage-calc` — 交通事故損害賠償の決定論的計算器。

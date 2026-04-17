@@ -34,6 +34,9 @@ jobs:
       - name: Run traffic-damage-calc unit tests
         run: python3 skills/traffic-damage-calc/test_calc.py
 
+      - name: Run child-support-calc unit tests
+        run: python3 skills/child-support-calc/test_calc.py
+
       - name: Run matter.py self-tests
         run: python3 skills/_lib/matter.py --self-test
 

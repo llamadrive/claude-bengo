@@ -1,0 +1,111 @@
+id: inheritance-renunciation
+title: 相続放棄申述書
+description: 家庭裁判所提出用の相続放棄申述書。3ヶ月の熟慮期間に留意
+category: 相続
+templateFile: inheritance-renunciation.xlsx
+fields:
+  - id: court_name
+    label: "管轄家裁"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申述日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: applicant_honseki
+    label: "申述人本籍"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: applicant_address
+    label: "申述人住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: applicant_name
+    label: "申述人氏名"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: applicant_birth
+    label: "申述人生年月日"
+    type: date
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: applicant_occupation
+    label: "申述人職業"
+    type: text
+    required: false
+    position:
+      row: 9
+      column: 2
+  - id: decedent_honseki
+    label: "被相続人本籍"
+    type: text
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: decedent_last_address
+    label: "被相続人最後の住所"
+    type: text
+    required: true
+    position:
+      row: 12
+      column: 2
+  - id: decedent_name
+    label: "被相続人氏名"
+    type: text
+    required: true
+    position:
+      row: 13
+      column: 2
+  - id: decedent_death_date
+    label: "被相続人死亡日"
+    type: date
+    required: true
+    position:
+      row: 14
+      column: 2
+  - id: relationship
+    label: "被相続人との関係"
+    type: text
+    required: true
+    position:
+      row: 15
+      column: 2
+  - id: aware_date
+    label: "相続開始を知った日"
+    type: date
+    required: true
+    position:
+      row: 17
+      column: 2
+  - id: renunciation_reason
+    label: "放棄の理由"
+    type: textarea
+    required: true
+    position:
+      row: 18
+      column: 2
+  - id: estate_summary
+    label: "相続財産の概略"
+    type: textarea
+    required: false
+    position:
+      row: 20
+      column: 2

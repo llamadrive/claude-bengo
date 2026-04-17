@@ -60,15 +60,25 @@ python3 skills/_lib/template_lib.py install <bundled-id>
   /template-fill       — ソース文書からこのテンプレートにデータを入力
 ```
 
-## 利用可能な同梱テンプレート（v2.1.0 現在）
+## 利用可能な同梱テンプレート（v2.2.0 現在）
 
 | ID | カテゴリ | タイトル |
 |---|---|---|
 | `creditor-list` | 破産・再生 | 債権者一覧表 |
+| `bankruptcy-dohaishi` | 破産・再生 | 破産申立書（同時廃止型・個人） |
 | `estate-inventory` | 相続 | 遺産目録 |
+| `inheritance-renunciation` | 相続 | 相続放棄申述書 |
+| `inheritance-division-agreement` | 相続 | 遺産分割協議書 |
 | `settlement-traffic` | 交通事故 | 交通事故示談書（雛形） |
+| `divorce-agreement` | 家事事件 | 離婚協議書 |
+| `naiyou-shoumei` | 一般民事 | 内容証明郵便（通知書） |
+| `complaint-loan-repayment` | 民事訴訟 | 訴状（貸金返還請求） |
+| `answer-generic` | 民事訴訟 | 答弁書（民事訴訟） |
+| `overtime-calc-sheet` | 労働 | 未払残業代計算書 |
+| `labor-tribunal-application` | 労働 | 労働審判申立書 |
+| `power-of-attorney` | 汎用 | 委任状（弁護士） |
 
-**追加予定:** 養育費算定表、離婚協議書雛形、内容証明郵便雛形、未払残業代計算書、訴状・答弁書雛形、陳述書雛形、破産・個人再生申立書、労働審判申立書等。
+**追加予定:** 養育費算定表、陳述書雛形（家事・刑事）、個人再生申立書、後見開始申立書、調停申立書、支払督促申立書、示談書（刑事弁護）、株主総会議事録、内容証明（貸金催告・解除通知等のバリアント）等。
 
 同梱テンプレートは参考用の雛形である。**提出前に最新の裁判所ホームページ・法テラス様式を確認**すること。レイアウトが実際の書式と異なる場合がある。
 

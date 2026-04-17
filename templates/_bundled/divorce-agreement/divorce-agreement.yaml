@@ -1,0 +1,142 @@
+id: divorce-agreement
+title: 離婚協議書
+description: 協議離婚時の合意内容を記載する書面。公正証書化前の草案として使用する
+category: 家事事件
+templateFile: divorce-agreement.xlsx
+fields:
+  - id: husband_name
+    label: "夫氏名"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 3
+  - id: husband_birth
+    label: "夫生年月日"
+    type: date
+    required: true
+    position:
+      row: 4
+      column: 3
+  - id: husband_address
+    label: "夫住所"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 3
+  - id: wife_name
+    label: "妻氏名"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 3
+  - id: wife_birth
+    label: "妻生年月日"
+    type: date
+    required: true
+    position:
+      row: 7
+      column: 3
+  - id: wife_address
+    label: "妻住所"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 3
+  - id: marriage_date
+    label: "婚姻日"
+    type: date
+    required: true
+    position:
+      row: 9
+      column: 3
+  - id: separation_date
+    label: "別居開始日"
+    type: date
+    required: false
+    position:
+      row: 10
+      column: 3
+  - id: children
+    label: "子の情報"
+    type: table
+    required: false
+    range:
+      headerRow: 13
+      dataStartRow: 14
+      startColumn: 1
+      endRow: 18
+      endColumn: 4
+    columns:
+      - id: child_name
+        label: "氏名"
+        type: text
+      - id: child_birth
+        label: "生年月日"
+        type: date
+      - id: custodian
+        label: "親権者"
+        type: text
+        description: "夫 / 妻 / 共同"
+      - id: notes
+        label: "備考"
+        type: text
+  - id: child_support_monthly
+    label: "養育費月額（子1人あたり/円）"
+    type: number
+    required: false
+    position:
+      row: 20
+      column: 3
+  - id: child_support_period
+    label: "養育費支払期間"
+    type: text
+    required: false
+    position:
+      row: 21
+      column: 3
+  - id: child_support_method
+    label: "養育費支払方法"
+    type: text
+    required: false
+    position:
+      row: 22
+      column: 3
+  - id: visitation
+    label: "面会交流"
+    type: textarea
+    required: false
+    position:
+      row: 23
+      column: 3
+  - id: property_division
+    label: "財産分与"
+    type: textarea
+    required: false
+    position:
+      row: 25
+      column: 3
+  - id: consolation_money
+    label: "慰謝料（円）"
+    type: number
+    required: false
+    position:
+      row: 26
+      column: 3
+  - id: pension_split
+    label: "年金分割の割合"
+    type: text
+    required: false
+    position:
+      row: 27
+      column: 3
+  - id: agreement_date
+    label: "合意日"
+    type: date
+    required: true
+    position:
+      row: 30
+      column: 3

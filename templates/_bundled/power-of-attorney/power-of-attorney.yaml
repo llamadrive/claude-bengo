@@ -1,0 +1,73 @@
+id: power-of-attorney
+title: 委任状（弁護士）
+description: 弁護士への事件処理委任。特別委任事項の個別承諾欄を含む
+category: 汎用
+templateFile: power-of-attorney.xlsx
+fields:
+  - id: client_name
+    label: "委任者氏名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: client_address
+    label: "委任者住所"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: attorney_name
+    label: "受任者（弁護士）氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: law_firm
+    label: "所属事務所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: attorney_registration
+    label: "弁護士登録番号"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: matter_description
+    label: "委任事項"
+    type: textarea
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: special_powers
+    label: "特別委任事項（該当に☑）"
+    type: table
+    required: true
+    range:
+      headerRow: 12
+      dataStartRow: 13
+      startColumn: 1
+      endRow: 22
+      endColumn: 2
+    columns:
+      - id: power
+        label: "特別委任事項"
+        type: text
+      - id: checked
+        label: "承諾"
+        type: text
+        description: "☑ 承諾する / □ 承諾しない"
+  - id: delegation_date
+    label: "委任日"
+    type: date
+    required: true
+    position:
+      row: 24
+      column: 2

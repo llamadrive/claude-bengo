@@ -1,0 +1,104 @@
+id: bankruptcy-dohaishi
+title: 破産申立書（同時廃止型・個人）
+description: 個人の自己破産（同時廃止）の申立書雛形。債権者一覧表・財産目録を別紙添付
+category: 破産・再生
+templateFile: bankruptcy-dohaishi.xlsx
+fields:
+  - id: court_name
+    label: "管轄地方裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申立日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: applicant_honseki
+    label: "申立人本籍"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: applicant_address
+    label: "申立人住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: applicant_name
+    label: "申立人氏名"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: applicant_birth
+    label: "申立人生年月日"
+    type: date
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: applicant_occupation
+    label: "申立人職業"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: monthly_income
+    label: "月収（手取り/円）"
+    type: number
+    required: true
+    position:
+      row: 10
+      column: 2
+  - id: family_structure
+    label: "家族構成"
+    type: textarea
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: total_debt
+    label: "負債総額（円）"
+    type: number
+    required: true
+    position:
+      row: 13
+      column: 2
+  - id: creditor_count
+    label: "債権者数"
+    type: number
+    required: true
+    position:
+      row: 14
+      column: 2
+  - id: asset_total
+    label: "資産総額（円）"
+    type: number
+    required: true
+    position:
+      row: 15
+      column: 2
+  - id: bankruptcy_reason
+    label: "破産に至った事情"
+    type: textarea
+    required: true
+    position:
+      row: 17
+      column: 2
+  - id: immunity_requested
+    label: "免責許可も申し立てるか"
+    type: text
+    required: true
+    position:
+      row: 19
+      column: 2

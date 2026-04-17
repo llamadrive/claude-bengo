@@ -2,6 +2,64 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.2.0] - 2026-04-17
+
+Track A Phase 2: 同梱テンプレートライブラリを 3 種 → 13 種に拡充。SMB 弁護士の
+実務負荷の大半を占める 8 分野（家事事件・相続・交通事故・破産再生・労働・
+民事訴訟・一般民事・汎用）をカバーする。
+
+### Added — 10 新規同梱テンプレート
+
+**家事事件:**
+- `divorce-agreement` — 離婚協議書（親権・養育費・面会交流・財産分与・慰謝料・年金分割網羅）
+
+**相続:**
+- `inheritance-renunciation` — 相続放棄申述書（民法 915 条の 3 ヶ月熟慮期間明記）
+- `inheritance-division-agreement` — 遺産分割協議書（相続人一覧＋分配内容テーブル）
+
+**民事訴訟:**
+- `complaint-loan-repayment` — 訴状（貸金返還請求）（民訴法 134 条の必要的記載事項網羅）
+- `answer-generic` — 答弁書（請求の趣旨に対する答弁・原因に対する認否・抗弁を構造化）
+
+**労働:**
+- `overtime-calc-sheet` — 未払残業代計算書（労基法 37 条・改正後時効 3 年対応）
+- `labor-tribunal-application` — 労働審判申立書（3 期日以内の迅速手続）
+
+**破産・再生:**
+- `bankruptcy-dohaishi` — 破産申立書（同時廃止型・個人）（債権者一覧表・財産目録を別紙添付）
+
+**一般民事:**
+- `naiyou-shoumei` — 内容証明郵便（横書き 26字×20行、520字/枚制約を明示）
+
+**汎用:**
+- `power-of-attorney` — 委任状（弁護士）（民訴法 55 条 2 項の特別委任事項個別承諾欄）
+
+各テンプレートは `templates/_bundled/{id}/{id}.yaml` にフィールド定義、
+同じく `.xlsx` にレイアウトを持つ。全 13 種で以下が機能することを確認済み:
+
+- `template_lib.py --self-test`: 13/13 エントリの YAML+XLSX 整合性
+- MCP round-trip: `@knorq/xlsx-mcp-server@2.0.0` での読み戻し 13/13 成功
+- Deep-read spot-check: 残業代の「消滅時効」「民法 915 条」「特別委任事項」等、
+  実務上 critical な文言が MCP 経由で完全保持されている
+- E2E 35/35 pass（v2.1.0 の 34 + カテゴリ網羅性チェック 1）
+
+### Architecture
+
+本リリースは v2.1.0 で構築した仕組みに純粋な追加で乗る:
+
+- Builder 関数を `scripts/build_bundled_forms.py` に追加するだけ
+- Registry `templates/_bundled/_registry.yaml` にエントリを足すだけ
+- `xlsx_writer.py` と `template_lib.py` は未変更（設計が十分拡張的だった証左）
+
+### Known limitations
+
+- 同梱 XLSX は実務の参考レイアウト。**裁判所提出前に最新の裁判所ホームページ・
+  法テラス様式で cell 配置を最終確認する運用**が必須。各テンプレートの
+  legal_basis 欄に準拠法を明記。
+- 養育費算定表のような「計算ロジック」は本リリースでは未提供。Track B
+  （`/child-support-calc`, `/traffic-damage-calc`, `/debt-recalc`,
+  `/overtime-calc`）で決定論的計算モジュールとして実装予定。
+
 ## [2.1.0] - 2026-04-17
 
 Track A の最初のリリース: 同梱テンプレート・書式ライブラリの導入。

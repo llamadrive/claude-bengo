@@ -481,11 +481,26 @@ def scenario_template_install(c: Case, sandbox: Path) -> None:
         return
     entries = json.loads(out)
     ids = {e["id"] for e in entries}
-    expected = {"creditor-list", "estate-inventory", "settlement-traffic"}
+    # v2.2.0 ships 13 forms across 7 categories
+    expected = {
+        "creditor-list", "estate-inventory", "settlement-traffic",
+        "divorce-agreement", "naiyou-shoumei", "overtime-calc-sheet",
+        "complaint-loan-repayment", "answer-generic",
+        "inheritance-renunciation", "inheritance-division-agreement",
+        "power-of-attorney", "bankruptcy-dohaishi", "labor-tribunal-application",
+    }
     if expected.issubset(ids):
-        c.ok("10a.1 all 3 starter templates present in registry", f"ids={sorted(ids)}")
+        c.ok(f"10a.1 all {len(expected)} bundled templates present in registry", f"count={len(ids)}")
     else:
-        c.ng("10a.1 starter templates present", f"missing={expected - ids}")
+        c.ng("10a.1 bundled templates present", f"missing={expected - ids}")
+
+    # Categories are non-trivial
+    cats = {e.get("category") for e in entries}
+    expected_cats = {"破産・再生", "相続", "交通事故", "家事事件", "一般民事", "民事訴訟", "労働", "汎用"}
+    if expected_cats.issubset(cats):
+        c.ok("10a.1b all 8 categories represented", f"cats={sorted(cats)}")
+    else:
+        c.ng("10a.1b categories", f"missing={expected_cats - cats}")
 
     # install requires matter — use existing 'smith-v-jones' from scenario 1
     rc, out, err = run(

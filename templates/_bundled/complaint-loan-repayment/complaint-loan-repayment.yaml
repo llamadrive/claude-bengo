@@ -1,0 +1,118 @@
+id: complaint-loan-repayment
+title: 訴状（貸金返還請求）
+description: 貸金返還請求訴訟の訴状雛形。民事訴訟法 134 条の必要的記載事項を網羅
+category: 民事訴訟
+templateFile: complaint-loan-repayment.xlsx
+fields:
+  - id: court_name
+    label: "宛先裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "提出日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: plaintiff_name
+    label: "原告氏名"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: plaintiff_address
+    label: "原告住所"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: plaintiff_attorney
+    label: "原告訴訟代理人"
+    type: text
+    required: false
+    position:
+      row: 8
+      column: 2
+  - id: defendant_name
+    label: "被告氏名"
+    type: text
+    required: true
+    position:
+      row: 10
+      column: 2
+  - id: defendant_address
+    label: "被告住所"
+    type: text
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: claim_amount
+    label: "請求金額（元本、円）"
+    type: number
+    required: true
+    position:
+      row: 13
+      column: 2
+  - id: interest_rate
+    label: "約定利率（年率%）"
+    type: text
+    required: false
+    position:
+      row: 14
+      column: 2
+  - id: interest_start_date
+    label: "利息起算日"
+    type: date
+    required: false
+    position:
+      row: 15
+      column: 2
+  - id: suit_value
+    label: "訴訟物の価額（円）"
+    type: number
+    required: true
+    position:
+      row: 17
+      column: 2
+  - id: stamp_fee
+    label: "貼用印紙額（円）"
+    type: number
+    required: true
+    position:
+      row: 18
+      column: 2
+  - id: lending_date
+    label: "貸付日"
+    type: date
+    required: true
+    position:
+      row: 21
+      column: 2
+  - id: repayment_deadline
+    label: "返済期日"
+    type: date
+    required: true
+    position:
+      row: 22
+      column: 2
+  - id: claim_reason_detail
+    label: "請求の原因詳細"
+    type: textarea
+    required: true
+    position:
+      row: 23
+      column: 2
+  - id: evidence_list
+    label: "証拠方法"
+    type: textarea
+    required: true
+    position:
+      row: 25
+      column: 2

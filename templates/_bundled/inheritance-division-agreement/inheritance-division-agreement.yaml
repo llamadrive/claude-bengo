@@ -1,0 +1,90 @@
+id: inheritance-division-agreement
+title: 遺産分割協議書
+description: 相続人全員の合意による遺産分割の書面。不動産の相続登記等で使用
+category: 相続
+templateFile: inheritance-division-agreement.xlsx
+fields:
+  - id: decedent_name
+    label: "被相続人氏名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: decedent_death_date
+    label: "被相続人死亡日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: decedent_last_address
+    label: "被相続人最後の住所"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: decedent_honseki
+    label: "被相続人本籍"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: heirs
+    label: "相続人（全員）"
+    type: table
+    required: true
+    range:
+      headerRow: 8
+      dataStartRow: 9
+      startColumn: 1
+      endRow: 18
+      endColumn: 4
+    columns:
+      - id: name
+        label: "氏名"
+        type: text
+      - id: relationship
+        label: "被相続人との続柄"
+        type: text
+      - id: address
+        label: "住所"
+        type: text
+      - id: seal_confirmed
+        label: "印鑑証明取得済"
+        type: text
+        description: "はい / いいえ"
+  - id: allocations
+    label: "遺産の分割内容"
+    type: table
+    required: true
+    range:
+      headerRow: 21
+      dataStartRow: 22
+      startColumn: 1
+      endRow: 40
+      endColumn: 4
+    columns:
+      - id: asset_type
+        label: "財産種別"
+        type: text
+        description: "不動産 / 預貯金 / 有価証券 / 動産 等"
+      - id: detail
+        label: "詳細（所在・金融機関等）"
+        type: text
+      - id: value
+        label: "評価額(円)"
+        type: number
+      - id: acquirer
+        label: "取得者"
+        type: text
+        description: "相続人の氏名"
+  - id: agreement_date
+    label: "協議成立日"
+    type: date
+    required: true
+    position:
+      row: 42
+      column: 2

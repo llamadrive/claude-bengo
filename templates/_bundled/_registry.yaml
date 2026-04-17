@@ -56,3 +56,118 @@ templates:
     legal_basis: 民法 695条（和解）、民法 709条（不法行為）、自賠責保険法
     author: LlamaDrive
     version: "1.0.0"
+
+  - id: divorce-agreement
+    title: 離婚協議書
+    category: 家事事件
+    description: 協議離婚時の合意書面（草案）。親権・養育費・面会交流・財産分与・慰謝料・年金分割を網羅
+    use_cases: |
+      - 協議離婚の合意内容の書面化
+      - 公証役場で公正証書化する前の草案
+      - 調停申立前の整理資料
+    legal_basis: 民法 763/766/768条、厚生年金保険法 78条の2
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: naiyou-shoumei
+    title: 内容証明郵便（通知書）
+    category: 一般民事
+    description: 横書き 26字×20行形式の内容証明郵便雛形。差出人・受取人・表題・本文を構造化
+    use_cases: |
+      - 催告書・通知書・解除通知等の送付
+      - 時効中断目的の催告
+      - 契約解除の意思表示
+    legal_basis: 郵便法 48条・49条、民法 150条（催告による時効中断）
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: overtime-calc-sheet
+    title: 未払残業代計算書
+    category: 労働
+    description: 労基法37条に基づく割増賃金の月別計算書。時効3年に対応
+    use_cases: |
+      - 労働審判・訴訟の証拠資料
+      - 任意交渉の請求額算定
+      - 内容証明による請求の根拠資料
+    legal_basis: 労働基準法 37条・115条（改正後時効3年）、同施行規則 19条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: complaint-loan-repayment
+    title: 訴状（貸金返還請求）
+    category: 民事訴訟
+    description: 貸金返還請求の訴状雛形。民訴法134条の必要的記載事項を網羅
+    use_cases: |
+      - 消費者金融・個人間貸付の回収訴訟
+      - 裁判所提出書類の雛形
+    legal_basis: 民事訴訟法 134条、民事訴訟規則 53条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: answer-generic
+    title: 答弁書（民事訴訟）
+    category: 民事訴訟
+    description: 民事訴訟の答弁書雛形。請求の趣旨に対する答弁・原因に対する認否・抗弁を構造化
+    use_cases: |
+      - 第1回口頭弁論期日前の答弁書提出
+      - 請求認否の記録
+    legal_basis: 民事訴訟規則 80条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: inheritance-renunciation
+    title: 相続放棄申述書
+    category: 相続
+    description: 家庭裁判所提出用の相続放棄申述書。3ヶ月の熟慮期間起算日に留意
+    use_cases: |
+      - 被相続人の債務超過時の相続放棄
+      - 他の相続人に集中させる目的の放棄
+    legal_basis: 民法 915条（熟慮期間）、民法 938条、家事事件手続法 201条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: inheritance-division-agreement
+    title: 遺産分割協議書
+    category: 相続
+    description: 相続人全員の合意による遺産分割の書面。不動産の相続登記等で使用
+    use_cases: |
+      - 遺産分割協議成立後の書面化
+      - 不動産の相続登記申請
+      - 預貯金の名義変更
+    legal_basis: 民法 906条・907条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: power-of-attorney
+    title: 委任状（弁護士）
+    category: 汎用
+    description: 弁護士への事件処理委任。特別委任事項（民訴55条2項）の個別承諾欄を含む
+    use_cases: |
+      - 訴訟・調停・審判等の代理人選任
+      - 特別委任事項（和解・取下げ等）の明示的承諾
+    legal_basis: 弁護士法、民事訴訟法 55条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: bankruptcy-dohaishi
+    title: 破産申立書（同時廃止型・個人）
+    category: 破産・再生
+    description: 個人の自己破産（同時廃止）の申立書雛形。債権者一覧表と財産目録を別紙で添付
+    use_cases: |
+      - 支払不能に陥った個人債務者の自己破産申立
+      - 免責許可の同時申立
+    legal_basis: 破産法 15条・20-25条・216条、破産規則 13条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: labor-tribunal-application
+    title: 労働審判申立書
+    category: 労働
+    description: 労働審判法に基づく申立書。3期日以内の迅速手続を想定
+    use_cases: |
+      - 解雇無効確認・地位確認
+      - 未払賃金・残業代請求
+      - 雇止め訴訟の前段階
+    legal_basis: 労働審判法 5条・15条・33条、労働審判規則 9条
+    author: LlamaDrive
+    version: "1.0.0"

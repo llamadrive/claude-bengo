@@ -1,0 +1,55 @@
+id: naiyou-shoumei
+title: 内容証明郵便（通知書）
+description: 内容証明郵便の通知書雛形。横書き 26字×20行 = 520字/枚の字数制限に留意する
+category: 一般民事
+templateFile: naiyou-shoumei.xlsx
+fields:
+  - id: recipient_name
+    label: "受取人氏名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: recipient_address
+    label: "受取人住所"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: sender_name
+    label: "差出人氏名"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: sender_address
+    label: "差出人住所"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: document_title
+    label: "表題"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 1
+  - id: body
+    label: "本文"
+    type: textarea
+    required: true
+    position:
+      row: 9
+      column: 1
+  - id: issue_date
+    label: "作成日"
+    type: date
+    required: true
+    position:
+      row: 31
+      column: 2

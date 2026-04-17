@@ -1,0 +1,105 @@
+id: answer-generic
+title: 答弁書（民事訴訟）
+description: 民事訴訟の答弁書雛形。請求の趣旨に対する答弁・原因に対する認否・抗弁を記載
+category: 民事訴訟
+templateFile: answer-generic.xlsx
+fields:
+  - id: court_name
+    label: "宛先裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: case_number
+    label: "事件番号"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: case_name
+    label: "事件名"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: filing_date
+    label: "提出日"
+    type: date
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: plaintiff_name
+    label: "原告氏名"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: defendant_name
+    label: "被告氏名"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: defendant_address
+    label: "被告住所"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: defendant_attorney
+    label: "被告訴訟代理人"
+    type: text
+    required: false
+    position:
+      row: 10
+      column: 2
+  - id: answer_to_claims
+    label: "請求の趣旨に対する答弁"
+    type: textarea
+    required: true
+    position:
+      row: 12
+      column: 2
+  - id: ninhi_table
+    label: "請求の原因に対する認否"
+    type: table
+    required: true
+    range:
+      headerRow: 15
+      dataStartRow: 16
+      startColumn: 1
+      endRow: 25
+      endColumn: 3
+    columns:
+      - id: paragraph
+        label: "訴状段落"
+        type: text
+        description: "例: 訴状第1項"
+      - id: content_summary
+        label: "原告主張の要旨"
+        type: text
+      - id: ninhi
+        label: "認否"
+        type: text
+        description: "認める / 否認する / 一部認める / 不知"
+  - id: abuse_defense
+    label: "抗弁"
+    type: textarea
+    required: false
+    position:
+      row: 27
+      column: 2
+  - id: evidence_list
+    label: "証拠方法"
+    type: textarea
+    required: false
+    position:
+      row: 29
+      column: 2

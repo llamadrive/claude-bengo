@@ -1,0 +1,101 @@
+id: overtime-calc-sheet
+title: 未払残業代計算書
+description: 労基法 37 条に基づく未払割増賃金の計算書。時効（3年）を踏まえた月別集計
+category: 労働
+templateFile: overtime-calc-sheet.xlsx
+fields:
+  - id: employee_name
+    label: "労働者氏名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: employer_name
+    label: "使用者名称"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: employment_start
+    label: "雇用開始日"
+    type: date
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: base_monthly_salary
+    label: "基本給（月額/円）"
+    type: number
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: monthly_work_hours
+    label: "1ヶ月平均所定労働時間（h）"
+    type: number
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: hourly_wage
+    label: "1 時間あたり賃金（円）"
+    type: number
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: monthly_log
+    label: "月別残業時間記録"
+    type: table
+    required: true
+    range:
+      headerRow: 10
+      dataStartRow: 11
+      startColumn: 1
+      endRow: 46
+      endColumn: 8
+    columns:
+      - id: year_month
+        label: "年月"
+        type: text
+        description: "例: 令和5年4月"
+      - id: overtime_h
+        label: "法定時間外(h)"
+        type: number
+        description: "1日8h / 週40h 超"
+      - id: night_h
+        label: "深夜(h)"
+        type: number
+        description: "22:00-05:00"
+      - id: holiday_h
+        label: "法定休日(h)"
+        type: number
+      - id: over_60h
+        label: "60h超(h)"
+        type: number
+        description: "月60h 超の時間外"
+      - id: overtime_amount
+        label: "時間外1.25(円)"
+        type: number
+      - id: night_amount
+        label: "深夜0.25追加(円)"
+        type: number
+      - id: holiday_amount
+        label: "休日1.35(円)"
+        type: number
+  - id: total_unpaid
+    label: "未払総額（円）"
+    type: number
+    required: true
+    position:
+      row: 48
+      column: 2
+  - id: created_date
+    label: "作成日"
+    type: date
+    required: true
+    position:
+      row: 50
+      column: 2

@@ -1,0 +1,104 @@
+id: labor-tribunal-application
+title: 労働審判申立書
+description: 労働審判法に基づく申立書。3期日以内の迅速手続
+category: 労働
+templateFile: labor-tribunal-application.xlsx
+fields:
+  - id: court_name
+    label: "管轄地方裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申立日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: applicant_name
+    label: "申立人（労働者）氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: applicant_address
+    label: "申立人住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: applicant_attorney
+    label: "申立人代理人"
+    type: text
+    required: false
+    position:
+      row: 7
+      column: 2
+  - id: respondent_name
+    label: "相手方（使用者）名称"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: respondent_address
+    label: "相手方所在地"
+    type: text
+    required: true
+    position:
+      row: 10
+      column: 2
+  - id: respondent_representative
+    label: "相手方代表者"
+    type: text
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: case_type
+    label: "事件の種類"
+    type: text
+    required: true
+    position:
+      row: 13
+      column: 2
+  - id: application_summary
+    label: "申立の趣旨"
+    type: textarea
+    required: true
+    position:
+      row: 14
+      column: 2
+  - id: dispute_points
+    label: "紛争の要点"
+    type: textarea
+    required: true
+    position:
+      row: 16
+      column: 2
+  - id: predicted_issues
+    label: "予想される争点"
+    type: textarea
+    required: true
+    position:
+      row: 18
+      column: 2
+  - id: evidence_list
+    label: "証拠方法"
+    type: textarea
+    required: true
+    position:
+      row: 20
+      column: 2
+  - id: suit_value
+    label: "請求額（訴額）(円)"
+    type: number
+    required: true
+    position:
+      row: 22
+      column: 2

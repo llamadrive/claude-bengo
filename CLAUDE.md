@@ -16,7 +16,8 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 ■ 機密文書を扱うコマンド（アクティブ事案が必要）:
   /typo-check      — 法律文書（DOCX）の誤字脱字・表記揺れを校正する
   /family-tree     — 戸籍謄本PDFから相続関係説明図を生成する
-  /template-create — XLSXの裁判所書式をテンプレートとして登録する
+  /template-install — 同梱書式（債権者一覧表・遺産目録・示談書等）をインストール
+  /template-create — 独自のXLSX書式をテンプレートとして登録する
   /template-fill   — 登録済みテンプレートにPDFからデータを自動入力する
   /lawsuit-analysis — 訴訟文書を分析しレポートを生成する
 

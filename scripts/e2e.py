@@ -469,8 +469,74 @@ def scenario_permissions(c: Case, sandbox: Path) -> None:
         c.ng("9.2 per-matter perms", f"mode={oct(per)}")
 
 
+def scenario_template_install(c: Case, sandbox: Path) -> None:
+    section("10a. Bundled template install: list + install + idempotency")
+    env = {"CLAUDE_BENGO_ROOT": str(sandbox)}
+    TEMPLATE_LIB = str(ROOT / "skills" / "_lib" / "template_lib.py")
+
+    # list (no matter needed)
+    rc, out, _ = run([PY, TEMPLATE_LIB, "list", "--format", "json"], env=env)
+    if rc != 0:
+        c.ng("10a.1 list bundled templates", f"rc={rc}")
+        return
+    entries = json.loads(out)
+    ids = {e["id"] for e in entries}
+    expected = {"creditor-list", "estate-inventory", "settlement-traffic"}
+    if expected.issubset(ids):
+        c.ok("10a.1 all 3 starter templates present in registry", f"ids={sorted(ids)}")
+    else:
+        c.ng("10a.1 starter templates present", f"missing={expected - ids}")
+
+    # install requires matter — use existing 'smith-v-jones' from scenario 1
+    rc, out, err = run(
+        [PY, TEMPLATE_LIB, "install", "creditor-list", "--matter", "smith-v-jones"],
+        env=env,
+    )
+    if rc == 0 and "creditor-list.yaml" in out and "creditor-list.xlsx" in out:
+        c.ok("10a.2 install copies YAML + XLSX to matter dir")
+    else:
+        c.ng("10a.2 install", f"rc={rc} out={out[:200]} err={err[:200]}")
+
+    # verify files exist at the destination
+    dst_dir = sandbox / "matters" / "smith-v-jones" / "templates"
+    if (dst_dir / "creditor-list.yaml").exists() and (dst_dir / "creditor-list.xlsx").exists():
+        c.ok("10a.3 installed files land in matter templates dir")
+    else:
+        c.ng("10a.3 installed files", f"contents={list(dst_dir.iterdir())}")
+
+    # re-install without --replace fails (exit 3)
+    rc, _, err = run(
+        [PY, TEMPLATE_LIB, "install", "creditor-list", "--matter", "smith-v-jones"],
+        env=env,
+    )
+    if rc == 3 and "既に" in err:
+        c.ok("10a.4 re-install without --replace refused", "exit 3")
+    else:
+        c.ng("10a.4 re-install refusal", f"rc={rc} err={err[:200]}")
+
+    # with --replace succeeds
+    rc, out, _ = run(
+        [PY, TEMPLATE_LIB, "install", "creditor-list", "--matter", "smith-v-jones", "--replace"],
+        env=env,
+    )
+    if rc == 0 and '"replaced": true' in out:
+        c.ok("10a.5 --replace overwrites")
+    else:
+        c.ng("10a.5 --replace", f"rc={rc} out={out[:200]}")
+
+    # install to nonexistent matter → error
+    rc, _, err = run(
+        [PY, TEMPLATE_LIB, "install", "creditor-list", "--matter", "ghost-matter"],
+        env=env,
+    )
+    if rc != 0 and "存在しない" in err:
+        c.ok("10a.6 install to ghost matter refused")
+    else:
+        c.ng("10a.6 ghost matter refusal", f"rc={rc} err={err[:200]}")
+
+
 def scenario_retention(c: Case, sandbox: Path) -> None:
-    section("10. Audit: KEEP env prunes old rotations")
+    section("10b. Audit: KEEP env prunes old rotations")
     log = sandbox / "keep-test-audit.jsonl"
     env = {
         "CLAUDE_BENGO_ROOT": str(sandbox),
@@ -512,6 +578,7 @@ def main() -> int:
         scenario_no_matter_refusal(c, sandbox)
         scenario_copy_file(c, sandbox)
         scenario_permissions(c, sandbox)
+        scenario_template_install(c, sandbox)
         scenario_retention(c, sandbox)
     finally:
         if args.keep:

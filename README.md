@@ -386,7 +386,8 @@ python3 ~/.claude/plugins/claude-bengo/skills/_lib/audit.py export --format csv 
 | `/matter-list` | 登録済み事案の一覧 + アクティブ事案表示 | — |
 | `/matter-switch` | 既定事案を切替 | — |
 | `/matter-info` | 事案詳細（テンプレート数・監査ログサイズ等） | — |
-| `/template-create` | XLSX書式をテンプレートとして登録 | ✅ |
+| `/template-install` | 同梱書式（裁判所書式雛形）をアクティブ事案にコピー | ✅ |
+| `/template-create` | ユーザー独自のXLSX書式をテンプレートとして登録 | ✅ |
 | `/template-list` | アクティブ事案のテンプレート一覧 | ✅ |
 | `/template-fill` | ソース文書からテンプレートに自動入力 | ✅ |
 | `/family-tree` | 戸籍謄本から相続関係説明図を生成 | ✅ |

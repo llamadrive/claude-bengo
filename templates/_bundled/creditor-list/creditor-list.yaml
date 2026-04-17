@@ -1,0 +1,57 @@
+id: creditor-list
+title: 債権者一覧表
+description: 自己破産・個人再生の申立に添付する債権者一覧表
+category: 破産・再生
+templateFile: creditor-list.xlsx
+fields:
+  - id: case_title
+    label: "事件名／申立人氏名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: submitted_date
+    label: "作成日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: creditors
+    label: "債権者一覧"
+    type: table
+    required: true
+    range:
+      headerRow: 6
+      dataStartRow: 7
+      startColumn: 1
+      endRow: 30
+      endColumn: 7
+    columns:
+      - id: no
+        label: "№"
+        type: number
+      - id: creditor_name
+        label: "債権者名"
+        type: text
+        description: "正式名称で記載"
+      - id: address
+        label: "住所"
+        type: text
+      - id: debt_kind
+        label: "債権の種類"
+        type: text
+        description: "例: 貸付金 / 立替金 / カードローン / 保証債務"
+      - id: principal
+        label: "元金"
+        type: number
+        description: "円単位"
+      - id: interest
+        label: "利息・遅延損害金"
+        type: number
+        description: "円単位"
+      - id: notes
+        label: "備考"
+        type: text
+        description: "連帯保証人・担保の有無等"

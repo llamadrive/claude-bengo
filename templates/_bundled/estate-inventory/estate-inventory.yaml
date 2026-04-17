@@ -1,0 +1,82 @@
+id: estate-inventory
+title: 遺産目録
+description: 遺産分割協議・相続放棄の検討に用いる財産目録
+category: 相続
+templateFile: estate-inventory.xlsx
+fields:
+  - id: decedent_name
+    label: "被相続人氏名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: death_date
+    label: "死亡年月日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: created_date
+    label: "作成日"
+    type: date
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: positive_assets
+    label: "積極財産（プラスの財産）"
+    type: table
+    required: true
+    range:
+      headerRow: 7
+      dataStartRow: 8
+      startColumn: 1
+      endRow: 25
+      endColumn: 5
+    columns:
+      - id: no
+        label: "№"
+        type: number
+      - id: asset_type
+        label: "種別"
+        type: text
+        description: "例: 預貯金 / 不動産 / 有価証券 / 動産"
+      - id: detail
+        label: "内容"
+        type: text
+        description: "金融機関・所在地・物件名等"
+      - id: value
+        label: "評価額(円)"
+        type: number
+      - id: notes
+        label: "備考"
+        type: text
+  - id: negative_assets
+    label: "消極財産（マイナスの財産）"
+    type: table
+    required: false
+    range:
+      headerRow: 28
+      dataStartRow: 29
+      startColumn: 1
+      endRow: 40
+      endColumn: 5
+    columns:
+      - id: no
+        label: "№"
+        type: number
+      - id: debt_type
+        label: "種別"
+        type: text
+        description: "例: 住宅ローン / 借入金 / 未払税金"
+      - id: creditor
+        label: "債権者"
+        type: text
+      - id: value
+        label: "金額(円)"
+        type: number
+      - id: notes
+        label: "備考"
+        type: text

@@ -1,0 +1,111 @@
+id: settlement-traffic
+title: 交通事故示談書（雛形）
+description: 交通事故の損害賠償請求に係る示談書の基本雛形。任意保険会社・加害者との直接交渉後の合意書面として使用する
+category: 交通事故
+templateFile: settlement-traffic.xlsx
+fields:
+  - id: victim_name
+    label: "被害者（甲）氏名"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 3
+  - id: victim_address
+    label: "被害者住所"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 3
+  - id: perpetrator_name
+    label: "加害者（乙）氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 3
+  - id: perpetrator_address
+    label: "加害者住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 3
+  - id: insurance_company
+    label: "加害者側保険会社"
+    type: text
+    required: false
+    position:
+      row: 7
+      column: 3
+  - id: accident_date
+    label: "事故発生日時"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 3
+  - id: accident_place
+    label: "事故発生場所"
+    type: text
+    required: true
+    position:
+      row: 10
+      column: 3
+  - id: accident_circumstances
+    label: "事故の態様"
+    type: textarea
+    required: true
+    position:
+      row: 11
+      column: 3
+  - id: injury
+    label: "被害者の傷害"
+    type: textarea
+    required: false
+    position:
+      row: 12
+      column: 3
+  - id: settlement_amount
+    label: "示談金総額(円)"
+    type: number
+    required: true
+    position:
+      row: 14
+      column: 3
+  - id: already_paid
+    label: "既払額(自賠責・任意保険等、円)"
+    type: number
+    required: false
+    position:
+      row: 15
+      column: 3
+  - id: net_payment
+    label: "本示談金による追加支払額(円)"
+    type: number
+    required: true
+    position:
+      row: 16
+      column: 3
+  - id: payment_method
+    label: "支払方法"
+    type: text
+    required: true
+    position:
+      row: 17
+      column: 3
+  - id: payment_deadline
+    label: "支払期限"
+    type: date
+    required: true
+    position:
+      row: 18
+      column: 3
+  - id: settlement_date
+    label: "示談成立日"
+    type: date
+    required: true
+    position:
+      row: 22
+      column: 3

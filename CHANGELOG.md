@@ -2,6 +2,66 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.1.0] - 2026-04-17
+
+Track A の最初のリリース: 同梱テンプレート・書式ライブラリの導入。
+SMB（tier 2/3 弁護士）が日々使う裁判所書式・実務書式を `/template-install`
+一撃でアクティブ matter に取り込めるようにした。
+
+### Added — 同梱テンプレートライブラリ
+
+- **`/template-install`** コマンド: プラグイン同梱の裁判所書式・実務雛形を
+  アクティブ matter にコピーする。一覧表示・インストール・上書き対応。
+- **`skills/_lib/template_lib.py`** (~340 行): レジストリ読込・インストール・
+  CLI。matter 未作成時は exit 2、上書き衝突は exit 3 で区別。
+- **`skills/_lib/xlsx_writer.py`** (~220 行): stdlib のみの最小 XLSX 書込器。
+  openpyxl 非依存。日本語セル値・結合セル・列幅・太字書式に対応。
+  @knorq/xlsx-mcp-server@2.0.0 での読み戻し互換性を確認済み。
+- **`scripts/build_bundled_forms.py`**: 同梱テンプレート YAML+XLSX 生成
+  スクリプト。今後の書式追加はここにビルダ関数を足すだけで済む。
+
+### Added — 同梱テンプレート 3 種（第一弾）
+
+| ID | カテゴリ | 用途 |
+|---|---|---|
+| `creditor-list` | 破産・再生 | 自己破産・個人再生申立の添付「債権者一覧表」（7 列: №/債権者名/住所/種類/元金/利息/備考） |
+| `estate-inventory` | 相続 | 遺産分割協議・限定承認に用いる「遺産目録」（積極財産＋消極財産の 2 テーブル） |
+| `settlement-traffic` | 交通事故 | 任意保険会社・加害者との直接交渉後の「示談書」雛形（当事者・事故内容・示談金・清算条項） |
+
+第二弾予定: 養育費算定表、離婚協議書雛形、未払残業代計算書、内容証明郵便
+雛形、訴状・答弁書・陳述書雛形、破産・個人再生申立書、労働審判申立書等。
+Track B（`/traffic-damage-calc` 等の決定論的計算）は別リリースで対応。
+
+### Added — E2E カバレッジ
+
+`scripts/e2e.py` に 6 件の新シナリオ:
+- 10a.1 レジストリ列挙
+- 10a.2 インストール→ YAML+XLSX コピー成立
+- 10a.3 ファイルが正しく matter dir に配置される
+- 10a.4 再インストールは `--replace` なしで拒否（exit 3）
+- 10a.5 `--replace` で上書き成功
+- 10a.6 存在しない matter へのインストールは拒否
+
+合計 34/34 pass（旧 28 + 新 6）。
+
+### Changed
+
+- `.claude-plugin/plugin.json`: 2.0.1 → 2.1.0
+
+### Docs
+
+- `commands/template-install.md`: コマンド定義
+- `templates/_bundled/_registry.yaml`: 同梱テンプレートレジストリ
+- この CHANGELOG エントリに予定リストを明記
+
+### Known limitations
+
+- 同梱 XLSX は参考レイアウト。**実際の裁判所書式と cell 単位で一致するとは
+  限らない。提出前に最新の裁判所ホームページ・法テラス様式を確認する運用が
+  必須**。このため registry には「提出前確認が必要」の但し書きを今後追加予定。
+- 現行 3 種は stdlib 生成のため書式の見栄えは最小限。高度な罫線・塗り潰し・
+  ヘッダ／フッタは次期バージョンで（必要なら openpyxl を optional dep に）。
+
 ## [2.0.1] - 2026-04-17
 
 v2.0.0 直後の triple-PE（Anthropic・OpenAI・Harvey）による再レビューで指摘された運用ハードニング項目を適用。Tier 2/3（solo/mid-market）向けの本番運用ブロッカーを全て解消。Tier 1（BigLaw）構造ブロッカーの一部も部分対応。

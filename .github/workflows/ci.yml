@@ -40,6 +40,12 @@ jobs:
       - name: Run law-search cache self-tests
         run: python3 skills/law-search/search.py self-test
 
+      - name: Run xlsx_writer self-tests
+        run: python3 skills/_lib/xlsx_writer.py
+
+      - name: Run template_lib registry integrity check
+        run: python3 skills/_lib/template_lib.py --self-test
+
       - name: Run end-to-end integration tests
         run: python3 scripts/e2e.py
 

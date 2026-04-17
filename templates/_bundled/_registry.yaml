@@ -1,0 +1,58 @@
+# claude-bengo 同梱テンプレートレジストリ
+#
+# このファイルは `/template-install` が参照する同梱テンプレートの索引である。
+# 新規テンプレートを追加する場合:
+#   1. `templates/_bundled/{id}/` ディレクトリを作成
+#   2. `{id}.yaml`（フィールド定義）と `{id}.xlsx`（XLSX 雛形）を置く
+#   3. 本ファイルに `- id: {id}` 以下のブロックを追加
+#
+# フィールド:
+#   id            — 同梱テンプレートの ID（英数字・ハイフン・アンダースコア）
+#   title         — 人間可読名（日本語）
+#   category      — 分類（民事訴訟 / 家事事件 / 交通事故 / 相続 / 労働 / 破産・再生 / 契約 等）
+#   description   — 用途の1-2文説明
+#   use_cases     — 実務での使用場面（複数行、オプショナル）
+#   legal_basis   — 法的根拠・準拠標準（オプショナル）
+#   author        — 作成者（LlamaDrive 同梱は LlamaDrive / Claude）
+#   version       — テンプレート版 (SemVer)
+#
+# 注意: 実際の裁判所書式と完全に一致しない場合がある。提出前に最新の
+# 裁判所ホームページで書式を確認すること。レイアウトは参考用。
+
+templates:
+
+  - id: creditor-list
+    title: 債権者一覧表
+    category: 破産・再生
+    description: 自己破産・個人再生申立に添付する債権者一覧表の雛形
+    use_cases: |
+      - 自己破産申立書に添付（破産法 20条・同施行規則 13条）
+      - 個人再生申立書に添付（民事再生法 221条）
+      - 任意整理交渉時の現状把握
+    legal_basis: 破産法・民事再生法の申立書添付書類
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: estate-inventory
+    title: 遺産目録
+    category: 相続
+    description: 遺産分割協議・相続放棄の検討に用いる財産目録
+    use_cases: |
+      - 遺産分割協議の前提資料
+      - 限定承認の申述書に添付（家事事件手続法 201条）
+      - 遺産分割審判の資料
+    legal_basis: 民法 896条以下（相続財産の範囲）、家事事件手続法 192条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: settlement-traffic
+    title: 交通事故示談書（雛形）
+    category: 交通事故
+    description: 交通事故の損害賠償請求に係る示談書の基本雛形
+    use_cases: |
+      - 任意保険会社との示談交渉後の合意書面
+      - 加害者との直接交渉後の合意書面
+      - 公正証書化前の草案
+    legal_basis: 民法 695条（和解）、民法 709条（不法行為）、自賠責保険法
+    author: LlamaDrive
+    version: "1.0.0"

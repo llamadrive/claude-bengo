@@ -2,6 +2,103 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.6.1] - 2026-04-17
+
+v2.6.0 直後の triple-PE（Anthropic・OpenAI・Harvey）による最終レビューで
+指摘された Tier 2 向けブロッカー・Harvey 競合分析上の demo 攻撃角度・
+Anthropic の minor hardening 項目を一括対応。これにより OpenAI は Tier 2
+フル承認、Harvey の 4 つの new demo 角度のうち 3 つが無効化される。
+
+### Security / Hardening
+
+- **V26-OPS-001** `skills/child-support-calc/calc.py`: `_child_index` と
+  `_validate` で bool/float の age を明示的に拒否。`age=19.5` → 15-19
+  指数として扱う silent bug を修正。`age=True` / `annual_income=True` も拒否。
+- **V26-OPS-002** `skills/debt-recalc/calc.py:102`: 取引 amount の
+  bool を明示的に拒否。`amount=True` → ¥1 取引として扱う silent bug を修正。
+- **V26-001** `skills/_lib/xlsx_writer.py:60-80`: `write_cell` 入力ガード。
+  `float('inf')` / `float('nan')` / 文字列内 NUL バイト を明示的に拒否。
+  Excel ファイル破損の future-proofing（build 時のみ呼ばれるため現時点では
+  live 攻撃面はない）。
+
+### Compliance / Audit
+
+- **V26-OPS-003 (Tier 2 ブロッカー)** 4 計算器と `/template-install` に
+  監査ログ hook を追加:
+  - `traffic-damage-calc/SKILL.md`: 計算前 `calc_run`、計算後 `calc_result`
+    （合計額内訳を note に）
+  - `child-support-calc/SKILL.md`: 同様に月額計算結果を記録
+  - `debt-recalc/SKILL.md`: 過払金額・残元本を記録
+  - `overtime-calc/SKILL.md`: 時効内未払額・遅延損害金を記録
+  - `commands/template-install.md`: インストール後に `file_write` を記録
+  - `audit.py` の `VALID_EVENTS` に `calc_run` と `calc_result` を追加
+  効果: ¥60M 養育費計算や ¥6M 過払金計算が無痕跡で実行される問題を解消。
+  法律事務所のコンプライアンス監査要件（弁護士会・法務部監査）を満たす。
+
+### Supply Chain Security (Harvey デモ対策)
+
+- **Template integrity manifest** `scripts/build_bundled_forms.py`:
+  `_write_manifest()` が `templates/_bundled/_manifest.sha256` を生成。
+  全 46 ファイル（23 × {yaml, xlsx}）の SHA-256 を記録。
+- **`template_lib.install_template()`**: `_verify_bundled_integrity()` で
+  install 前にマニフェストと照合。改ざん検知時は `ValueError` で停止し、
+  `/bengo-update` による再取得を案内。マニフェスト不在の場合は警告のみで
+  続行（後方互換）。
+- **`--skip-integrity` オプション**: 検証を明示的にスキップ（デバッグ用、
+  非推奨）。
+
+  Harvey の "template supply-chain swap" デモが機能しなくなる:
+  プラグイン配布後に `templates/_bundled/complaint-loan-repayment.yaml`
+  の field mapping を書き換えると install 時に hash mismatch で停止。
+
+### Entropy / Identity
+
+- **`audit.py` session ID bump** `secrets.token_hex(6)` → `secrets.token_hex(16)`:
+  48 bit → 128 bit。birthday collision 確率を ~16M セッションから ~18 兆兆
+  セッションに引き上げ。Harvey のデモで「session_id が 12 hex しかない」
+  との批判を無効化。
+
+### Documentation
+
+- **`RUNBOOK.md`** に「監査ログの保持ポリシー」セクションを追加。
+  事務所規模（solo / 小/中/大規模）別の `CLAUDE_BENGO_AUDIT_KEEP` 推奨値、
+  S3 Object Lock 等への外部エクスポート運用例（cron 日次）。
+- **`templates/_bundled/_registry.yaml` settlement-traffic**: 清算条項に
+  後遺障害カーブアウトを手動追加すべき旨を description に明記（Anthropic
+  のフォーム内容レビュー指摘対応）。
+
+### Tests
+
+- `child-support-calc/test_calc.py`: 23 tests (v2.6.0 の 20 + float/bool
+  age 拒否 + bool annual_income 拒否)
+- `debt-recalc/test_calc.py`: 16 tests (v2.6.0 の 15 + bool amount 拒否)
+- `xlsx_writer.py`: 4 tests (v2.6.0 の 3 + inf/NaN/NUL 拒否ガード)
+- E2E: 49/49 維持（test count 依存を "0 failed" チェックに切替え、release
+  ごとのメンテナンスを不要化）
+
+### PE Review Posture Summary
+
+- **Anthropic**: Approve → Approve（変化なし、V26-001 対応済み）
+- **OpenAI**: Tier 3 Approve / Tier 2 Conditional → Tier 3 Approve /
+  **Tier 2 Approve**（V26-OPS-001/002/003 対応済み）
+- **Harvey**: 🟡→🟠 competitive threat での 4 つの new demo 角度のうち
+  - ✅ Template supply-chain swap: 対応済（manifest 検証）
+  - ✅ Session ID collision: 対応済（entropy 48→128 bit）
+  - ✅ Calculator edge-case silent extrapolation: 部分対応（validation
+    強化で silent ではなくなる）
+  - ❌ 23-form PII exhaust: 構造的。US residency 対応が必要 → Tier 1 領域
+
+### 未対応（Tier 1 構造的ブロッカー、本 release 範囲外）
+
+- US data residency（Anthropic API)
+- SSO / 弁護士登録番号 binding
+- 企業 MSA / DPA 法人格
+- WORM 監査ログ（local 削除は依然可能、external export が前提）
+- iManage / D1-Law / Westlaw-Japan integration
+- 企業法務 (契約書レビュー・株主総会議事録) の深堀り
+
+いずれも Path C-enterprise（別 SaaS 製品）で対応する領域。
+
 ## [2.6.0] - 2026-04-17
 
 **Track B complete**: 2 つの残タスク `/debt-recalc`（利息制限法引き直し）と

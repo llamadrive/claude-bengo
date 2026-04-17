@@ -262,6 +262,48 @@ rm -rf ~/.claude-bengo/matters/{test-matter-id}
 
 ---
 
+## 監査ログの保持ポリシー（v2.6.1〜）
+
+複数の弁護士が日常的に使用する中規模事務所（30-50 人）では、監査ログの
+肥大化が運用上の問題になる可能性がある。以下のポリシー策定を推奨する:
+
+### ローテーション制御
+
+各 matter の `audit.jsonl` は 50 MB（既定）でローテートされ、履歴ファイル
+として `audit.jsonl.YYYYMMDDTHHMMSS` に切り出される。
+
+**環境変数 `CLAUDE_BENGO_AUDIT_KEEP`** で保持する履歴数を制御できる:
+
+```bash
+# 直近 10 世代のみ保持（古いローテート済みは自動削除）
+export CLAUDE_BENGO_AUDIT_KEEP=10
+```
+
+### 規模別推奨値
+
+| 事務所規模 | CLAUDE_BENGO_AUDIT_KEEP | 備考 |
+|---|---|---|
+| solo (1-5 人) | 未設定（無制限保持） | ディスク圧迫の心配なし |
+| 小規模 (6-30 人) | 20 | 約 1 GB/matter が上限 |
+| 中規模 (31-100 人) | 10 | 別途外部ストレージ（S3 Object Lock 等）への定期エクスポート必須 |
+| 大規模 (100 人超) | 5 | 外部 WORM ストレージ連携を前提とする運用 |
+
+### 外部エクスポート（推奨）
+
+中規模以上では、監査ログをローカル保持するだけでなく、顧客管理の
+追記専用ストレージ（S3 Object Lock / Azure Immutable Storage 等）に
+定期エクスポートすることを強く推奨する。これによりハッシュチェーンの
+整合性を外部ポイントで検証でき、`rm -rf` による履歴抹消のリスクが下がる。
+
+エクスポートスクリプト例（cron で日次実行）:
+
+```bash
+python3 ~/.claude/plugins/claude-bengo/skills/_lib/audit.py export \
+  --format csv --since $(date -v-1d +%Y-%m-%d) \
+  > /path/to/export/audit-$(date +%Y-%m-%d).csv
+# その後、aws s3 cp で Object Lock 有効なバケットへアップロード
+```
+
 ## 本番運用に移す前の追加確認
 
 - [ ] `~/.claude-bengo/` が `0o700` になっていること（`ls -ld ~/.claude-bengo/`）

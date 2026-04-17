@@ -37,6 +37,7 @@ from typing import Dict, List, Optional
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent
 BUNDLED_DIR = PLUGIN_ROOT / "templates" / "_bundled"
 REGISTRY_FILE = BUNDLED_DIR / "_registry.yaml"
+MANIFEST_FILE = BUNDLED_DIR / "_manifest.sha256"
 
 # 同梱テンプレート ID は conservative regex（ファイルシステム安全）
 BUNDLED_ID_RE = re.compile(r"^[a-z0-9][-a-z0-9_]{0,63}$")
@@ -187,6 +188,83 @@ def find_template(bundled_id: str) -> Optional[Dict[str, str]]:
 
 
 # ---------------------------------------------------------------------------
+# マニフェスト検証（v2.6.1〜）
+#
+# プラグインクローン後に悪意ある第三者が templates/_bundled/ 配下の
+# YAML/XLSX を書き換える「テンプレートすり替え攻撃」を検知する。
+# マニフェストは `scripts/build_bundled_forms.py` により生成され、
+# リポジトリに git 追跡される。install 時に対象ファイルの SHA-256 を
+# 計算し、マニフェスト記載のハッシュと照合する。
+# ---------------------------------------------------------------------------
+
+
+def _load_manifest() -> Dict[str, str]:
+    """`_manifest.sha256` を読んで {相対パス: sha256} の dict を返す。
+
+    マニフェストが存在しない場合は空 dict（後方互換。install は警告付きで続行）。
+    """
+    if not MANIFEST_FILE.exists():
+        return {}
+    result: Dict[str, str] = {}
+    try:
+        for line in MANIFEST_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split(None, 1)
+            if len(parts) == 2:
+                result[parts[1]] = parts[0]
+    except OSError:
+        return {}
+    return result
+
+
+def _sha256(path: Path) -> str:
+    """ファイルの SHA-256（16進）を返す。"""
+    import hashlib
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _verify_bundled_integrity(bundled_id: str) -> Optional[str]:
+    """指定テンプレートのファイルがマニフェストと一致するか検証する。
+
+    戻り値:
+        None: 整合（またはマニフェスト未整備で検証スキップ）
+        str : 不一致の詳細メッセージ
+    """
+    manifest = _load_manifest()
+    if not manifest:
+        # 古いクローン等でマニフェストがない。install は続行するが警告。
+        print(
+            "WARN: _manifest.sha256 が存在しない。テンプレート整合性検証をスキップする。",
+            file=sys.stderr,
+        )
+        return None
+
+    for ext in ("yaml", "xlsx"):
+        rel = f"{bundled_id}/{bundled_id}.{ext}"
+        expected = manifest.get(rel)
+        if not expected:
+            return f"マニフェストに {rel} のエントリがない（同梱ファイルが不完全）"
+        full = BUNDLED_DIR / rel
+        if not full.exists():
+            return f"{rel} が存在しない"
+        actual = _sha256(full)
+        if actual != expected:
+            return (
+                f"テンプレート '{bundled_id}' のファイル {rel} が改ざんされている可能性がある。\n"
+                f"  expected: {expected}\n"
+                f"  actual  : {actual}\n"
+                f"プラグインを /bengo-update で再取得することを検討してほしい。"
+            )
+    return None
+
+
+# ---------------------------------------------------------------------------
 # インストール
 # ---------------------------------------------------------------------------
 
@@ -195,10 +273,11 @@ def install_template(
     bundled_id: str,
     matter_id: str,
     replace: bool = False,
+    skip_integrity: bool = False,
 ) -> Dict[str, str]:
     """同梱テンプレートを matter のテンプレートディレクトリへコピーする。
 
-    戻り値: {yaml_dst, xlsx_dst, matter_id, bundled_id, replaced}
+    戻り値: {yaml_dst, xlsx_dst, matter_id, bundled_id, replaced, integrity_verified}
     """
     matter = _load_matter()
 
@@ -213,6 +292,14 @@ def install_template(
     entry = find_template(bundled_id)
     if not entry:
         raise ValueError(f"同梱テンプレート '{bundled_id}' は見つからない。/template-install で一覧を確認してほしい。")
+
+    # 整合性検証（v2.6.1〜）
+    integrity_verified = False
+    if not skip_integrity:
+        err = _verify_bundled_integrity(bundled_id)
+        if err:
+            raise ValueError(f"テンプレート整合性検証失敗: {err}")
+        integrity_verified = MANIFEST_FILE.exists()
 
     src_yaml = Path(entry["_yaml_path"])
     src_xlsx = Path(entry["_xlsx_path"])
@@ -240,6 +327,7 @@ def install_template(
         "yaml_dst": str(dst_yaml),
         "xlsx_dst": str(dst_xlsx),
         "replaced": replace,
+        "integrity_verified": integrity_verified,
     }
 
 
@@ -296,7 +384,12 @@ def _cmd_install(args: argparse.Namespace) -> int:
     # 「matter が存在しない」エラーを出させる（exit 1）
 
     try:
-        result = install_template(args.bundled_id, mid, replace=args.replace)
+        result = install_template(
+            args.bundled_id,
+            mid,
+            replace=args.replace,
+            skip_integrity=getattr(args, "skip_integrity", False),
+        )
     except (ValueError, FileNotFoundError) as e:
         print(json.dumps({"error": str(e)}, ensure_ascii=False), file=sys.stderr)
         return 1
@@ -360,6 +453,11 @@ def main() -> int:
     p_inst.add_argument("bundled_id")
     p_inst.add_argument("--matter", help="matter を明示指定（省略時は resolve 結果）")
     p_inst.add_argument("--replace", action="store_true", help="既存を上書き")
+    p_inst.add_argument(
+        "--skip-integrity",
+        action="store_true",
+        help="マニフェスト検証をスキップ（非推奨、デバッグ用）",
+    )
 
     args = ap.parse_args()
 

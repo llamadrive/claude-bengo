@@ -54,8 +54,22 @@ version: 1.0.0
 
 ### Step 3: 計算実行
 
+**計算実行前に監査ログに記録する（法律事務所のコンプライアンス要件。過払金額が高額になる可能性があるため必須）:**
+
+```bash
+python3 skills/_lib/audit.py record --matter {matter_id} --skill debt-recalc --event calc_run --note "取引件数: {N} / 相手方: {creditor}"
+```
+
+続いて計算実行:
+
 ```bash
 python3 skills/debt-recalc/calc.py calc --pretty --json '<payload>'
+```
+
+結果提示後、主要数値を監査ログに記録:
+
+```bash
+python3 skills/_lib/audit.py record --matter {matter_id} --skill debt-recalc --event calc_result --note "残元本={remaining_principal} 過払金={overpayment_principal} 過払金利息={overpayment_interest}"
 ```
 
 入力 JSON 例:

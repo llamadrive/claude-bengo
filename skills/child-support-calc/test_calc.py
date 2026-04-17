@@ -361,6 +361,48 @@ def test_19_spousal_support_2children() -> bool:
     )
 
 
+def test_21_reject_float_age() -> bool:
+    """age=19.5 は拒否される (V26-OPS-001)."""
+    try:
+        compute({
+            "kind": "child_support",
+            "obligor": {"annual_income": 500_0000, "income_type": "salary"},
+            "obligee": {"annual_income": 0, "income_type": "salary"},
+            "children": [{"age": 19.5}],
+        })
+        return _check("21. float age 拒否", False, "拒否されなかった")
+    except ValueError as e:
+        return _check("21. float age 拒否 (V26-OPS-001)", "整数" in str(e))
+
+
+def test_22_reject_bool_age() -> bool:
+    """age=True は拒否される (V26-OPS-001)."""
+    try:
+        compute({
+            "kind": "child_support",
+            "obligor": {"annual_income": 500_0000, "income_type": "salary"},
+            "obligee": {"annual_income": 0, "income_type": "salary"},
+            "children": [{"age": True}],
+        })
+        return _check("22. bool age 拒否", False)
+    except ValueError as e:
+        return _check("22. bool age 拒否 (V26-OPS-001)", "bool" in str(e) or "整数" in str(e))
+
+
+def test_23_reject_bool_income() -> bool:
+    """annual_income=True は拒否."""
+    try:
+        compute({
+            "kind": "child_support",
+            "obligor": {"annual_income": True, "income_type": "salary"},
+            "obligee": {"annual_income": 0, "income_type": "salary"},
+            "children": [{"age": 10}],
+        })
+        return _check("23. bool annual_income 拒否", False)
+    except ValueError as e:
+        return _check("23. bool annual_income 拒否", True)
+
+
 def test_20_obligor_income_brackets_progression() -> bool:
     """同じ子・同じ権利者収入で義務者年収が上がると月額も増加すること."""
     base_payload = {
@@ -405,6 +447,9 @@ def run_all() -> int:
         test_18_three_children,
         test_19_spousal_support_2children,
         test_20_obligor_income_brackets_progression,
+        test_21_reject_float_age,
+        test_22_reject_bool_age,
+        test_23_reject_bool_income,
     ]
     passed = sum(1 for t in tests if t())
     total = len(tests)

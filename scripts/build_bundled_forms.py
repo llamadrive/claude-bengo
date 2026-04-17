@@ -1999,6 +1999,39 @@ def build_spousal_support_application(out_dir: Path) -> None:
     wb.save(out_dir / f"{tid}.xlsx")
 
 
+def _write_manifest() -> None:
+    """全同梱テンプレートの SHA-256 マニフェストを書き出す。
+
+    install 時に `template_lib.py` が検証する。マニフェスト自体は git
+    追跡されるため、リポジトリ経由の改ざん（例: 悪意あるマージ）は
+    git log で検出可能になる。
+    """
+    import hashlib
+
+    manifest_lines: List[str] = [
+        "# claude-bengo bundled template manifest",
+        "# 形式: <sha256>  <相対パス>",
+        "# このファイルは build_bundled_forms.py により自動生成される。手動編集禁止。",
+        "# 改ざん検知用途: /template-install で verify される。",
+        "",
+    ]
+    for entry in sorted(BUNDLED.iterdir()):
+        if not entry.is_dir():
+            continue
+        for f in sorted(entry.iterdir()):
+            if not f.is_file():
+                continue
+            rel = f.relative_to(BUNDLED)
+            h = hashlib.sha256()
+            with f.open("rb") as fp:
+                for chunk in iter(lambda: fp.read(65536), b""):
+                    h.update(chunk)
+            manifest_lines.append(f"{h.hexdigest()}  {rel}")
+    manifest_path = BUNDLED / "_manifest.sha256"
+    manifest_path.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
+    print(f"  [OK] wrote manifest with {len(manifest_lines) - 5} entries → {manifest_path}")
+
+
 def main() -> int:
     builders = [
         # Phase 1 (v2.1.0)
@@ -2034,6 +2067,7 @@ def main() -> int:
         builder(out_dir)
         print(f"  [OK] {tid} → {out_dir}")
     print(f"\nbuilt {len(builders)} bundled forms")
+    _write_manifest()
     return 0
 
 

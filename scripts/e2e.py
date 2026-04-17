@@ -619,8 +619,8 @@ def scenario_traffic_damage_calc(c: Case, sandbox: Path) -> None:
 
     # --self-test runs 20-case internal suite
     rc, out, _ = run([PY, TDC, "--self-test"], timeout=30)
-    if rc == 0 and "20 passed" in out:
-        c.ok("11.3 内蔵 self-test 20/20")
+    if rc == 0 and "0 failed" in out:
+        c.ok("11.3 内蔵 self-test (all pass)")
     else:
         c.ng("11.3 self-test", f"rc={rc}")
 
@@ -677,10 +677,10 @@ def scenario_child_support_calc(c: Case, sandbox: Path) -> None:
     else:
         c.ng("12.4 age validation", f"rc={rc}")
 
-    # Self-test 20/20
+    # Self-test (count updated per release, just check pass success)
     rc, out, _ = run([PY, CSC, "--self-test"], timeout=30)
-    if rc == 0 and "20 passed" in out:
-        c.ok("12.5 内蔵 self-test 20/20")
+    if rc == 0 and "0 failed" in out:
+        c.ok("12.5 内蔵 self-test (all pass)")
     else:
         c.ng("12.5 self-test", f"rc={rc}")
 
@@ -709,8 +709,8 @@ def scenario_debt_recalc(c: Case, sandbox: Path) -> None:
         c.ng("13.1 debt-recalc", f"rc={rc} err={err[:200]}")
 
     rc, out, _ = run([PY, DR, "--self-test"], timeout=30)
-    if rc == 0 and "15 passed" in out:
-        c.ok("13.2 内蔵 self-test 15/15")
+    if rc == 0 and "0 failed" in out:
+        c.ok("13.2 内蔵 self-test (all pass)")
     else:
         c.ng("13.2 self-test", f"rc={rc}")
 
@@ -738,8 +738,8 @@ def scenario_overtime_calc(c: Case, sandbox: Path) -> None:
         c.ng("14.1 overtime-calc", f"rc={rc} err={err[:200]}")
 
     rc, out, _ = run([PY, OC, "--self-test"], timeout=30)
-    if rc == 0 and "16 passed" in out:
-        c.ok("14.2 内蔵 self-test 16/16")
+    if rc == 0 and "0 failed" in out:
+        c.ok("14.2 内蔵 self-test (all pass)")
     else:
         c.ng("14.2 self-test", f"rc={rc}")
 

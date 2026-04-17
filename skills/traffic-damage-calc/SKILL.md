@@ -98,10 +98,22 @@ python3 skills/_lib/matter.py resolve
 
 ### Step 7: 計算実行
 
-収集した情報を JSON にまとめて `calc.py` を呼び出す:
+**計算実行前に、監査ログにイベントを記録する（法律事務所のコンプライアンス要件）:**
+
+```bash
+python3 skills/_lib/audit.py record --matter {matter_id} --skill traffic-damage-calc --event calc_run --note "被害者: {victim_name} / 等級: {disability_grade or 'なし'}"
+```
+
+続いて、収集した情報を JSON にまとめて `calc.py` を呼び出す:
 
 ```bash
 python3 skills/traffic-damage-calc/calc.py calc --pretty --json '<heir-json>'
+```
+
+計算結果（合計額）をユーザーに提示した後、結果の主要数値を監査ログに記録する:
+
+```bash
+python3 skills/_lib/audit.py record --matter {matter_id} --skill traffic-damage-calc --event calc_result --note "grand_total={合計額} / 内訳: 慰謝料={hosp_consol}/逸失利益={future_loss}"
 ```
 
 入力 JSON 例:

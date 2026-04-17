@@ -1,6 +1,6 @@
 ---
 description: 同梱テンプレート（裁判所書式雛形）をアクティブ matter にインストールする
-allowed-tools: Read, Bash(python3 skills/_lib/template_lib.py:*), Bash(python3 skills/_lib/matter.py:*)
+allowed-tools: Read, Bash(python3 skills/_lib/template_lib.py:*), Bash(python3 skills/_lib/matter.py:*), Bash(python3 skills/_lib/audit.py:*)
 ---
 
 プラグインに同梱されている裁判所書式・実務書式の雛形（債権者一覧表、遺産目録、交通事故示談書等）をアクティブ matter のテンプレートディレクトリにコピーする。コピー後は `/template-fill` から選択・利用できる。
@@ -45,6 +45,12 @@ python3 skills/_lib/template_lib.py install <bundled-id>
 ```
 
 戻り値 JSON の `yaml_dst` と `xlsx_dst` にコピーされる。`--replace` なしで既存と衝突した場合はエラー（exit 3）。上書きしたい場合はユーザーに確認し、承諾されれば `--replace` 付きで再実行する。
+
+**インストール成功後、監査ログに記録する（法律事務所のコンプライアンス要件）:**
+
+```bash
+python3 skills/_lib/audit.py record --matter {matter_id} --skill template-install --event file_write --file "{bundled-id}.yaml,{bundled-id}.xlsx" --note "installed from bundled library"
+```
 
 ### Step 4: 完了案内
 

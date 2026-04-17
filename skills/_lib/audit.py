@@ -124,6 +124,9 @@ VALID_EVENTS = {
     "command_start",
     "command_end",
     "rotation",
+    # v2.6.1 計算器コンプライアンスイベント
+    "calc_run",      # 決定論計算器の実行開始
+    "calc_result",   # 計算結果（金額等の主要数値）
 }
 
 # `/dev/null` 相当として扱うパス。`os.devnull` は POSIX では `/dev/null`、
@@ -250,7 +253,7 @@ def _get_session_id() -> str:
                 if cached:
                     return cached
         # 新規生成
-        sid = secrets.token_hex(6)
+        sid = secrets.token_hex(16)
         SESSION_ID_FILE.write_text(sid, encoding="utf-8")
         try:
             os.chmod(SESSION_ID_FILE, 0o600)
@@ -259,7 +262,7 @@ def _get_session_id() -> str:
         return sid
     except OSError:
         # ファイル書込に失敗した場合でも ID は返す（監査を止めない）
-        return secrets.token_hex(6)
+        return secrets.token_hex(16)
 
 
 def _iso_now() -> str:

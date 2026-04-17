@@ -142,7 +142,16 @@ def _basic_income(annual_income: int, income_type: str) -> Tuple[int, Fraction, 
 
 
 def _child_index(age: int) -> int:
-    """子の生活費指数（令和元年改定）。"""
+    """子の生活費指数（令和元年改定）。
+
+    型チェック: bool と float を明示的に拒否する。Python では bool は int の
+    サブクラスで `True == 1`、また `19.5` のような小数年齢は扶養指数として
+    意味がない。
+    """
+    if isinstance(age, bool) or not isinstance(age, int):
+        raise ValueError(
+            f"子の年齢は整数でなければならない（bool/float は不可、受信型: {type(age).__name__}、値: {age}）"
+        )
     if age < 0:
         raise ValueError(f"子の年齢は 0 以上（受信: {age}）")
     if age >= 20:
@@ -172,8 +181,9 @@ def _validate(payload: dict) -> None:
         if not isinstance(p, dict):
             raise ValueError(f"{party} フィールドが不正")
         income = p.get("annual_income")
-        if not isinstance(income, int) or income < 0:
-            raise ValueError(f"{party}.annual_income は 0 以上の整数（受信: {income}）")
+        # bool は int のサブクラスだが年収として意味をなさないため除外
+        if isinstance(income, bool) or not isinstance(income, int) or income < 0:
+            raise ValueError(f"{party}.annual_income は 0 以上の整数（受信: {income!r}）")
         if p.get("income_type") not in ("salary", "business"):
             raise ValueError(f"{party}.income_type は 'salary' または 'business'")
 
@@ -186,6 +196,11 @@ def _validate(payload: dict) -> None:
     for i, c in enumerate(children):
         if not isinstance(c, dict) or "age" not in c:
             raise ValueError(f"children[{i}] に age が必要")
+        age = c["age"]
+        if isinstance(age, bool) or not isinstance(age, int):
+            raise ValueError(
+                f"children[{i}].age は整数（bool/float 不可、受信型: {type(age).__name__}、値: {age!r}）"
+            )
 
 
 # ---------------------------------------------------------------------------

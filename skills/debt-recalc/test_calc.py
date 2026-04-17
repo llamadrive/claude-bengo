@@ -291,6 +291,19 @@ def test_15_partial_interest_payment() -> bool:
     )
 
 
+def test_16_reject_bool_amount() -> bool:
+    """amount=True は拒否 (V26-OPS-002). bool は int のサブクラスだが取引金額として無意味."""
+    try:
+        recalculate({
+            "transactions": [
+                {"date": "2020-01-01", "type": "borrowing", "amount": True},
+            ]
+        })
+        return _check("16. bool amount 拒否", False, "拒否されなかった")
+    except ValueError as e:
+        return _check("16. bool amount 拒否 (V26-OPS-002)", "bool" in str(e) or "正の整数" in str(e))
+
+
 def run_all() -> int:
     print("debt-recalc self-test\n")
     tests = [
@@ -309,6 +322,7 @@ def run_all() -> int:
         test_13_same_day_ordering,
         test_14_zero_days_no_interest,
         test_15_partial_interest_payment,
+        test_16_reject_bool_amount,
     ]
     passed = sum(1 for t in tests if t())
     total = len(tests)

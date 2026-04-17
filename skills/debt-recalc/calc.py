@@ -99,8 +99,11 @@ def _validate(payload: dict) -> List[dict]:
         if ttype not in VALID_TYPES:
             raise ValueError(f"transactions[{i}].type は 'borrowing' または 'payment'")
         amount = t.get("amount")
-        if not isinstance(amount, int) or amount <= 0:
-            raise ValueError(f"transactions[{i}].amount は正の整数が必要")
+        # bool は int のサブクラスだが取引金額として意味をなさないため除外
+        if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
+            raise ValueError(
+                f"transactions[{i}].amount は正の整数が必要（bool/float 不可、受信: {amount!r}）"
+            )
         normalized.append({"date": date, "type": ttype, "amount": amount})
 
     # 日付昇順、同一日は借入→弁済の順に

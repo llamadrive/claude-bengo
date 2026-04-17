@@ -74,8 +74,22 @@ version: 1.0.0
 
 ### Step 4: 計算実行
 
+**計算実行前に監査ログに記録する（法律事務所のコンプライアンス要件）:**
+
+```bash
+python3 skills/_lib/audit.py record --matter {matter_id} --skill overtime-calc --event calc_run --note "労働者: {name} / 使用者: {employer} / 月数: {N}"
+```
+
+続いて計算実行:
+
 ```bash
 python3 skills/overtime-calc/calc.py calc --pretty --json '<payload>'
+```
+
+結果提示後、主要数値を監査ログに記録:
+
+```bash
+python3 skills/_lib/audit.py record --matter {matter_id} --skill overtime-calc --event calc_result --note "時効内未払額={total_within_statute}円 / 遅延損害金={delay_interest}円"
 ```
 
 入力 JSON 例:

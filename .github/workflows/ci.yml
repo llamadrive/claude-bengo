@@ -31,6 +31,9 @@ jobs:
       - name: Run inheritance-calc unit tests (explicit)
         run: python3 skills/inheritance-calc/test_calc.py
 
+      - name: Run traffic-damage-calc unit tests
+        run: python3 skills/traffic-damage-calc/test_calc.py
+
       - name: Run matter.py self-tests
         run: python3 skills/_lib/matter.py --self-test
 

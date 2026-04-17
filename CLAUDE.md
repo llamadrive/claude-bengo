@@ -21,6 +21,9 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
   /template-fill   — 登録済みテンプレートにPDFからデータを自動入力する
   /lawsuit-analysis — 訴訟文書を分析しレポートを生成する
 
+■ 機密データ対応のコマンド（アクティブ事案が必要）:
+  /traffic-damage-calc — 交通事故損害賠償を赤い本基準で決定論的に計算する
+
 ■ 事案設定不要なコマンド:
   /law-search      — e-Gov法令APIから条文を検索・参照する（2,078法令対応）
   /inheritance-calc — 法定相続分を決定論的に計算する

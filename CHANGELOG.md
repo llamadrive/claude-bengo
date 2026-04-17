@@ -2,6 +2,82 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.4.0] - 2026-04-17
+
+Track B-1: `/traffic-damage-calc` — 交通事故損害賠償の決定論的計算器。
+SMB 弁護士の最大収益源（全業務の約 20%）である交通事故実務の中心となる
+計算を、赤い本基準で正確に自動化する。`/inheritance-calc` のアーキテクチャ
+をそのまま踏襲。
+
+### Added — traffic-damage-calc
+
+- **`skills/traffic-damage-calc/calc.py`** (~540 行): 赤い本基準の決定論的
+  計算エンジン。Fraction ベースの exact math で丸め誤差なし
+- **`skills/traffic-damage-calc/test_calc.py`** (20 tests pass): 軽症むち打ち、
+  中等症、14級/12級後遺障害、主婦休業損害、死亡逸失利益、過失相殺、
+  弁護士費用、遅延損害金等、実務で典型的なケースを網羅
+- **`skills/traffic-damage-calc/references/akai-hon.md`**: 赤い本の主要テーブル
+  参照（入通院慰謝料別表 I/II、後遺障害慰謝料、労働能力喪失率、死亡慰謝料、
+  生活費控除率、Leibniz 係数、入院雑費・付添看護費）
+- **`skills/traffic-damage-calc/SKILL.md`**: matter 解決・9 ステップの対話
+  ワークフロー
+- **`commands/traffic-damage-calc.md`**: `/traffic-damage-calc` slash command
+
+### 計算対象
+
+- **積極損害**: 治療費・通院交通費・装具費・入院雑費 (1,500 円/日)・
+  付添看護費 (入院 6,500 円/日、通院 3,300 円/日)
+- **休業損害**: 職業別の日額計算（給与所得者・自営業・主婦は賃金センサス
+  女性全年齢平均 399 万円/年）
+- **後遺障害逸失利益**: 基礎収入 × 労働能力喪失率 × Leibniz 係数（年利 3%、
+  改正民法 404 条準拠）
+- **死亡逸失利益**: 基礎収入 × (1 - 生活費控除率) × Leibniz 係数
+- **入通院慰謝料**: 赤い本別表 I（骨折等・他覚所見あり）／ II（むち打ち等・
+  他覚所見なし）を通院月数 × 入院月数でクロス参照
+- **後遺障害慰謝料**: 等級 1 (2,800 万円) 〜 14 (110 万円)
+- **死亡慰謝料**: 家計支持者 2,800 万 / 母親・配偶者 2,500 万 / その他 2,200 万
+- **弁護士費用**: 認容額の 10% (判例実務、民法 709 条類推)
+- **遅延損害金**: 年 3% × 事故日からの日数
+- **過失相殺**: 被害者過失 0-100% を損害元本から控除 (民法 722 条 2 項)
+
+### バリデーション
+
+- 等級は 1-14 のみ（範囲外は ValueError）
+- 過失割合は 0-100（範囲外は ValueError）
+- 年齢は 0-120（範囲外は ValueError）
+- 職業は `salaried` / `self_employed` / `household` / `student` / `unemployed` / `part_time`
+
+### 対応範囲外（明示）
+
+- 介護費用（将来介護）
+- 家屋・車両改造費
+- 損益相殺（自賠責既払額・労災・健康保険）— 別途控除
+- 物損（修理費・代車料・評価損）
+- 任意保険基準・青本基準
+
+### Verification
+
+- `test_calc.py`: 20/20 pass（軽症〜重篤、過失相殺、弁護士費用、遅延損害金）
+- E2E シナリオ 11.1-11.3: 12 級実務ケース合計額（21-23M 範囲内）、入力
+  バリデーション、内蔵 self-test を CI で毎回実行
+- 合計: 40/40 pass (v2.3.0 の 37 + 新規 3)
+
+### 運用メモ
+
+`settlement-traffic` テンプレートと組み合わせて使う想定:
+
+```
+/matter-create          — 事案作成
+/template-install settlement-traffic   — 示談書雛形をインストール
+/traffic-damage-calc    — 損害額を決定論的に計算
+/template-fill          — 計算結果を示談書に転記
+```
+
+Track B 今後の予定:
+- `/child-support-calc` — 令和元年改定・養育費/婚姻費用算定表（家事事件）
+- `/debt-recalc` — 利息制限法引き直し計算（破産・再生）
+- `/overtime-calc` — 労基法 37 条の割増賃金計算（労働）
+
 ## [2.3.0] - 2026-04-17
 
 Track A Phase 3: 同梱テンプレートを 13 → 23 種に拡充。家事事件の調停系・

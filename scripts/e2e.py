@@ -575,6 +575,56 @@ def scenario_template_install(c: Case, sandbox: Path) -> None:
         c.ng("10a.8 Phase-3 files", f"got={names}")
 
 
+def scenario_traffic_damage_calc(c: Case, sandbox: Path) -> None:
+    section("11. Track B: traffic-damage-calc")
+    TDC = str(ROOT / "skills" / "traffic-damage-calc" / "calc.py")
+
+    # Realistic 12 級 scenario
+    payload = {
+        "victim": {
+            "name": "甲野太郎", "age_at_accident": 35, "gender": "male",
+            "occupation_type": "salaried", "annual_income": 5_000_000,
+            "is_household_supporter": True,
+        },
+        "accident": {"date": "2024-04-01", "victim_fault_percent": 10},
+        "medical": {
+            "hospital_days": 30, "outpatient_days": 180,
+            "medical_fees": 1_500_000, "transportation": 50_000, "equipment": 30_000,
+            "nursing_days_hospital": 10, "severity": "major",
+        },
+        "lost_wages": {"days_off_work": 90},
+        "disability": {"grade": 12, "years_until_67": 32},
+        "options": {"include_lawyer_fee": True, "include_delay_interest": False},
+    }
+    rc, out, err = run([PY, TDC, "calc", "--json", json.dumps(payload)])
+    if rc == 0:
+        r = json.loads(out)
+        # Grand total should be in the ballpark for this case (21M - 23M range)
+        gt = r["summary"]["grand_total"]
+        if 21_000_000 <= gt <= 23_000_000:
+            c.ok("11.1 12級後遺障害シナリオ合計額が実務範囲内", f"grand_total={gt:,}")
+        else:
+            c.ng("11.1 12級 grand_total", f"got {gt:,}")
+    else:
+        c.ng("11.1 calc invocation", f"rc={rc} err={err[:200]}")
+
+    # Invalid input rejected
+    bad_payload = {"victim": {"age_at_accident": -5, "gender": "male", "occupation_type": "salaried"},
+                   "accident": {"date": "2024-04-01", "victim_fault_percent": 0}}
+    rc, _, err = run([PY, TDC, "calc", "--json", json.dumps(bad_payload)])
+    if rc != 0 and "age_at_accident" in err:
+        c.ok("11.2 入力バリデーション（負の年齢）")
+    else:
+        c.ng("11.2 validation", f"rc={rc} err={err[:200]}")
+
+    # --self-test runs 20-case internal suite
+    rc, out, _ = run([PY, TDC, "--self-test"], timeout=30)
+    if rc == 0 and "20 passed" in out:
+        c.ok("11.3 内蔵 self-test 20/20")
+    else:
+        c.ng("11.3 self-test", f"rc={rc}")
+
+
 def scenario_retention(c: Case, sandbox: Path) -> None:
     section("10b. Audit: KEEP env prunes old rotations")
     log = sandbox / "keep-test-audit.jsonl"
@@ -619,6 +669,7 @@ def main() -> int:
         scenario_copy_file(c, sandbox)
         scenario_permissions(c, sandbox)
         scenario_template_install(c, sandbox)
+        scenario_traffic_damage_calc(c, sandbox)
         scenario_retention(c, sandbox)
     finally:
         if args.keep:

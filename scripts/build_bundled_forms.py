@@ -1999,6 +1999,574 @@ def build_spousal_support_application(out_dir: Path) -> None:
     wb.save(out_dir / f"{tid}.xlsx")
 
 
+# ---------------------------------------------------------------------------
+# Form 24: 株主総会議事録 (shareholder-meeting-minutes)
+#
+# 法的根拠: 会社法 318 条（議事録の作成・備置）、施行規則 72 条
+# 要件: 会社の本店に 10 年間備置。支店に写し 5 年間。
+# 署名: 出席役員が記名押印（実務）
+# ---------------------------------------------------------------------------
+
+
+def build_shareholder_meeting_minutes(out_dir: Path) -> None:
+    tid = "shareholder-meeting-minutes"
+    yaml_doc = {
+        "id": tid,
+        "title": "株主総会議事録",
+        "description": "定時・臨時株主総会の議事録雛形（会社法 318 条、施行規則 72 条）",
+        "category": "企業法務",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "company_name", "label": "会社名", "type": "text", "required": True, "position": {"row": 2, "column": 2}},
+            {"id": "meeting_type", "label": "総会種別", "type": "select", "required": True, "position": {"row": 3, "column": 2}, "options": ["定時株主総会", "臨時株主総会"]},
+            {"id": "meeting_date", "label": "開催日時", "type": "text", "required": True, "position": {"row": 4, "column": 2}},
+            {"id": "meeting_place", "label": "開催場所", "type": "text", "required": True, "position": {"row": 5, "column": 2}},
+            {"id": "total_shares", "label": "発行済株式総数", "type": "number", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "voting_shares", "label": "議決権を有する株主の数", "type": "number", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "present_shares", "label": "出席株主の議決権数", "type": "number", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "chair_name", "label": "議長氏名（通常は代表取締役）", "type": "text", "required": True, "position": {"row": 10, "column": 2}},
+            {"id": "attending_directors", "label": "出席取締役", "type": "textarea", "required": True, "position": {"row": 11, "column": 2}, "description": "氏名を改行区切りで列挙"},
+            {
+                "id": "agenda",
+                "label": "議題",
+                "type": "table",
+                "required": True,
+                "range": {"headerRow": 14, "dataStartRow": 15, "startColumn": 1, "endRow": 24, "endColumn": 4},
+                "columns": [
+                    {"id": "no", "label": "議案番号", "type": "text"},
+                    {"id": "title", "label": "議題名", "type": "text"},
+                    {"id": "summary", "label": "討議要旨", "type": "text"},
+                    {"id": "result", "label": "決議結果", "type": "text", "description": "例: 賛成多数で可決 / 全員一致で可決 / 否決"},
+                ],
+            },
+            {"id": "closing_time", "label": "閉会時刻", "type": "text", "required": True, "position": {"row": 26, "column": 2}},
+        ],
+    }
+
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="株主総会議事録")
+    wb.set_column_widths({1: 24, 2: 52})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "株主総会議事録", bold=True)
+    wb.write_cell(2, 1, "会社名:")
+    wb.write_cell(3, 1, "総会種別:")
+    wb.write_cell(4, 1, "開催日時:")
+    wb.write_cell(5, 1, "開催場所:")
+    wb.write_cell(6, 1, "発行済株式総数:")
+    wb.write_cell(7, 1, "議決権を有する株主数:")
+    wb.write_cell(8, 1, "出席株主の議決権数:")
+    wb.merge(9, 1, 9, 2)
+    wb.write_cell(9, 1, "【議長・出席役員】", bold=True)
+    wb.write_cell(10, 1, "議長氏名:")
+    wb.write_cell(11, 1, "出席取締役:")
+    wb.merge(13, 1, 13, 4)
+    wb.write_cell(13, 1, "【議題】", bold=True)
+    wb.write_row(14, 1, ["議案番号", "議題名", "討議要旨", "決議結果"], bold=True)
+    for r in range(15, 25):
+        wb.write_cell(r, 1, "")
+    wb.merge(25, 1, 25, 2)
+    wb.write_cell(25, 1, "【閉会】", bold=True)
+    wb.write_cell(26, 1, "閉会時刻:")
+    wb.merge(28, 1, 28, 2)
+    wb.write_cell(28, 1, "上記議事を明確にするため、議長及び出席取締役は次に記名押印する。", bold=True)
+    wb.write_cell(30, 1, "議長　代表取締役:　　　　　　　　　　　　　印")
+    wb.write_cell(31, 1, "出席取締役:　　　　　　　　　　　　　　　　印")
+    wb.merge(33, 1, 33, 2)
+    wb.write_cell(33, 1, "※ 会社法 318 条: 本店に 10 年間、支店に写しを 5 年間備え置く")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 25: 取締役会議事録 (board-meeting-minutes)
+#
+# 法的根拠: 会社法 369 条 3 項（議事録）、施行規則 101 条
+# 要件: 出席取締役・監査役が記名押印
+# ---------------------------------------------------------------------------
+
+
+def build_board_meeting_minutes(out_dir: Path) -> None:
+    tid = "board-meeting-minutes"
+    yaml_doc = {
+        "id": tid,
+        "title": "取締役会議事録",
+        "description": "取締役会議事録雛形（会社法 369 条 3 項、施行規則 101 条）",
+        "category": "企業法務",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "company_name", "label": "会社名", "type": "text", "required": True, "position": {"row": 2, "column": 2}},
+            {"id": "meeting_date", "label": "開催日時", "type": "text", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "meeting_place", "label": "開催場所", "type": "text", "required": True, "position": {"row": 4, "column": 2}},
+            {"id": "attending_directors", "label": "出席取締役", "type": "textarea", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "attending_auditors", "label": "出席監査役", "type": "textarea", "required": False, "position": {"row": 7, "column": 2}},
+            {"id": "chair_name", "label": "議長", "type": "text", "required": True, "position": {"row": 8, "column": 2}},
+            {
+                "id": "agenda",
+                "label": "議題",
+                "type": "table",
+                "required": True,
+                "range": {"headerRow": 11, "dataStartRow": 12, "startColumn": 1, "endRow": 20, "endColumn": 4},
+                "columns": [
+                    {"id": "no", "label": "議案", "type": "text"},
+                    {"id": "title", "label": "議題", "type": "text"},
+                    {"id": "summary", "label": "討議の内容・結果", "type": "text"},
+                    {"id": "result", "label": "決議結果", "type": "text"},
+                ],
+            },
+        ],
+    }
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="取締役会議事録")
+    wb.set_column_widths({1: 22, 2: 52})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "取締役会議事録", bold=True)
+    wb.write_cell(2, 1, "会社名:")
+    wb.write_cell(3, 1, "開催日時:")
+    wb.write_cell(4, 1, "開催場所:")
+    wb.merge(5, 1, 5, 2)
+    wb.write_cell(5, 1, "【出席者】", bold=True)
+    wb.write_cell(6, 1, "出席取締役:")
+    wb.write_cell(7, 1, "出席監査役:")
+    wb.write_cell(8, 1, "議長:")
+    wb.merge(10, 1, 10, 4)
+    wb.write_cell(10, 1, "【議題】", bold=True)
+    wb.write_row(11, 1, ["議案", "議題", "討議内容・結果", "決議結果"], bold=True)
+    for r in range(12, 21):
+        wb.write_cell(r, 1, "")
+    wb.merge(22, 1, 22, 2)
+    wb.write_cell(22, 1, "上記議事を証するため、議長及び出席取締役・監査役は次に記名押印する。", bold=True)
+    wb.write_cell(24, 1, "議長　代表取締役:　　　　　　　　　　　　　印")
+    wb.write_cell(25, 1, "取締役:　　　　　　　　　　　　　　　　　　印")
+    wb.write_cell(26, 1, "監査役:　　　　　　　　　　　　　　　　　　印")
+    wb.merge(28, 1, 28, 2)
+    wb.write_cell(28, 1, "※ 会社法 369 条 3 項: 取締役会設置会社は議事録作成義務あり")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 26: 少額訴訟訴状 (small-claims-complaint)
+#
+# 法的根拠: 民事訴訟法 368 条（少額訴訟）、同 375 条
+# 要件: 60 万円以下の金銭請求、1 回の期日で判決原則
+# 同一原告が同一簡裁で年 10 回まで
+# ---------------------------------------------------------------------------
+
+
+def build_small_claims_complaint(out_dir: Path) -> None:
+    tid = "small-claims-complaint"
+    yaml_doc = {
+        "id": tid,
+        "title": "訴状（少額訴訟）",
+        "description": "60万円以下の金銭請求訴訟（民訴法 368 条以下）の訴状雛形",
+        "category": "民事訴訟",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "court_name", "label": "管轄簡易裁判所", "type": "text", "required": True, "position": {"row": 2, "column": 2}},
+            {"id": "filing_date", "label": "提出日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "plaintiff_name", "label": "原告氏名", "type": "text", "required": True, "position": {"row": 5, "column": 2}},
+            {"id": "plaintiff_address", "label": "原告住所", "type": "text", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "defendant_name", "label": "被告氏名", "type": "text", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "defendant_address", "label": "被告住所", "type": "text", "required": True, "position": {"row": 9, "column": 2}},
+            {"id": "claim_amount", "label": "請求金額（円）", "type": "number", "required": True, "position": {"row": 11, "column": 2}, "description": "60 万円以下"},
+            {"id": "claim_reason", "label": "事件の概要", "type": "textarea", "required": True, "position": {"row": 13, "column": 2}, "description": "金銭消費貸借・未払賃金・敷金返還等の具体的事情"},
+            {"id": "evidence", "label": "主要証拠", "type": "textarea", "required": True, "position": {"row": 15, "column": 2}, "description": "例: 甲第 1 号証 契約書、甲第 2 号証 督促状"},
+        ],
+    }
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="少額訴訟訴状")
+    wb.set_column_widths({1: 22, 2: 52})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "訴状（少額訴訟）", bold=True)
+    wb.write_cell(2, 1, "管轄簡易裁判所:")
+    wb.write_cell(3, 1, "提出日:")
+    wb.merge(4, 1, 4, 2)
+    wb.write_cell(4, 1, "【当事者】", bold=True)
+    wb.write_cell(5, 1, "原告氏名:")
+    wb.write_cell(6, 1, "原告住所:")
+    wb.write_cell(8, 1, "被告氏名:")
+    wb.write_cell(9, 1, "被告住所:")
+    wb.merge(10, 1, 10, 2)
+    wb.write_cell(10, 1, "【請求の趣旨】", bold=True)
+    wb.write_cell(11, 1, "請求金額（円）:")
+    wb.merge(12, 1, 12, 2)
+    wb.write_cell(12, 1, "【請求の原因】", bold=True)
+    wb.write_cell(13, 1, "事件の概要:")
+    wb.merge(14, 1, 14, 2)
+    wb.write_cell(14, 1, "【証拠方法】", bold=True)
+    wb.write_cell(15, 1, "主要証拠:")
+    wb.merge(17, 1, 17, 2)
+    wb.write_cell(17, 1, "※ 少額訴訟の要件: 60 万円以下の金銭請求、同一簡裁で年 10 回まで（民訴 368 条）")
+    wb.merge(18, 1, 18, 2)
+    wb.write_cell(18, 1, "※ 原則 1 回の期日で判決、被告の異議で通常訴訟に移行可能")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 27: 即決和解申立書 (immediate-settlement)
+#
+# 法的根拠: 民事訴訟法 275 条（起訴前の和解）
+# 用途: 紛争解決後の執行力付き和解調書を得る
+# 効力: 確定判決と同一
+# ---------------------------------------------------------------------------
+
+
+def build_immediate_settlement(out_dir: Path) -> None:
+    tid = "immediate-settlement"
+    yaml_doc = {
+        "id": tid,
+        "title": "即決和解申立書（訴え提起前の和解）",
+        "description": "民訴法 275 条の起訴前の和解申立書。執行力付き和解調書の取得が目的",
+        "category": "民事訴訟",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "court_name", "label": "管轄簡易裁判所", "type": "text", "required": True, "position": {"row": 2, "column": 2}, "description": "相手方の住所地を管轄する簡裁"},
+            {"id": "filing_date", "label": "申立日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "applicant_name", "label": "申立人氏名", "type": "text", "required": True, "position": {"row": 5, "column": 2}},
+            {"id": "applicant_address", "label": "申立人住所", "type": "text", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "respondent_name", "label": "相手方氏名", "type": "text", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "respondent_address", "label": "相手方住所", "type": "text", "required": True, "position": {"row": 9, "column": 2}},
+            {"id": "dispute_summary", "label": "紛争の要点", "type": "textarea", "required": True, "position": {"row": 11, "column": 2}},
+            {"id": "settlement_terms", "label": "和解条項（案）", "type": "textarea", "required": True, "position": {"row": 13, "column": 2}, "description": "例: 1. 相手方は申立人に対し、金○○円を支払う。 2. 申立人はこれを本和解以外の請求はしない。"},
+        ],
+    }
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="即決和解申立書")
+    wb.set_column_widths({1: 22, 2: 52})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "即決和解申立書（訴え提起前の和解）", bold=True)
+    wb.write_cell(2, 1, "管轄簡易裁判所:")
+    wb.write_cell(3, 1, "申立日:")
+    wb.merge(4, 1, 4, 2)
+    wb.write_cell(4, 1, "【申立人】", bold=True)
+    wb.write_cell(5, 1, "氏名:")
+    wb.write_cell(6, 1, "住所:")
+    wb.merge(7, 1, 7, 2)
+    wb.write_cell(7, 1, "【相手方】", bold=True)
+    wb.write_cell(8, 1, "氏名:")
+    wb.write_cell(9, 1, "住所:")
+    wb.merge(10, 1, 10, 2)
+    wb.write_cell(10, 1, "【紛争の要点】", bold=True)
+    wb.write_cell(11, 1, "紛争の要点:")
+    wb.merge(12, 1, 12, 2)
+    wb.write_cell(12, 1, "【和解条項】", bold=True)
+    wb.write_cell(13, 1, "条項案:")
+    wb.merge(15, 1, 15, 2)
+    wb.write_cell(15, 1, "※ 民訴法 275 条に基づく訴え提起前の和解。和解成立時は確定判決と同一効力（民訴 267 条）")
+    wb.merge(16, 1, 16, 2)
+    wb.write_cell(16, 1, "※ 手数料: 収入印紙 2,000 円 + 連絡用郵便切手")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 28: 陳述書（刑事）(criminal-statement)
+#
+# 用途: 刑事公判における被告人・証人の陳述書。情状弁護資料として
+# ---------------------------------------------------------------------------
+
+
+def build_criminal_statement(out_dir: Path) -> None:
+    tid = "criminal-statement"
+    yaml_doc = {
+        "id": tid,
+        "title": "陳述書（刑事事件）",
+        "description": "刑事公判での被告人・証人の陳述書。情状弁護・被害者の意見書として",
+        "category": "刑事弁護",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "case_number", "label": "事件番号", "type": "text", "required": False, "position": {"row": 2, "column": 2}},
+            {"id": "case_name", "label": "事件名・罪名", "type": "text", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "court_name", "label": "裁判所", "type": "text", "required": True, "position": {"row": 4, "column": 2}},
+            {"id": "author_role", "label": "作成者の立場", "type": "select", "required": True, "position": {"row": 6, "column": 2}, "options": ["被告人", "証人", "被害者", "親族", "雇主", "嘆願者"]},
+            {"id": "author_name", "label": "作成者氏名", "type": "text", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "author_address", "label": "作成者住所", "type": "text", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "relationship", "label": "被告人との関係", "type": "text", "required": False, "position": {"row": 9, "column": 2}, "description": "親族・同僚・恋人・上司等"},
+            {"id": "statement_body", "label": "陳述内容", "type": "textarea", "required": True, "position": {"row": 12, "column": 1}, "description": "事実経過・反省・今後の監督等を時系列で記載"},
+            {"id": "statement_date", "label": "作成日", "type": "date", "required": True, "position": {"row": 28, "column": 2}},
+        ],
+    }
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="陳述書(刑事)")
+    wb.set_column_widths({1: 22, 2: 52})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "陳　述　書", bold=True)
+    wb.write_cell(2, 1, "事件番号:")
+    wb.write_cell(3, 1, "事件名・罪名:")
+    wb.write_cell(4, 1, "裁判所:")
+    wb.merge(5, 1, 5, 2)
+    wb.write_cell(5, 1, "【作成者】", bold=True)
+    wb.write_cell(6, 1, "立場:")
+    wb.write_cell(7, 1, "氏名:")
+    wb.write_cell(8, 1, "住所:")
+    wb.write_cell(9, 1, "被告人との関係:")
+    wb.merge(11, 1, 11, 2)
+    wb.write_cell(11, 1, "【陳述内容】", bold=True)
+    for r in range(12, 27):
+        wb.write_cell(r, 1, "")
+    wb.merge(27, 1, 27, 2)
+    wb.write_cell(27, 1, "【作成日・署名】", bold=True)
+    wb.write_cell(28, 1, "作成日:")
+    wb.merge(30, 1, 30, 2)
+    wb.write_cell(30, 1, "作成者　署名：　　　　　　　　　　　　　　印")
+    wb.merge(32, 1, 32, 2)
+    wb.write_cell(32, 1, "※ 量刑上の考慮資料。事実に反する内容を記載しないこと（偽証罪リスク）")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 29: 契約書レビューチェックリスト (contract-review-checklist)
+#
+# 用途: 契約書レビュー時の標準チェック項目
+# ---------------------------------------------------------------------------
+
+
+def build_contract_review_checklist(out_dir: Path) -> None:
+    tid = "contract-review-checklist"
+    yaml_doc = {
+        "id": tid,
+        "title": "契約書レビューチェックリスト",
+        "description": "一般契約書のレビュー時に確認すべき標準項目。リスク所在の事前洗い出し",
+        "category": "企業法務",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "contract_title", "label": "契約書名", "type": "text", "required": True, "position": {"row": 2, "column": 2}},
+            {"id": "counterparty", "label": "相手方", "type": "text", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "review_date", "label": "レビュー日", "type": "date", "required": True, "position": {"row": 4, "column": 2}},
+            {"id": "reviewer", "label": "レビュー担当", "type": "text", "required": True, "position": {"row": 5, "column": 2}},
+            {
+                "id": "checklist",
+                "label": "チェック項目",
+                "type": "table",
+                "required": True,
+                "range": {"headerRow": 8, "dataStartRow": 9, "startColumn": 1, "endRow": 40, "endColumn": 5},
+                "columns": [
+                    {"id": "category", "label": "カテゴリ", "type": "text"},
+                    {"id": "item", "label": "チェック項目", "type": "text"},
+                    {"id": "status", "label": "状態", "type": "text", "description": "OK / 要修正 / 要検討 / NA"},
+                    {"id": "comment", "label": "コメント", "type": "text"},
+                    {"id": "action", "label": "対応", "type": "text"},
+                ],
+            },
+        ],
+    }
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="契約書レビュー")
+    wb.set_column_widths({1: 12, 2: 30, 3: 12, 4: 34, 5: 20})
+    wb.merge(1, 1, 1, 5)
+    wb.write_cell(1, 1, "契約書レビューチェックリスト", bold=True)
+    wb.write_cell(2, 1, "契約書名:")
+    wb.write_cell(3, 1, "相手方:")
+    wb.write_cell(4, 1, "レビュー日:")
+    wb.write_cell(5, 1, "レビュー担当:")
+    wb.merge(7, 1, 7, 5)
+    wb.write_cell(7, 1, "【チェック項目】", bold=True)
+    wb.write_row(8, 1, ["カテゴリ", "チェック項目", "状態", "コメント", "対応"], bold=True)
+    # 代表的なチェック項目を初期値として挿入
+    default_items = [
+        ("基本", "当事者・契約日・契約書名称が明確か", "", "", ""),
+        ("基本", "契約期間・自動更新条項・中途解約条項", "", "", ""),
+        ("基本", "準拠法・合意管轄裁判所", "", "", ""),
+        ("金銭", "対価・支払方法・支払時期", "", "", ""),
+        ("金銭", "消費税・源泉徴収の取扱い", "", "", ""),
+        ("履行", "債務内容・履行期限・検収要件", "", "", ""),
+        ("履行", "履行遅滞時の損害賠償・遅延損害金", "", "", ""),
+        ("責任", "損害賠償範囲・上限額（民法 416 条との関係）", "", "", ""),
+        ("責任", "契約不適合責任（民法 562-564 条）", "", "", ""),
+        ("責任", "不可抗力条項", "", "", ""),
+        ("解除", "解除事由（催告解除・無催告解除）", "", "", ""),
+        ("解除", "暴力団排除条項", "", "", ""),
+        ("知財", "知的財産権の帰属・利用許諾", "", "", ""),
+        ("情報", "秘密保持義務の範囲・期間", "", "", ""),
+        ("情報", "個人情報保護法対応（§27 第三者提供）", "", "", ""),
+        ("その他", "譲渡禁止・変更書面要件", "", "", ""),
+        ("その他", "完全合意条項・分離可能性", "", "", ""),
+    ]
+    for i, (cat, item, status, comment, action) in enumerate(default_items):
+        wb.write_row(9 + i, 1, [cat, item, status, comment, action])
+    # 残りは空欄
+    for r in range(9 + len(default_items), 41):
+        wb.write_cell(r, 1, "")
+    wb.merge(42, 1, 42, 5)
+    wb.write_cell(42, 1, "※ 業種・取引類型によりチェック項目を加減する。本雛形は汎用版")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 30: 就業規則雛形（簡易版） (work-regulations-template)
+#
+# 法的根拠: 労働基準法 89 条（作成義務、常時 10 人以上）、90 条（意見聴取）、
+#           92 条（労基署届出義務）
+# ---------------------------------------------------------------------------
+
+
+def build_work_regulations_template(out_dir: Path) -> None:
+    tid = "work-regulations-template"
+    yaml_doc = {
+        "id": tid,
+        "title": "就業規則（簡易版・テンプレート）",
+        "description": "労基法 89 条の必要記載事項を網羅した就業規則雛形。10 人以上の事業場で必要",
+        "category": "企業法務",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "company_name", "label": "会社名", "type": "text", "required": True, "position": {"row": 2, "column": 2}},
+            {"id": "effective_date", "label": "施行日", "type": "date", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "working_hours", "label": "所定労働時間（1 日）", "type": "text", "required": True, "position": {"row": 6, "column": 2}, "description": "例: 8 時間（9:00 - 18:00、休憩 1 時間）"},
+            {"id": "work_days_per_week", "label": "週所定労働日数", "type": "number", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "holidays_annual", "label": "年間所定休日", "type": "number", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "paid_leave_days", "label": "年次有給休暇（初年度）", "type": "number", "required": True, "position": {"row": 10, "column": 2}, "description": "労基法 39 条で 6 ヶ月継続勤務後 10 日"},
+            {"id": "salary_payment_date", "label": "賃金支払日", "type": "text", "required": True, "position": {"row": 12, "column": 2}, "description": "例: 毎月 25 日（末締め）"},
+            {"id": "retirement_age", "label": "定年年齢", "type": "number", "required": True, "position": {"row": 14, "column": 2}, "description": "高年齢者雇用安定法 8 条: 60 歳以上"},
+            {"id": "disciplinary_rules", "label": "懲戒規定", "type": "textarea", "required": True, "position": {"row": 16, "column": 2}, "description": "懲戒事由・種類（戒告/減給/出勤停止/懲戒解雇）"},
+        ],
+    }
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="就業規則")
+    wb.set_column_widths({1: 22, 2: 52})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "就業規則（簡易版）", bold=True)
+    wb.write_cell(2, 1, "会社名:")
+    wb.write_cell(3, 1, "施行日:")
+    wb.merge(5, 1, 5, 2)
+    wb.write_cell(5, 1, "【労働時間・休日】", bold=True)
+    wb.write_cell(6, 1, "所定労働時間:")
+    wb.write_cell(7, 1, "週所定労働日数:")
+    wb.write_cell(8, 1, "年間所定休日:")
+    wb.merge(9, 1, 9, 2)
+    wb.write_cell(9, 1, "【有給休暇】", bold=True)
+    wb.write_cell(10, 1, "年次有給休暇（初年度）:")
+    wb.merge(11, 1, 11, 2)
+    wb.write_cell(11, 1, "【賃金】", bold=True)
+    wb.write_cell(12, 1, "賃金支払日:")
+    wb.merge(13, 1, 13, 2)
+    wb.write_cell(13, 1, "【定年】", bold=True)
+    wb.write_cell(14, 1, "定年年齢:")
+    wb.merge(15, 1, 15, 2)
+    wb.write_cell(15, 1, "【懲戒】", bold=True)
+    wb.write_cell(16, 1, "懲戒規定:")
+    wb.merge(18, 1, 18, 2)
+    wb.write_cell(18, 1, "【必須記載事項（労基法 89 条）】", bold=True)
+    required_items = [
+        "(絶対必要記載事項)",
+        "1. 始業・終業時刻、休憩時間、休日、休暇",
+        "2. 賃金の決定・計算・支払方法、支払時期、昇給",
+        "3. 退職に関する事項（解雇事由を含む）",
+        "(相対的必要記載事項)",
+        "4. 退職手当の定め",
+        "5. 臨時の賃金・最低賃金",
+        "6. 食費・作業用品等の負担",
+        "7. 安全衛生",
+        "8. 職業訓練",
+        "9. 災害補償・業務外傷病扶助",
+        "10. 表彰・制裁の種類・程度",
+        "11. その他 全労働者に適用される定め",
+    ]
+    for i, item in enumerate(required_items):
+        wb.write_cell(19 + i, 1, item)
+    wb.merge(33, 1, 33, 2)
+    wb.write_cell(33, 1, "※ 作成・変更時は過半数労働組合または過半数代表者の意見聴取（労基法 90 条）")
+    wb.merge(34, 1, 34, 2)
+    wb.write_cell(34, 1, "※ 労基署への届出義務（労基法 89 条）。本雛形は簡易版、業種・規模によりカスタマイズ必須")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# Form 31: 労働契約書 (employment-contract)
+#
+# 法的根拠: 労基法 15 条（労働条件明示義務）、労働契約法 4 条
+# ---------------------------------------------------------------------------
+
+
+def build_employment_contract(out_dir: Path) -> None:
+    tid = "employment-contract"
+    yaml_doc = {
+        "id": tid,
+        "title": "労働契約書",
+        "description": "労基法 15 条の明示事項を網羅した労働契約書雛形。正社員・契約社員両対応",
+        "category": "労働",
+        "templateFile": f"{tid}.xlsx",
+        "fields": [
+            {"id": "employer_name", "label": "使用者（会社名）", "type": "text", "required": True, "position": {"row": 2, "column": 2}},
+            {"id": "employer_address", "label": "会社住所", "type": "text", "required": True, "position": {"row": 3, "column": 2}},
+            {"id": "employer_representative", "label": "代表者", "type": "text", "required": True, "position": {"row": 4, "column": 2}},
+            {"id": "employee_name", "label": "労働者氏名", "type": "text", "required": True, "position": {"row": 6, "column": 2}},
+            {"id": "employee_address", "label": "労働者住所", "type": "text", "required": True, "position": {"row": 7, "column": 2}},
+            {"id": "employee_birth", "label": "労働者生年月日", "type": "date", "required": True, "position": {"row": 8, "column": 2}},
+            {"id": "contract_type", "label": "契約種別", "type": "select", "required": True, "position": {"row": 10, "column": 2}, "options": ["正社員", "契約社員", "パート・アルバイト", "嘱託"]},
+            {"id": "contract_start", "label": "契約開始日", "type": "date", "required": True, "position": {"row": 11, "column": 2}},
+            {"id": "contract_end", "label": "契約期間満了日", "type": "date", "required": False, "position": {"row": 12, "column": 2}, "description": "無期雇用の場合は空欄"},
+            {"id": "trial_period", "label": "試用期間", "type": "text", "required": False, "position": {"row": 13, "column": 2}, "description": "例: 採用日から 3 ヶ月"},
+            {"id": "work_location", "label": "就業場所", "type": "text", "required": True, "position": {"row": 15, "column": 2}},
+            {"id": "job_duties", "label": "業務内容", "type": "textarea", "required": True, "position": {"row": 16, "column": 2}},
+            {"id": "working_hours", "label": "所定労働時間", "type": "text", "required": True, "position": {"row": 18, "column": 2}},
+            {"id": "break_time", "label": "休憩時間", "type": "text", "required": True, "position": {"row": 19, "column": 2}},
+            {"id": "holidays", "label": "休日", "type": "text", "required": True, "position": {"row": 20, "column": 2}},
+            {"id": "paid_leave", "label": "年次有給休暇", "type": "text", "required": True, "position": {"row": 21, "column": 2}, "description": "労基法 39 条準拠"},
+            {"id": "monthly_salary", "label": "月額賃金（円）", "type": "number", "required": True, "position": {"row": 23, "column": 2}},
+            {"id": "allowances", "label": "諸手当", "type": "textarea", "required": False, "position": {"row": 24, "column": 2}, "description": "通勤手当・役職手当・家族手当等"},
+            {"id": "salary_payment_date", "label": "賃金支払日", "type": "text", "required": True, "position": {"row": 25, "column": 2}},
+            {"id": "signed_date", "label": "契約締結日", "type": "date", "required": True, "position": {"row": 27, "column": 2}},
+        ],
+    }
+    (out_dir / f"{tid}.yaml").write_text(_emit_yaml(yaml_doc), encoding="utf-8")
+
+    wb = Workbook(sheet_name="労働契約書")
+    wb.set_column_widths({1: 22, 2: 52})
+    wb.merge(1, 1, 1, 2)
+    wb.write_cell(1, 1, "労働契約書", bold=True)
+    wb.write_cell(2, 1, "使用者:")
+    wb.write_cell(3, 1, "会社住所:")
+    wb.write_cell(4, 1, "代表者:")
+    wb.merge(5, 1, 5, 2)
+    wb.write_cell(5, 1, "【労働者】", bold=True)
+    wb.write_cell(6, 1, "氏名:")
+    wb.write_cell(7, 1, "住所:")
+    wb.write_cell(8, 1, "生年月日:")
+    wb.merge(9, 1, 9, 2)
+    wb.write_cell(9, 1, "【契約条件】", bold=True)
+    wb.write_cell(10, 1, "契約種別:")
+    wb.write_cell(11, 1, "契約開始日:")
+    wb.write_cell(12, 1, "期間満了日:")
+    wb.write_cell(13, 1, "試用期間:")
+    wb.merge(14, 1, 14, 2)
+    wb.write_cell(14, 1, "【就業条件】", bold=True)
+    wb.write_cell(15, 1, "就業場所:")
+    wb.write_cell(16, 1, "業務内容:")
+    wb.merge(17, 1, 17, 2)
+    wb.write_cell(17, 1, "【労働時間・休日】", bold=True)
+    wb.write_cell(18, 1, "所定労働時間:")
+    wb.write_cell(19, 1, "休憩時間:")
+    wb.write_cell(20, 1, "休日:")
+    wb.write_cell(21, 1, "年次有給休暇:")
+    wb.merge(22, 1, 22, 2)
+    wb.write_cell(22, 1, "【賃金】", bold=True)
+    wb.write_cell(23, 1, "月額賃金（円）:")
+    wb.write_cell(24, 1, "諸手当:")
+    wb.write_cell(25, 1, "賃金支払日:")
+    wb.merge(26, 1, 26, 2)
+    wb.write_cell(26, 1, "【締結】", bold=True)
+    wb.write_cell(27, 1, "契約締結日:")
+    wb.merge(29, 1, 29, 2)
+    wb.write_cell(29, 1, "本契約書を 2 通作成し、使用者・労働者各 1 通を保有する。", bold=True)
+    wb.write_cell(31, 1, "使用者　記名押印：　　　　　　　　　　　　　印")
+    wb.write_cell(32, 1, "労働者　署名　　　：　　　　　　　　　　　　印")
+    wb.merge(34, 1, 34, 2)
+    wb.write_cell(34, 1, "※ 労基法 15 条 1 項・同施行規則 5 条: 労働条件の明示義務あり")
+
+    wb.save(out_dir / f"{tid}.xlsx")
+
+
 def _write_manifest() -> None:
     """全同梱テンプレートの SHA-256 マニフェストを書き出す。
 
@@ -2060,6 +2628,15 @@ def main() -> int:
         ("payment-demand", build_payment_demand),
         ("child-support-application", build_child_support_application),
         ("spousal-support-application", build_spousal_support_application),
+        # Phase 4 (v2.7.0)
+        ("shareholder-meeting-minutes", build_shareholder_meeting_minutes),
+        ("board-meeting-minutes", build_board_meeting_minutes),
+        ("small-claims-complaint", build_small_claims_complaint),
+        ("immediate-settlement", build_immediate_settlement),
+        ("criminal-statement", build_criminal_statement),
+        ("contract-review-checklist", build_contract_review_checklist),
+        ("work-regulations-template", build_work_regulations_template),
+        ("employment-contract", build_employment_contract),
     ]
     for tid, builder in builders:
         out_dir = BUNDLED / tid

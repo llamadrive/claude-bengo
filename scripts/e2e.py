@@ -744,6 +744,49 @@ def scenario_overtime_calc(c: Case, sandbox: Path) -> None:
         c.ng("14.2 self-test", f"rc={rc}")
 
 
+def scenario_iryubun_calc(c: Case, sandbox: Path) -> None:
+    section("15. Track B-5: iryubun-calc")
+    IC = str(ROOT / "skills" / "iryubun-calc" / "calc.py")
+    payload = {
+        "basis": {"positive_estate": 100_000_000, "debts": 0},
+        "heirs": [
+            {"id": "w", "kind": "spouse", "legal_share": "1/2", "inherited_net_amount": 0},
+            {"id": "c1", "kind": "child", "legal_share": "1/2", "inherited_net_amount": 0},
+        ],
+        "requesting_heir_id": "w",
+    }
+    rc, out, _ = run([PY, IC, "calc", "--json", json.dumps(payload)])
+    if rc == 0 and json.loads(out)["iryubun_infringement"] == 25_000_000:
+        c.ok("15.1 配偶者遺留分 1/4 × 1億 = 2500万")
+    else:
+        c.ng("15.1 iryubun", f"rc={rc}")
+    rc, out, _ = run([PY, IC, "--self-test"], timeout=30)
+    if rc == 0 and "0 failed" in out:
+        c.ok("15.2 内蔵 self-test (all pass)")
+    else:
+        c.ng("15.2 self-test", f"rc={rc}")
+
+
+def scenario_property_division_calc(c: Case, sandbox: Path) -> None:
+    section("16. Track B-6: property-division-calc")
+    PD = str(ROOT / "skills" / "property-division-calc" / "calc.py")
+    payload = {
+        "assets": [
+            {"asset_type": "deposit", "value": 40_000_000, "owner": "husband"},
+        ],
+    }
+    rc, out, _ = run([PY, PD, "calc", "--json", json.dumps(payload)])
+    if rc == 0 and json.loads(out)["summary"]["settlement_from_husband_to_wife"] == 20_000_000:
+        c.ok("16.1 夫単独名義 4000万 → 夫→妻 2000万")
+    else:
+        c.ng("16.1 property-division", f"rc={rc}")
+    rc, out, _ = run([PY, PD, "--self-test"], timeout=30)
+    if rc == 0 and "0 failed" in out:
+        c.ok("16.2 内蔵 self-test (all pass)")
+    else:
+        c.ng("16.2 self-test", f"rc={rc}")
+
+
 def scenario_retention(c: Case, sandbox: Path) -> None:
     section("10b. Audit: KEEP env prunes old rotations")
     log = sandbox / "keep-test-audit.jsonl"
@@ -792,6 +835,8 @@ def main() -> int:
         scenario_child_support_calc(c, sandbox)
         scenario_debt_recalc(c, sandbox)
         scenario_overtime_calc(c, sandbox)
+        scenario_iryubun_calc(c, sandbox)
+        scenario_property_division_calc(c, sandbox)
         scenario_retention(c, sandbox)
     finally:
         if args.keep:

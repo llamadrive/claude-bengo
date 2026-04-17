@@ -1,0 +1,61 @@
+id: contract-review-checklist
+title: 契約書レビューチェックリスト
+description: 一般契約書のレビュー時に確認すべき標準項目。リスク所在の事前洗い出し
+category: 企業法務
+templateFile: contract-review-checklist.xlsx
+fields:
+  - id: contract_title
+    label: "契約書名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: counterparty
+    label: "相手方"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: review_date
+    label: "レビュー日"
+    type: date
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: reviewer
+    label: "レビュー担当"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: checklist
+    label: "チェック項目"
+    type: table
+    required: true
+    range:
+      headerRow: 8
+      dataStartRow: 9
+      startColumn: 1
+      endRow: 40
+      endColumn: 5
+    columns:
+      - id: category
+        label: "カテゴリ"
+        type: text
+      - id: item
+        label: "チェック項目"
+        type: text
+      - id: status
+        label: "状態"
+        type: text
+        description: "OK / 要修正 / 要検討 / NA"
+      - id: comment
+        label: "コメント"
+        type: text
+      - id: action
+        label: "対応"
+        type: text

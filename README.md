@@ -406,6 +406,8 @@ python3 ~/.claude/plugins/claude-bengo/skills/_lib/audit.py export --format csv 
 | `/child-support-calc` | 養育費・婚姻費用の決定論的計算（令和元年改定算定方式、基礎収入・生活費指数・1000円単位丸め） | ✅ |
 | `/debt-recalc` | 利息制限法 引き直し計算（残元本・過払金・民法704条の年5%利息、取引台帳付） | ✅ |
 | `/overtime-calc` | 未払残業代の決定論計算（労基法37条、時間外1.25/60h超1.5/深夜+0.25/休日1.35、時効3年判定） | ✅ |
+| `/iryubun-calc` | 遺留分侵害額の決定論計算（民法1042-1048条、生前贈与・遺贈加算、兄弟姉妹除外） | ✅ |
+| `/property-division-calc` | 離婚財産分与の決定論計算（民法768条、特有財産除外、貢献度案分、債務控除） | ✅ |
 | `/law-search` | 法令条文の検索・参照（e-Gov API） | — |
 | `/verify` | 動作確認 | — |
 | `/bengo-update` | プラグインを署名付きタグから更新 | — |

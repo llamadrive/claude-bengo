@@ -1,0 +1,69 @@
+id: small-claims-complaint
+title: 訴状（少額訴訟）
+description: 60万円以下の金銭請求訴訟（民訴法 368 条以下）の訴状雛形
+category: 民事訴訟
+templateFile: small-claims-complaint.xlsx
+fields:
+  - id: court_name
+    label: "管轄簡易裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "提出日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: plaintiff_name
+    label: "原告氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: plaintiff_address
+    label: "原告住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: defendant_name
+    label: "被告氏名"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: defendant_address
+    label: "被告住所"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: claim_amount
+    label: "請求金額（円）"
+    type: number
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: claim_reason
+    label: "事件の概要"
+    type: textarea
+    required: true
+    position:
+      row: 13
+      column: 2
+  - id: evidence
+    label: "主要証拠"
+    type: textarea
+    required: true
+    position:
+      row: 15
+      column: 2

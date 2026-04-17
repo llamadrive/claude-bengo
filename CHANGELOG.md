@@ -2,6 +2,100 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.7.0] - 2026-04-17
+
+Track A Phase 4 + Track B Phase 2 の最終スコープ拡張。同梱テンプレートを
+23 → **31 種**、決定論計算器を 5 → **7 種**に拡張。企業法務カテゴリを
+実質的に新設（株主総会議事録・取締役会議事録・契約書レビューチェックリスト・
+就業規則雛形・労働契約書）。
+
+### Added — Track A Phase 4 (8 新規テンプレート)
+
+**企業法務（実質新設・5件）:**
+- `shareholder-meeting-minutes` — 株主総会議事録（会社法 318条）
+- `board-meeting-minutes` — 取締役会議事録（会社法 369条3項）
+- `contract-review-checklist` — 契約書レビューチェックリスト（17 項目プリセット）
+- `work-regulations-template` — 就業規則簡易版（労基法 89条必要記載事項網羅）
+- `employment-contract` — 労働契約書（労基法 15条明示事項対応）
+
+**民事訴訟（2件追加）:**
+- `small-claims-complaint` — 少額訴訟訴状（60万円以下、民訴 368条以下）
+- `immediate-settlement` — 即決和解申立書（民訴 275条、執行力付き和解）
+
+**刑事弁護（1件追加）:**
+- `criminal-statement` — 陳述書（刑事公判、情状弁護・被害者意見書用）
+
+**労働（1件追加、既存カテゴリ）:**
+- `employment-contract` — 上記企業法務と重複、主に労働分野でも使用
+
+### Added — Track B Phase 2 (2 新規計算器)
+
+- `/iryubun-calc` — 遺留分侵害額計算（民法 1042-1048 条）
+  - 総体的遺留分 1/2（直系尊属のみ 1/3）
+  - 個別的遺留分 = 総体 × 法定相続分
+  - 基礎財産 = 積極財産 + 生前贈与 + 第三者贈与 - 債務
+  - 請求者の受領分（相続/遺贈/生前贈与）を控除
+  - 兄弟姉妹の除外（民法 1042 条但書）
+  - 15/15 unit tests
+- `/property-division-calc` — 離婚財産分与計算（民法 768 条）
+  - 夫婦共有財産と特有財産の区別（民法 762 条 1 項）
+  - 共有債務の案分控除（資産保有比率 scale）
+  - 貢献度案分（既定 50:50、指定可）
+  - joint 名義財産の暫定 50:50 按分
+  - 清算金の方向と額を明示
+  - 12/12 unit tests
+
+### Coverage snapshot (v2.7.0)
+
+**同梱テンプレート 31 種 × 9 カテゴリ:**
+
+| カテゴリ | 件数 | 主な書式 |
+|---|---|---|
+| 家事事件 | 6 | 離婚協議書、調停、陳述書、養育費、婚姻費用、後見 |
+| 企業法務 | 5 | 株主総会、取締役会、契約書レビュー、就業規則、労働契約 |
+| 破産・再生 | 4 | 債権者一覧、破産申立、個人再生、家計収支表 |
+| 民事訴訟 | 4 | 訴状(貸金)、答弁書、支払督促、少額訴訟、即決和解 |
+| 相続 | 3 | 遺産目録、相続放棄、遺産分割協議書 |
+| 刑事弁護 | 3 | 弁護人選任、刑事示談、刑事陳述書 |
+| 労働 | 3 | 残業代計算書、労働審判、労働契約書 |
+| 交通事故 | 1 | 示談書 |
+| 一般民事 | 1 | 内容証明 |
+| 汎用 | 1 | 委任状 |
+
+**決定論計算器 7 種:**
+
+| 計算器 | 分野 | テスト |
+|---|---|---|
+| `/inheritance-calc` | 相続 | 19/19 |
+| `/traffic-damage-calc` | 交通事故 | 20/20 |
+| `/child-support-calc` | 家事 | 23/23 |
+| `/debt-recalc` | 破産・再生 | 16/16 |
+| `/overtime-calc` | 労働 | 16/16 |
+| `/iryubun-calc` | 相続（遺留分） | 15/15 |
+| `/property-division-calc` | 家事（離婚） | 12/12 |
+| **合計** | **7 計算器** | **121/121 unit tests** |
+
+### Verification
+
+- `template_lib`: 31/31 registry 整合性、MCP 読み戻し 31/31 成功、manifest
+  62 entries（SHA-256）で改ざん検知可能
+- 計算器単体テスト合計: 121 pass
+- E2E: **53/53** pass（v2.6.1 の 49 + 新規 4）
+- 累計 209 assertions, 100% pass
+
+### Architecture 観察
+
+Track A Phase 4 と Track B Phase 2 は既存の infrastructure（xlsx_writer・
+template_lib・matter・audit）を**一切変更せず**に追加できた。これで
+拡張性は完全に実証された — 新規 skill / form の追加は純粋なコード追加で
+完結し、core ライブラリの後方互換は維持される。
+
+### 次の優先（想定）
+
+- 実 fixture PDF 供給（ユーザー側）
+- 事務所パイロット
+- Track C（判例検索・過失相殺パターン辞書）は user demand 次第
+
 ## [2.6.1] - 2026-04-17
 
 v2.6.0 直後の triple-PE（Anthropic・OpenAI・Harvey）による最終レビューで

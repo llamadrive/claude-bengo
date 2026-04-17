@@ -1,0 +1,103 @@
+id: shareholder-meeting-minutes
+title: 株主総会議事録
+description: 定時・臨時株主総会の議事録雛形（会社法 318 条、施行規則 72 条）
+category: 企業法務
+templateFile: shareholder-meeting-minutes.xlsx
+fields:
+  - id: company_name
+    label: "会社名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: meeting_type
+    label: "総会種別"
+    type: select
+    required: true
+    position:
+      row: 3
+      column: 2
+    options:
+      - "定時株主総会"
+      - "臨時株主総会"
+  - id: meeting_date
+    label: "開催日時"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: meeting_place
+    label: "開催場所"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: total_shares
+    label: "発行済株式総数"
+    type: number
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: voting_shares
+    label: "議決権を有する株主の数"
+    type: number
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: present_shares
+    label: "出席株主の議決権数"
+    type: number
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: chair_name
+    label: "議長氏名（通常は代表取締役）"
+    type: text
+    required: true
+    position:
+      row: 10
+      column: 2
+  - id: attending_directors
+    label: "出席取締役"
+    type: textarea
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: agenda
+    label: "議題"
+    type: table
+    required: true
+    range:
+      headerRow: 14
+      dataStartRow: 15
+      startColumn: 1
+      endRow: 24
+      endColumn: 4
+    columns:
+      - id: no
+        label: "議案番号"
+        type: text
+      - id: title
+        label: "議題名"
+        type: text
+      - id: summary
+        label: "討議要旨"
+        type: text
+      - id: result
+        label: "決議結果"
+        type: text
+        description: "例: 賛成多数で可決 / 全員一致で可決 / 否決"
+  - id: closing_time
+    label: "閉会時刻"
+    type: text
+    required: true
+    position:
+      row: 26
+      column: 2

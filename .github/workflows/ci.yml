@@ -43,6 +43,12 @@ jobs:
       - name: Run overtime-calc unit tests
         run: python3 skills/overtime-calc/test_calc.py
 
+      - name: Run iryubun-calc unit tests
+        run: python3 skills/iryubun-calc/test_calc.py
+
+      - name: Run property-division-calc unit tests
+        run: python3 skills/property-division-calc/test_calc.py
+
       - name: Run matter.py self-tests
         run: python3 skills/_lib/matter.py --self-test
 

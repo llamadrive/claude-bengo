@@ -1,0 +1,76 @@
+id: criminal-statement
+title: 陳述書（刑事事件）
+description: 刑事公判での被告人・証人の陳述書。情状弁護・被害者の意見書として
+category: 刑事弁護
+templateFile: criminal-statement.xlsx
+fields:
+  - id: case_number
+    label: "事件番号"
+    type: text
+    required: false
+    position:
+      row: 2
+      column: 2
+  - id: case_name
+    label: "事件名・罪名"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: court_name
+    label: "裁判所"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: author_role
+    label: "作成者の立場"
+    type: select
+    required: true
+    position:
+      row: 6
+      column: 2
+    options:
+      - "被告人"
+      - "証人"
+      - "被害者"
+      - "親族"
+      - "雇主"
+      - "嘆願者"
+  - id: author_name
+    label: "作成者氏名"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: author_address
+    label: "作成者住所"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: relationship
+    label: "被告人との関係"
+    type: text
+    required: false
+    position:
+      row: 9
+      column: 2
+  - id: statement_body
+    label: "陳述内容"
+    type: textarea
+    required: true
+    position:
+      row: 12
+      column: 1
+  - id: statement_date
+    label: "作成日"
+    type: date
+    required: true
+    position:
+      row: 28
+      column: 2

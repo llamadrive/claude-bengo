@@ -295,3 +295,97 @@ templates:
     legal_basis: 民法 760条、家事事件手続法 244条、令和元年改定婚姻費用算定方式
     author: LlamaDrive
     version: "1.0.0"
+
+  - id: shareholder-meeting-minutes
+    title: 株主総会議事録
+    category: 企業法務
+    description: 定時・臨時株主総会の議事録雛形。会社法 318条の本店 10年間備置義務対応
+    use_cases: |
+      - 定時株主総会後の議事録作成
+      - 臨時株主総会後の議事録作成
+      - 株主総会決議事項の記録保存
+    legal_basis: 会社法 318条、会社法施行規則 72条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: board-meeting-minutes
+    title: 取締役会議事録
+    category: 企業法務
+    description: 取締役会議事録雛形。出席取締役・監査役の記名押印対応
+    use_cases: |
+      - 取締役会決議事項の記録
+      - 重要事項決議の証拠資料
+    legal_basis: 会社法 369条 3項、会社法施行規則 101条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: small-claims-complaint
+    title: 訴状（少額訴訟）
+    category: 民事訴訟
+    description: 60万円以下の金銭請求に使う少額訴訟訴状。1回期日で判決
+    use_cases: |
+      - 敷金返還請求
+      - 未払賃金請求
+      - 少額の貸金返還
+    legal_basis: 民事訴訟法 368-375条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: immediate-settlement
+    title: 即決和解申立書（訴え提起前の和解）
+    category: 民事訴訟
+    description: 起訴前の和解申立書。確定判決と同一効力の和解調書を取得
+    use_cases: |
+      - 交渉成立済みの紛争を執行力付き和解調書として固定
+      - 任意履行が見込めない和解内容の強制執行備え
+    legal_basis: 民事訴訟法 275条・267条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: criminal-statement
+    title: 陳述書（刑事事件）
+    category: 刑事弁護
+    description: 刑事公判での陳述書雛形。被告人・被害者・親族・雇主・嘆願者用
+    use_cases: |
+      - 情状弁護資料
+      - 被害者の意見書
+      - 親族・雇主による監督誓約書
+    legal_basis: 刑事訴訟法 321条以下（書面の証拠能力）、量刑実務
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: contract-review-checklist
+    title: 契約書レビューチェックリスト
+    category: 企業法務
+    description: 一般契約書のレビュー時の標準チェック項目。17項目の事前洗い出しリスト
+    use_cases: |
+      - 新規契約書のレビュー
+      - 既存契約の見直し
+      - 法務部員の標準業務
+    legal_basis: 民法 416条・562-564条、個人情報保護法 27条、独禁法 等
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: work-regulations-template
+    title: 就業規則（簡易版テンプレート）
+    category: 企業法務
+    description: 労基法 89条の必要記載事項を網羅した就業規則雛形。10人以上事業場で必要
+    use_cases: |
+      - 新規事業場の就業規則作成
+      - 既存規則の見直し時の比較資料
+      - 中小企業のベースライン作成
+    legal_basis: 労基法 89条・90条・92条、高年齢者雇用安定法 8条
+    author: LlamaDrive
+    version: "1.0.0"
+
+  - id: employment-contract
+    title: 労働契約書
+    category: 労働
+    description: 労基法 15条の明示事項を網羅した労働契約書雛形。正社員・契約社員両対応
+    use_cases: |
+      - 採用時の労働条件通知と契約書化
+      - 契約社員の契約期間明示
+      - 労働条件のエビデンス化
+    legal_basis: 労基法 15条 1項、労基法施行規則 5条、労働契約法 4条
+    author: LlamaDrive
+    version: "1.0.0"

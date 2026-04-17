@@ -1,0 +1,71 @@
+id: board-meeting-minutes
+title: 取締役会議事録
+description: 取締役会議事録雛形（会社法 369 条 3 項、施行規則 101 条）
+category: 企業法務
+templateFile: board-meeting-minutes.xlsx
+fields:
+  - id: company_name
+    label: "会社名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: meeting_date
+    label: "開催日時"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: meeting_place
+    label: "開催場所"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: attending_directors
+    label: "出席取締役"
+    type: textarea
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: attending_auditors
+    label: "出席監査役"
+    type: textarea
+    required: false
+    position:
+      row: 7
+      column: 2
+  - id: chair_name
+    label: "議長"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: agenda
+    label: "議題"
+    type: table
+    required: true
+    range:
+      headerRow: 11
+      dataStartRow: 12
+      startColumn: 1
+      endRow: 20
+      endColumn: 4
+    columns:
+      - id: no
+        label: "議案"
+        type: text
+      - id: title
+        label: "議題"
+        type: text
+      - id: summary
+        label: "討議の内容・結果"
+        type: text
+      - id: result
+        label: "決議結果"
+        type: text

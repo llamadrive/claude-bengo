@@ -1,0 +1,151 @@
+id: employment-contract
+title: 労働契約書
+description: 労基法 15 条の明示事項を網羅した労働契約書雛形。正社員・契約社員両対応
+category: 労働
+templateFile: employment-contract.xlsx
+fields:
+  - id: employer_name
+    label: "使用者（会社名）"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: employer_address
+    label: "会社住所"
+    type: text
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: employer_representative
+    label: "代表者"
+    type: text
+    required: true
+    position:
+      row: 4
+      column: 2
+  - id: employee_name
+    label: "労働者氏名"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: employee_address
+    label: "労働者住所"
+    type: text
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: employee_birth
+    label: "労働者生年月日"
+    type: date
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: contract_type
+    label: "契約種別"
+    type: select
+    required: true
+    position:
+      row: 10
+      column: 2
+    options:
+      - "正社員"
+      - "契約社員"
+      - "パート・アルバイト"
+      - "嘱託"
+  - id: contract_start
+    label: "契約開始日"
+    type: date
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: contract_end
+    label: "契約期間満了日"
+    type: date
+    required: false
+    position:
+      row: 12
+      column: 2
+  - id: trial_period
+    label: "試用期間"
+    type: text
+    required: false
+    position:
+      row: 13
+      column: 2
+  - id: work_location
+    label: "就業場所"
+    type: text
+    required: true
+    position:
+      row: 15
+      column: 2
+  - id: job_duties
+    label: "業務内容"
+    type: textarea
+    required: true
+    position:
+      row: 16
+      column: 2
+  - id: working_hours
+    label: "所定労働時間"
+    type: text
+    required: true
+    position:
+      row: 18
+      column: 2
+  - id: break_time
+    label: "休憩時間"
+    type: text
+    required: true
+    position:
+      row: 19
+      column: 2
+  - id: holidays
+    label: "休日"
+    type: text
+    required: true
+    position:
+      row: 20
+      column: 2
+  - id: paid_leave
+    label: "年次有給休暇"
+    type: text
+    required: true
+    position:
+      row: 21
+      column: 2
+  - id: monthly_salary
+    label: "月額賃金（円）"
+    type: number
+    required: true
+    position:
+      row: 23
+      column: 2
+  - id: allowances
+    label: "諸手当"
+    type: textarea
+    required: false
+    position:
+      row: 24
+      column: 2
+  - id: salary_payment_date
+    label: "賃金支払日"
+    type: text
+    required: true
+    position:
+      row: 25
+      column: 2
+  - id: signed_date
+    label: "契約締結日"
+    type: date
+    required: true
+    position:
+      row: 27
+      column: 2

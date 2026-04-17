@@ -1,0 +1,69 @@
+id: work-regulations-template
+title: 就業規則（簡易版・テンプレート）
+description: 労基法 89 条の必要記載事項を網羅した就業規則雛形。10 人以上の事業場で必要
+category: 企業法務
+templateFile: work-regulations-template.xlsx
+fields:
+  - id: company_name
+    label: "会社名"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: effective_date
+    label: "施行日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: working_hours
+    label: "所定労働時間（1 日）"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: work_days_per_week
+    label: "週所定労働日数"
+    type: number
+    required: true
+    position:
+      row: 7
+      column: 2
+  - id: holidays_annual
+    label: "年間所定休日"
+    type: number
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: paid_leave_days
+    label: "年次有給休暇（初年度）"
+    type: number
+    required: true
+    position:
+      row: 10
+      column: 2
+  - id: salary_payment_date
+    label: "賃金支払日"
+    type: text
+    required: true
+    position:
+      row: 12
+      column: 2
+  - id: retirement_age
+    label: "定年年齢"
+    type: number
+    required: true
+    position:
+      row: 14
+      column: 2
+  - id: disciplinary_rules
+    label: "懲戒規定"
+    type: textarea
+    required: true
+    position:
+      row: 16
+      column: 2

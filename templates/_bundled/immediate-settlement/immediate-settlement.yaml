@@ -1,0 +1,62 @@
+id: immediate-settlement
+title: 即決和解申立書（訴え提起前の和解）
+description: 民訴法 275 条の起訴前の和解申立書。執行力付き和解調書の取得が目的
+category: 民事訴訟
+templateFile: immediate-settlement.xlsx
+fields:
+  - id: court_name
+    label: "管轄簡易裁判所"
+    type: text
+    required: true
+    position:
+      row: 2
+      column: 2
+  - id: filing_date
+    label: "申立日"
+    type: date
+    required: true
+    position:
+      row: 3
+      column: 2
+  - id: applicant_name
+    label: "申立人氏名"
+    type: text
+    required: true
+    position:
+      row: 5
+      column: 2
+  - id: applicant_address
+    label: "申立人住所"
+    type: text
+    required: true
+    position:
+      row: 6
+      column: 2
+  - id: respondent_name
+    label: "相手方氏名"
+    type: text
+    required: true
+    position:
+      row: 8
+      column: 2
+  - id: respondent_address
+    label: "相手方住所"
+    type: text
+    required: true
+    position:
+      row: 9
+      column: 2
+  - id: dispute_summary
+    label: "紛争の要点"
+    type: textarea
+    required: true
+    position:
+      row: 11
+      column: 2
+  - id: settlement_terms
+    label: "和解条項（案）"
+    type: textarea
+    required: true
+    position:
+      row: 13
+      column: 2

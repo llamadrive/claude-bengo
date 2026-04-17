@@ -1,12 +1,14 @@
 ---
 name: inheritance-calc
 description: This skill should be used when the user asks to "calculate inheritance shares", "法定相続分を計算", "相続分を出して", "相続割合", "誰がどれだけ相続する", "遺留分", or wants to compute statutory inheritance shares from a family tree.
-version: 1.0.0
+version: 2.0.0
 ---
 
 # 法定相続分計算（inheritance-calc）
 
 家族関係データから民法の規定に基づき法定相続分を決定論的に計算する。**LLM の推論ではなく、民法の条文ロジックに従った正確な計算を行う。**
+
+計算本体は `skills/inheritance-calc/calc.py`（Python スクリプト）に実装されており、このスクリプトを唯一の計算エンジンとして扱う。SKILL.md 内に実行可能な Python コードは含めない。
 
 ## ワークフロー
 
@@ -19,16 +21,20 @@ version: 1.0.0
 
 必要なデータ:
 - 被相続人（死亡者）の特定
-- 配偶者の有無
-- 子の有無と人数（養子含む）
-- 子が先に死亡している場合、その子（孫）の有無
-- 直系尊属（父母）の生存状況
-- 兄弟姉妹の有無（半血/全血の区別含む）
-- 相続放棄した者がいるか
+- 配偶者の有無・生死・放棄有無
+- 子の有無・人数・生死・放棄有無（養子含む）
+- 子が先に死亡している場合、その直系卑属（孫・ひ孫）の有無と生死
+- 直系尊属（父母・祖父母）の生存状況
+- 兄弟姉妹の有無（半血/全血の区別含む）・生死
+- 兄弟姉妹が死亡している場合、甥姪の有無と生死
+- 相続放棄した者がいるか（放棄 ≠ 死亡 に注意）
+- 特別養子の有無（実親相続時は相続人リストから除外する）
+
+**重要:** 情報が曖昧または不足している場合は、calc.py を呼び出さず、ユーザーに確認する。誤った入力で計算すると、誤った法的結論を出すおそれがある。
 
 ### Step 2: 相続人の確定
 
-`skills/inheritance-calc/references/inheritance-rules.md` を Read ツールで読み込み、以下の順序で相続人を確定する:
+`skills/inheritance-calc/references/inheritance-rules.md` を Read ツールで読み込み、以下の順序で相続人を確定する。
 
 **相続人の順位（民法887条・889条・890条）:**
 
@@ -40,128 +46,63 @@ version: 1.0.0
    - 父母が生存 → 父母
    - 父母が死亡、祖父母が生存 → 祖父母（親等が近い者が優先）
 4. **第3順位（子も直系尊属もいない場合のみ）:** 兄弟姉妹（民法889条2号）
-   - 兄弟姉妹が先に死亡 → その子（甥姪）が代襲相続（1代限り）
+   - 兄弟姉妹が先に死亡 → 甥姪が代襲相続（1代限り、再代襲不可）
 
-**相続放棄の処理:**
-- 相続放棄した者は最初から相続人でなかったものとみなす
-- 相続放棄者の子は代襲相続しない（放棄 ≠ 死亡）
+**相続放棄の処理（民法939条）:**
+- 相続放棄者は最初から相続人でなかったものとみなす
+- 相続放棄者の直系卑属は代襲相続しない（放棄 ≠ 死亡）
 - 第1順位の全員が放棄 → 第2順位に移行
+- 第2順位の全員が放棄 → 第3順位に移行
 
-### Step 3: 法定相続分の計算
+**特別養子の処理（民法817条の2）:**
+- 特別養子は実親との法律上の親族関係が終了する
+- 実親の相続においては、特別養子を相続人リストから完全に除外する
+- 養親の相続においては、実子と同様に扱う（入力では `adoption: "none"`）
 
-**民法900条の計算ルール:**
+### Step 3: calc.py 用の入力 JSON を構築
 
-| 相続人の組合せ | 配偶者の相続分 | 他の相続人の相続分 |
-|-------------|------------|--------------|
-| 配偶者 + 子 | 1/2 | 子が 1/2 を均等分割 |
-| 配偶者 + 直系尊属 | 2/3 | 直系尊属が 1/3 を均等分割 |
-| 配偶者 + 兄弟姉妹 | 3/4 | 兄弟姉妹が 1/4 を均等分割 |
-| 配偶者のみ | 1/1（全部） | — |
-| 子のみ（配偶者なし） | — | 子が均等分割 |
-| 直系尊属のみ | — | 直系尊属が均等分割 |
-| 兄弟姉妹のみ | — | 兄弟姉妹が均等分割 |
+Step 2 で確定した情報から、以下のスキーマの JSON を組み立てる。
 
-**特殊ルール:**
-
-- **代襲相続（民法901条）:** 代襲相続人の相続分 = 被代襲者が受けるべきであった相続分。代襲者が複数いる場合は均等分割。
-- **半血兄弟姉妹（民法900条4号但書）:** 父母の一方のみを同じくする兄弟姉妹の相続分は、父母の双方を同じくする兄弟姉妹の相続分の 1/2。
-- **養子:** 実子と同一の相続分。
-
-### Step 4: 計算の実行
-
-**Python スクリプトで決定論的に計算する。** LLM の推論に頼らない。
-
-```bash
-python3 -c "
-# 入力: 相続人リスト（Claude が Step 2 で確定したもの）
-# 以下の変数を実際の値に置き換えて実行する
-
-spouse = True          # 配偶者の有無
-children = 3           # 子の数（代襲相続人含まない）
-deceased_children = 0  # 先に死亡した子の数
-grandchildren_per_deceased = []  # 死亡した子ごとの孫の数 (例: [2, 1])
-ascendants = 0         # 直系尊属の数（第1順位がいない場合のみ）
-siblings_full = 0      # 全血兄弟姉妹の数（第1,2順位がいない場合のみ）
-siblings_half = 0      # 半血兄弟姉妹の数
-renounced = []         # 相続放棄者のリスト（'child', 'spouse' 等）
-
-from fractions import Fraction
-
-# 相続放棄の処理
-effective_children = children - (renounced.count('child') if 'child' in renounced else 0)
-has_spouse = spouse and 'spouse' not in renounced
-
-# 代襲相続人を含む実効的な子の数
-total_child_lines = effective_children - deceased_children + len(grandchildren_per_deceased)
-
-results = {}
-
-if total_child_lines > 0:
-    # 第1順位: 配偶者 + 子
-    spouse_share = Fraction(1, 2) if has_spouse else Fraction(0)
-    children_total = Fraction(1, 2) if has_spouse else Fraction(1)
-    per_child = children_total / total_child_lines if total_child_lines > 0 else Fraction(0)
-    
-    if has_spouse:
-        results['配偶者'] = spouse_share
-    
-    for i in range(effective_children - deceased_children):
-        results[f'子{i+1}'] = per_child
-    
-    for i, gc_count in enumerate(grandchildren_per_deceased):
-        parent_share = per_child
-        per_grandchild = parent_share / gc_count if gc_count > 0 else Fraction(0)
-        for j in range(gc_count):
-            results[f'代襲相続人（孫{i+1}-{j+1}）'] = per_grandchild
-
-elif ascendants > 0:
-    # 第2順位: 配偶者 + 直系尊属
-    spouse_share = Fraction(2, 3) if has_spouse else Fraction(0)
-    ascendants_total = Fraction(1, 3) if has_spouse else Fraction(1)
-    per_ascendant = ascendants_total / ascendants
-    
-    if has_spouse:
-        results['配偶者'] = spouse_share
-    for i in range(ascendants):
-        results[f'直系尊属{i+1}'] = per_ascendant
-
-elif siblings_full + siblings_half > 0:
-    # 第3順位: 配偶者 + 兄弟姉妹
-    spouse_share = Fraction(3, 4) if has_spouse else Fraction(0)
-    siblings_total = Fraction(1, 4) if has_spouse else Fraction(1)
-    
-    # 半血兄弟姉妹は全血の1/2
-    # 全血1人分を1単位、半血1人分を0.5単位として計算
-    total_units = siblings_full + Fraction(siblings_half, 2)
-    per_full = siblings_total / total_units if total_units > 0 else Fraction(0)
-    per_half = per_full / 2
-    
-    if has_spouse:
-        results['配偶者'] = spouse_share
-    for i in range(siblings_full):
-        results[f'兄弟姉妹{i+1}（全血）'] = per_full
-    for i in range(siblings_half):
-        results[f'兄弟姉妹{i+1}（半血）'] = per_half
-
-elif has_spouse:
-    results['配偶者'] = Fraction(1)
-
-# 結果表示
-print('法定相続分:')
-total = Fraction(0)
-for heir, share in results.items():
-    pct = float(share) * 100
-    print(f'  {heir}: {share} ({pct:.1f}%)')
-    total += share
-print(f'  合計: {total} ({float(total)*100:.1f}%)')
-"
+```json
+{
+  "decedent": {"id": "d", "name": "甲野太郎"},
+  "heirs": [
+    {"id": "h1", "name": "甲野花子", "kind": "spouse", "status": "alive"},
+    {"id": "h2", "name": "甲野一郎", "kind": "child", "status": "alive", "adoption": "none"},
+    {"id": "h3", "name": "甲野次郎", "kind": "child", "status": "deceased"},
+    {"id": "h4", "name": "甲野三郎", "kind": "grandchild", "status": "alive", "parent_id": "h3"},
+    {"id": "h5", "name": "甲野四郎", "kind": "child", "status": "renounced"}
+  ],
+  "compute_iryubun": false
+}
 ```
 
-**重要:** 上記のスクリプトはテンプレートである。Claude は Step 2 で確定した相続人情報に基づいて変数の値を設定し、スクリプトを実行する。
+**フィールド仕様:**
+
+| フィールド | 値 |
+|-----------|------|
+| `kind` | `spouse`, `child`, `grandchild`, `great_grandchild`, `parent`, `grandparent`, `sibling_full`, `sibling_half`, `nephew_niece` |
+| `status` | `alive`（生存）, `deceased`（先死亡）, `renounced`（相続放棄） |
+| `adoption` | `none`（実子/普通養子）, `special`（特別養子 — 実親の相続では入力に含めない） |
+| `parent_id` | 代襲相続人の場合、被代襲者の `id` |
+
+**遺留分も計算する場合は `compute_iryubun: true` を設定する。**
+
+### Step 4: calc.py を呼び出す
+
+Bash ツールで以下のように実行する:
+
+```bash
+python3 skills/inheritance-calc/calc.py --json '<上で構築した heir JSON>'
+```
+
+出力は JSON（標準出力）。`--pretty` を付けると標準エラーに人間可読の表も出る。
+
+**前提条件:** Step 1〜3 でデータの整合性を確認し終えていること。calc.py は入力を厳密に検証するが、法律上の論点（例: 事実婚の配偶者、胎児の扱い、相続欠格等）を判定する機能はない。これらの論点はユーザーと対話して解決しておく。
 
 ### Step 5: 結果の表示
 
-計算結果を以下の形式で表示する:
+calc.py の JSON 出力を以下の形式で表示する。
 
 ```
 ## 法定相続分の計算結果
@@ -179,19 +120,23 @@ print(f'  合計: {total} ({float(total)*100:.1f}%)')
 | **合計** | | **1/1** | **100.0%** |
 
 ### 計算根拠
-- 民法900条1号: 配偶者と子が相続人 → 配偶者 1/2、子 1/2
-- 民法900条4号: 子3人で均等分割 → 各 1/6
+
+（calc.py の `notes` フィールドの内容をそのまま転記する）
+- 民法900条1号: 配偶者と子が相続 → 配偶者 1/2、子（ライン合計）1/2。
+- …
 ```
+
+「続柄」は Step 2 で確定した情報に基づき日本語で補う（例: `child` → 「長男」「次男」など順序・性別に応じて）。JSON の `kind` をそのまま表示しない。
 
 ### Step 6: 遺留分の計算（オプション）
 
-ユーザーが遺留分（民法1042条）について質問した場合:
+ユーザーが遺留分（民法1042条）について言及した場合、Step 3 の入力 JSON で `"compute_iryubun": true` を指定して再計算する。calc.py が遺留分も JSON の `iryubun` フィールドに含めて返す。
 
-- **遺留分権利者:** 配偶者、子、直系尊属（兄弟姉妹には遺留分なし）
-- **遺留分の割合:**
-  - 直系尊属のみが相続人 → 被相続人の財産の 1/3
-  - それ以外 → 被相続人の財産の 1/2
-- **各人の遺留分 = 遺留分全体 × 法定相続分**
+遺留分のルール（calc.py が自動適用）:
+- **遺留分権利者:** 配偶者、子（およびその代襲者）、直系尊属
+- **遺留分なし:** 兄弟姉妹、甥姪
+- **総遺留分:** 直系尊属のみが相続人 → 1/3、それ以外 → 1/2
+- **各人の遺留分 = 総遺留分 × 法定相続分**
 
 ### Step 7: /family-tree との連携
 
@@ -201,6 +146,25 @@ print(f'  合計: {total} ({float(total)*100:.1f}%)')
 
 ## エラーハンドリング
 
-- 被相続人が特定できない: 「誰が被相続人（亡くなった方）か教えてほしい」
-- 相続人が1人もいない: 「相続人不存在のケースである。特別縁故者への分与（民法958条の2）や国庫帰属（民法959条）の可能性がある」
-- 情報が不足: 不明な項目について質問する（「お子さんは何人いるか？」「ご両親は健在か？」）
+- **被相続人が特定できない:** 「誰が被相続人（亡くなった方）か教えてほしい」
+- **相続人が1人もいない:** calc.py の `rank: null` とメモを提示し、「相続人不存在のケースである。特別縁故者への分与（民法958条の2）や国庫帰属（民法959条）の手続を検討する必要がある」と案内する。
+- **情報が不足:** 不明な項目について質問する（「お子さんは何人いるか？」「ご両親は健在か？」「放棄された方はいるか？」）。
+- **calc.py がエラーを返した場合:** 標準エラー出力の JSON にエラーメッセージがある。入力を見直して再計算する。
+
+## 対応範囲外（明示的な非対応事項）
+
+以下の論点は現バージョンで非対応である。該当するケースではユーザーに注意喚起し、弁護士（自身）の判断を仰ぐ。
+
+- 二重相続資格（一人が複数の相続資格を併有する場合、例: 養子かつ代襲相続人）
+- 胎児の相続権（民法886条）
+- 相続欠格（民法891条）・廃除（民法892条）
+- 寄与分（民法904条の2）・特別受益（民法903条）
+- 配偶者居住権（民法1028条以下）
+- 相続人不存在時の特別縁故者への分与（民法958条の2）
+- 具体的な遺留分侵害額請求の金額計算（民法1046条）
+
+二重相続資格（例: 被相続人の孫を養子にし、かつその孫の実親（被相続人の子）が先に死亡している場合）については、民法上の通説では両方の資格から相続分を受けるとされているが、本スキルでは単一資格のみ処理するため、該当ケースを検出した時点でエラーを返す。手動で各資格分を合算する必要がある。
+
+## データプライバシー
+
+calc.py はローカル実行のみで、外部通信は行わない。ただし、Step 1 でユーザーが入力した家族関係情報は Claude API を通じて送信されるため、クライアントの機密情報を含む場合は所属事務所の AI 利用ポリシーに従うこと。

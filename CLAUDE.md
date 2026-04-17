@@ -31,6 +31,15 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 
 ユーザーが初めて機密文書を処理する際は、上記の注意事項を表示する。
 
+## スキル開発時の注意（contributors 向け）
+
+各 SKILL.md のフロントマター `description` フィールドは、**Claude がユーザー発話からスキルを自動選択する際のトリガー**としても機能する。このため以下に注意する:
+
+- **曖昧な動詞を追加する前に、他のスキルとの競合を検討する。** 例: 「反映して」は template-fill の追記モードと混同される恐れがある（上書きと解釈するユーザーもいるため除外済み）。
+- **破壊的操作を示す動詞は description に含めない。** 編集・上書き・削除の意図は `$ARGUMENTS` の明示フラグで受ける。
+- **description を変更した際は、他のスキルの description と重複・競合がないか確認する。** `grep -h "^description:" skills/*/SKILL.md` で一覧できる。
+- トリガーフレーズは日本語と英語の両方を並記する（`"校正", "proofread"` など）が、曖昧な English verbs（`"handle"`, `"process"`）は避ける。
+
 ## MCP利用ルール
 
 - **Excel操作**: `mcp__xlsx-editor__*` を使用する。セル読取は `read_sheet`、書込は `write_cell` / `write_cells` / `write_rows`、構造確認は `get_workbook_info`。複数セルの一括書込には `write_cells` を使用してパフォーマンスを向上させる。

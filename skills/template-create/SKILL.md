@@ -92,7 +92,12 @@ YAML形式は `templates/_schema.yaml` に準拠する。
 
 ### Step 7: XLSXコピー
 
-元のXLSXファイルを `templates/{id}.xlsx` にコピーする（Bash の `cp` コマンド）。
+元のXLSXファイルを `templates/{id}.xlsx` にコピーする。`cp` コマンドは Windows で動作しないため、クロスプラットフォームの Python ヘルパーを使う:
+
+```bash
+python3 skills/_lib/copy_file.py --src "<source.xlsx>" --dst "templates/{id}.xlsx"
+```
+
 元ファイルは変更しない。
 
 ### Step 8: 完了サマリー

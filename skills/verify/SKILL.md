@@ -23,7 +23,7 @@ MCP サーバの疎通と fixtures の存在を確認する。
 3. `mcp__html-report__get_component_examples` を呼び出し、応答を確認する。
 4. Glob で `fixtures/` 配下の各サブディレクトリにファイルが存在することを確認する。
 5. Glob で `templates/_schema.yaml` が存在することを確認する。
-6. Glob で `skills/*/SKILL.md` を検索し、全スキルが存在することを確認する（template-create, template-fill, family-tree, typo-check, lawsuit-analysis, verify の6件）。
+6. Glob で `skills/*/SKILL.md` を検索し、見つかったスキルを列挙する。件数はハードコードしない — Glob の結果をそのまま使う。
 
 **出力:**
 ```
@@ -33,19 +33,21 @@ MCP サーバの疎通と fixtures の存在を確認する。
   [1] xlsx-editor MCP ............. OK
   [2] docx-editor MCP ............. OK
   [3] html-report MCP ............. OK
-  [4] fixtures .................... OK (4 dirs)
+  [4] fixtures .................... OK ({N} dirs)
   [5] templates ................... OK
-  [6] skills ...................... OK (6 skills)
+  [6] skills ...................... OK ({M} skills)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   結果: 全項目 OK
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
+`{N}` と `{M}` は Glob の結果から動的に決まる。ハードコードしない。
+
 MCP サーバが応答しない場合は、そのサーバが設定されていない旨と設定方法を案内する。
 
 ### モード2: 個別テスト（スキル名指定）
 
-$ARGUMENTS に `template-fill`, `family-tree`, `typo-check`, `lawsuit-analysis` のいずれかが指定された場合、該当スキルの機能テストを実行する。
+$ARGUMENTS に `template-fill`, `family-tree`, `typo-check`, `lawsuit-analysis`, `inheritance-calc`, `law-search` のいずれかが指定された場合、該当スキルの機能テストを実行する。
 
 **共通手順:**
 1. `fixtures/{skill-name}/` 配下のテストファイルを確認する。
@@ -76,9 +78,9 @@ $ARGUMENTS に `template-fill`, `family-tree`, `typo-check`, `lawsuit-analysis` 
 
 ### モード3: 全テスト（`all` 指定）
 
-4スキル全ての機能テストを順次実行する。
+`fixtures/` 配下にテストデータが揃っているスキル全ての機能テストを順次実行する。実行件数はハードコードしない — fixtures が存在するスキルだけを動的に列挙する。
 
-**出力:**
+**出力（例）:**
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   claude-bengo 動作確認レポート（全テスト）
@@ -89,7 +91,7 @@ $ARGUMENTS に `template-fill`, `family-tree`, `typo-check`, `lawsuit-analysis` 
   [4] /typo-check ................ OK (P:92% R:80%)
   [5] /lawsuit-analysis .......... OK (6/6 events, 3/3 chars)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  結果: 4/4 OK
+  結果: {合格}/{実行} OK
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 

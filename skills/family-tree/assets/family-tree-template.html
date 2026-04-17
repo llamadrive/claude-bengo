@@ -26,7 +26,7 @@
   </style>
 </head>
 <body>
-  <script type="application/json" id="graph-data">__GRAPH_DATA__</script>
+  <meta id="graph-data-b64" content="__GRAPH_DATA_B64__">
 
   <div class="toolbar">
     <button onclick="window.print()">印刷 / PDF出力</button>
@@ -40,9 +40,12 @@
 
   <script>
     (function() {
-      var dataEl = document.getElementById('graph-data');
+      var dataEl = document.getElementById('graph-data-b64');
       if (!dataEl) return;
-      var data = JSON.parse(dataEl.textContent);
+      var b64 = dataEl.getAttribute('content') || '';
+      var bytes = Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); });
+      var jsonStr = new TextDecoder('utf-8').decode(bytes);
+      var data = JSON.parse(jsonStr);
       var persons = data.persons || [];
       var rels = data.relationships || [];
 

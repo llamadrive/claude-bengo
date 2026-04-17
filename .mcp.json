@@ -2,15 +2,15 @@
   "mcpServers": {
     "xlsx-editor": {
       "command": "npx",
-      "args": ["-y", "xlsx-mcp-server"]
+      "args": ["-y", "@knorq/xlsx-mcp-server@2.0.0"]
     },
     "docx-editor": {
       "command": "npx",
-      "args": ["-y", "docx-mcp-server"]
+      "args": ["-y", "@knorq/docx-mcp-server@2.0.0"]
     },
     "html-report": {
       "command": "npx",
-      "args": ["-y", "html-report-server"]
+      "args": ["-y", "@knorq/html-report-server@2.0.0"]
     }
   }
 }

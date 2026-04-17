@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Verify plugin integrity
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.8", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run verify harness
+        run: python3 scripts/verify.py
+
+      - name: Run inheritance-calc unit tests (explicit)
+        run: python3 skills/inheritance-calc/test_calc.py
+
+      - name: Validate plugin.json
+        shell: python
+        run: |
+          import json, sys
+          with open(".claude-plugin/plugin.json", encoding="utf-8") as f:
+              doc = json.load(f)
+          required = ["name", "description", "version"]
+          missing = [k for k in required if k not in doc]
+          if missing:
+              sys.exit(f"missing keys: {missing}")
+
+      - name: Validate .mcp.json has pinned versions
+        shell: python
+        run: |
+          import json, re, sys
+          with open(".mcp.json", encoding="utf-8") as f:
+              doc = json.load(f)
+          unpinned = []
+          for name, cfg in doc.get("mcpServers", {}).items():
+              for a in cfg.get("args", []):
+                  if a.startswith("-"):
+                      continue
+                  if "-mcp-server" in a or "-report-server" in a:
+                      if not re.search(r"@\d+\.\d+\.\d+", a):
+                          unpinned.append(f"{name}: {a}")
+          if unpinned:
+              sys.exit(f"unpinned MCP packages: {unpinned}")
+
+  lint-shell:
+    name: Lint shell snippets in skill docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for removed dangerous patterns
+        run: |
+          # These patterns were removed in the security hardening pass
+          # and should not be reintroduced. Scope the checks carefully —
+          # we only want to flag actual permission grants or executable
+          # snippets, not prose explanations of why we don't use them.
+          set -e
+
+          # Fail if any command grants broad python3:* bash permission.
+          if grep -rn "allowed-tools:.*Bash(python3:\\*)" commands/; then
+            echo "ERROR: Broad 'Bash(python3:*)' permission in a command."
+            echo "Use specific script paths, e.g. Bash(python3 skills/foo/bar.py:*)"
+            exit 1
+          fi
+
+          # Fail if any command grants Bash(python3 -c ...) permission.
+          if grep -rn "allowed-tools:.*Bash(python3 -c" commands/; then
+            echo "ERROR: 'Bash(python3 -c ...)' permission grants arbitrary code exec."
+            exit 1
+          fi
+
+          # Fail if any command grants broad curl:* bash permission.
+          if grep -rn "allowed-tools:.*Bash(curl:\\*)" commands/; then
+            echo "ERROR: Broad 'Bash(curl:*)' permission in a command."
+            exit 1
+          fi
+
+          # Fail if any command grants Bash(cp:*) — not portable to Windows.
+          # Use python3 skills/_lib/copy_file.py instead.
+          if grep -rn "allowed-tools:.*Bash(cp:\\*)" commands/; then
+            echo "ERROR: 'Bash(cp:*)' permission — not available on Windows."
+            echo "Use python3 skills/_lib/copy_file.py instead."
+            exit 1
+          fi
+
+          # Enforce MCP package hygiene:
+          #   1. All MCP/report servers must be pinned to an explicit X.Y.Z version.
+          #   2. All MCP/report servers must be scoped (@knorq/...) — unscoped
+          #      names are hijackable on npm and are forbidden since v1.1.
+          python3 - <<'PY'
+          import json, re, sys
+          doc = json.load(open(".mcp.json"))
+          problems = []
+          for name, cfg in doc.get("mcpServers", {}).items():
+              for a in cfg.get("args", []):
+                  if a.startswith("-"):
+                      continue
+                  if "-mcp-server" in a or "-report-server" in a:
+                      # Must be pinned to exact version.
+                      if not re.search(r"@\d+\.\d+\.\d+", a):
+                          problems.append(f"unpinned: {name} -> {a}")
+                      # Must be scoped — leading '@' before package name.
+                      if not a.startswith("@"):
+                          problems.append(f"unscoped: {name} -> {a} (use @knorq/...)")
+          if problems:
+              for p in problems:
+                  print(f"ERROR: {p}")
+              sys.exit(1)
+          PY
+
+          echo "All pattern checks passed."

@@ -1,18 +1,40 @@
 ---
 name: law-search
 description: This skill should be used when the user asks to "search a law", "法令検索", "条文を見せて", "法律を調べて", "○○法 第○条", "条文参照", "法令を確認", "何条に書いてある", or wants to look up Japanese law articles from the e-Gov API.
-version: 1.0.0
+version: 1.2.0
 ---
 
 # 法令検索（law-search）
 
 e-Gov 法令 API を使用して、日本の法令条文を検索・取得・表示する。
 
+## データの取扱い
+
+law-search の XML キャッシュはユーザー固有ディレクトリ `~/.claude-bengo/cache/law-search/` に 24 時間保存される。POSIX 上では所有者専用（`0o700`）で作成するため、共有 `/tmp` を経由した**他ユーザーからの書込攻撃**は防げる。暗号化ボリュームや事務所ポリシーで配置先を変更する場合は環境変数 `CLAUDE_BENGO_CACHE_PATH` で上書きできる。
+
+**整合性チェック（破損検出）:** 各キャッシュエントリ（例: `law_{id}.xml`, `article_{id}_{article}.xml`）には SHA-256 のサイドカー（`<filename>.sha256`）を併置する。書込は tmp + rename で原子的に行い、読取時には必ずサイドカーと本体のハッシュ一致を検証する。不一致・サイドカー欠落・TTL 超過のいずれかに該当すれば両ファイルを破棄して再取得扱いとする。
+
+**整合性チェックの限界（同一ユーザー権限の攻撃者には無力）:** サイドカーは自己チェックサムであり、HMAC や署名を含まない。従ってキャッシュディレクトリへ**書込権限を持つ攻撃者**（同一 OS ユーザーとして動作するマルウェア等）は、`.xml` と `.sha256` の両方を一貫して書き換えることで改ざんを成立させ得る。この仕組みは**破損検出（corruption detection）であり、敵対的改ざん検出（adversary detection）ではない**。高信頼要求がある場合は以下を検討する:
+
+- キャッシュを無効化する: TTL を短くするか、毎回 `clear-cache` を実行する
+- 書込権限を持つプロセスを最小化する（単一ユーザー専用端末、最小特権運用）
+- e-Gov からの原本（https://laws.e-gov.go.jp/）と引用時にクロスチェックする
+
+手動で削除したい場合は次を実行する（サイドカーもまとめて削除される）:
+
+```
+Bash: python3 skills/law-search/search.py clear-cache
+```
+
+特定の法令のみ削除する場合は `--law-id 129AC0000000089` を付ける。オフラインの自己診断は `python3 skills/law-search/search.py self-test` で実行する。
+
+旧版（v1.1.0 以前）では `tempfile.gettempdir()/claude-bengo/` を使用していた。共有 tmp 上の旧キャッシュは信頼しないため移行は行わない。旧ディレクトリが検出された場合、プロセスごとに 1 回だけ stderr にその旨を通知する。
+
 ## 重要: トークン制限への対応
 
-**法令全文は絶対に一括取得しない。** 民法は1000条以上、会社法は979条あり、全文XMLは数MBに達する。WebFetch のレスポンスがトークン制限を超えてエラーになる。
+**法令全文は絶対に Claude のコンテキストに載せない。** 民法は 1000 条以上、会社法は 979 条あり、全文 XML は数 MB に達する。
 
-**必ず条文単位の API（`/articles` エンドポイント）を使用する。** 1回のリクエストで取得するのは最大5条まで。
+**必ず条文単位の API（`/articles` エンドポイント）経由で取得する。** トピック検索の場合のみ、全文 XML を**ローカルのキャッシュに保存**してキーワード検索し、ヒットした条文だけを条文単位で取得する（`search.py` がこの流れを内部で実装している）。
 
 ## ワークフロー
 
@@ -25,18 +47,18 @@ e-Gov 法令 API を使用して、日本の法令条文を検索・取得・表
 | 法令名 + 条番号 | "民法709条" | → Step 2 → Step 3a（条文取得） |
 | 法令名 + 条範囲 | "民法709条から711条" | → Step 2 → Step 3a（複数条文を個別取得） |
 | 法令名のみ | "会社法" | → Step 2 → Step 3b（目次・概要を表示） |
-| 条文の内容で検索 | "不法行為の条文" | → Step 2 → Step 3c（既知の条文マッピングで推定） |
+| 条文の内容で検索 | "不法行為の条文" | → Step 2 → Step 3c（キーワードで条見出しを検索） |
 | 不明な法令名 | "なんとか保護法" | → Step 3d（法令名の候補を提案） |
 
 ### Step 2: 法令 ID の解決
 
-**2段階で法令 ID を解決する:**
+**2 段階で法令 ID を解決する:**
 
 **Step 2a: 略称・別名の解決**
 `skills/law-search/references/egov-api-guide.md` を Read ツールで読み込み、略称マッピング（民訴法→民事訴訟法 等）とキーワード→条文マッピングを確認する。
 
 **Step 2b: 法令 ID の検索**
-`skills/law-search/references/law-id-list.tsv` に対して Grep ツールで法令名を検索する。このファイルには全2,078件の日本の法律の ID と正式名称が含まれている。
+`skills/law-search/references/law-id-list.tsv` に対して Grep ツールで法令名を検索する。このファイルには全 2,078 件の日本の法律の ID と正式名称が含まれている。
 
 ```
 Grep: pattern="民法", path="skills/law-search/references/law-id-list.tsv"
@@ -44,7 +66,9 @@ Grep: pattern="民法", path="skills/law-search/references/law-id-list.tsv"
 
 結果例: `129AC0000000089	民法`
 
-**重要:** `law-id-list.tsv` は157KBあるため、**Read ツールで全文読込しない**。必ず Grep で部分検索する。
+**重要:** `law-id-list.tsv` は 157KB あるため、**Read ツールで全文読込しない**。必ず Grep で部分検索する。
+
+`law-id-list.tsv` は `skills/law-search/references/law-id-list.tsv` の先頭行に `# Generated: YYYY-MM-DD` とあるはず。6 ヶ月以上経過している場合は e-Gov の最新法令リストから再生成を検討する。
 
 Grep で見つからない場合:
 - ユーザーに正式名称を確認する
@@ -52,21 +76,26 @@ Grep で見つからない場合:
 
 ### Step 3a: 条文取得（条番号指定あり）
 
-**1条ずつ個別に取得する。** WebFetch で以下のURLを呼び出す:
+**1 条ずつ個別に取得する。** 付属スクリプトを呼び出す:
 
 ```
-https://laws.e-gov.go.jp/api/1/articles;lawId={lawId};article={articleNum};
+Bash: python3 skills/law-search/search.py fetch-article --law-id 129AC0000000089 --article 709
 ```
 
-例: 民法第709条を取得する場合:
-```
-WebFetch: https://laws.e-gov.go.jp/api/1/articles;lawId=129AC0000000089;article=709;
-```
+スクリプトが以下を自動で処理する:
+- URL の安全な組み立て（引数はシェル経由で展開されない）
+- 24 時間キャッシュの参照・更新
+- 429/5xx 系エラーの指数バックオフ再試行（最大 3 回）
+- 30 秒タイムアウト
+
+出力は条文の XML。stderr に JSON 形式のエラーを出した場合は `status` フィールドで失敗理由を判別する。
+
+**枝番号への対応:** 例えば「民法 第 766 条の 2」は `--article 766_2` と指定する（アンダースコア区切り）。
 
 **取得するデータの上限:**
-- 1リクエストにつき1条文
-- 1回の会話で最大5条まで（ユーザーが追加を求めた場合は順次取得）
-- 条範囲の指定（"709条から711条"）は1条ずつ順次取得する
+- 1 リクエストにつき 1 条文
+- 1 回の会話で最大 5 条まで（ユーザーが追加を求めた場合は順次取得）
+- 条範囲の指定（"709 条から 711 条"）は 1 条ずつ順次取得する
 
 **XML レスポンスの解析:**
 
@@ -117,51 +146,42 @@ WebFetch: https://laws.e-gov.go.jp/api/1/articles;lawId=129AC0000000089;article=
 
 ### Step 3c: トピック検索（条番号不明の場合）
 
-条番号がわからない場合、**法令XMLを一時ファイルにダウンロードし、条文見出しをローカル検索する**。
+条番号がわからない場合、**付属スクリプトで条見出し（ArticleCaption）をキーワード検索する**。スクリプトが法令全文 XML をローカルキャッシュにダウンロードし、条見出しを走査して一致した条番号を JSON 配列で返す。
 
-**手順:**
+**1. キーワード検索:**
 
-**1. 一時ディレクトリを作成し、法令XMLをダウンロード:**
-```bash
-mkdir -p .claude-bengo-tmp && curl -s "https://laws.e-gov.go.jp/api/1/lawdata/{lawId}" -o /tmp/claude-bengo/law_{lawId}.xml
 ```
-`/tmp/claude-bengo/` はOS一時ディレクトリ内のサブフォルダ。再起動時に自動削除される。ユーザーの作業ディレクトリやプラグインディレクトリには書き込まない。
-例: `curl -s "https://laws.e-gov.go.jp/api/1/lawdata/129AC0000000089" -o /tmp/law_129AC0000000089.xml`
-
-**2. 条文見出し（ArticleCaption）をキーワードで Grep 検索:**
-```bash
-grep -o 'ArticleCaption>[^<]*{keyword}[^<]*<' /tmp/claude-bengo/law_{lawId}.xml
-```
-例: 「監護」で検索 → 「（離婚後の子の監護に関する事項の定め等）」「（子の監護に要する費用の分担の定めがない場合の特例）」等がヒット
-
-**3. 条番号も一緒に抽出する場合（python3 使用）:**
-```bash
-python3 -c "
-import re
-with open('/tmp/claude-bengo/law_{lawId}.xml') as f: xml = f.read()
-for num, cap in re.findall(r'Article[^>]*Num=\"([^\"]+)\"[^>]*>.*?<ArticleCaption>([^<]*)</ArticleCaption>', xml, re.DOTALL):
-    if '{keyword}' in cap: print(f'第{num}条\t{cap}')
-"
+Bash: python3 skills/law-search/search.py search-keyword --law-id 129AC0000000089 --keyword 監護
 ```
 
-**4. ヒットした条文を Step 3a の方法で取得する**（WebFetch で `/articles` エンドポイント）
-
-**5. 検索完了後、一時ファイルを削除する:**
-```bash
-rm /tmp/claude-bengo/law_{lawId}.xml
+出力例（JSON 配列）:
+```json
+[
+  {"article_num": "766", "caption": "（離婚後の子の監護に関する事項の定め等）"},
+  {"article_num": "880", "caption": "（事情変更による後見人の辞任及び監護者の変更）"}
+]
 ```
+
+該当条文がない場合は空配列 `[]` が返る。
+
+**2. ヒットした条文を Step 3a で取得する:**
+
+```
+Bash: python3 skills/law-search/search.py fetch-article --law-id 129AC0000000089 --article 766
+```
+
+スクリプトが全文 XML を既にキャッシュしているため、同一会話内では再ダウンロードは発生しない。
 
 **利点:**
-- 法令全文をコンテキストに載せない（/tmp にダウンロードして Bash/Grep で検索）
-- 1050条の民法でも全条文見出しを一瞬で検索可能
-- 枝番号（第766条の3 等）も漏れなくヒットする
-- WebFetch のトークン制限の影響を受けない
+- 法令全文を Claude のコンテキストに載せない（ローカルで検索）
+- 1000 条超の民法でも条見出しを一瞬で検索可能
+- 枝番号（第 766 条の 3 等）も `article_num` に含まれる
+- 429 / 5xx エラー時は自動リトライされる
 
 **注意:**
-- ダウンロードは 1法令あたり 1-5MB。大きな法令は数秒かかる
-- 検索完了後は `rm /tmp/claude-bengo/law_{lawId}.xml` で削除する
-- 同一法令を繰り返し検索する場合は、一時ファイルを会話中保持してもよい（再ダウンロード不要）
-- `/tmp/claude-bengo/` はOS再起動時に自動削除されるため、手動削除は必須ではない
+- 法令全文 XML は 1〜5 MB。大きな法令は初回取得に数秒かかる
+- キャッシュは 24 時間有効。期限切れは自動で再取得する
+- キーワードは最大 50 文字。正規表現ではなく単純な部分一致である
 
 ### Step 3d: 法令名の候補提案
 
@@ -179,7 +199,13 @@ rm /tmp/claude-bengo/law_{lawId}.xml
 
 ## エラーハンドリング
 
-- **404 レスポンス**: 「指定された法令または条文が見つからなかった。法令名と条番号を確認してほしい。」
-- **XML パースエラー**: 「e-Gov API からの応答を解析できなかった。別の条番号で試してほしい。」
-- **レスポンスが大きすぎる**: WebFetch が切り詰められた場合、「応答が大きすぎるため、条文を1条ずつ取得する。まず第○条を表示する。」と案内して分割取得する
-- **API 接続エラー**: 「e-Gov 法令 API に接続できなかった。インターネット接続を確認してほしい。」
+`search.py` は失敗時に stderr へ `{"error": "...", "status": N}` 形式の JSON を出力し、終了コードで種別を示す:
+
+| 終了コード | 意味 | ユーザー向けメッセージ |
+|-----------|------|----------------------|
+| 0 | 成功 | — |
+| 1 | バリデーションエラー | 「法令 ID または条番号が不正である。例: 民法なら 129AC0000000089、条番号は 709 や 766_2。」 |
+| 2 | ネットワークエラー（404 含む） | status=404 → 「指定された法令または条文が見つからなかった。法令名と条番号を確認してほしい。」 その他 → 「e-Gov 法令 API に接続できなかった。時間をおいて再試行してほしい。」 |
+| 3 | XML パースエラー | 「e-Gov API からの応答を解析できなかった。別の条番号で試してほしい。」 |
+
+ネットワークエラー時は既に 3 回までリトライ済みである。即時リトライは避け、時間をおくよう案内する。

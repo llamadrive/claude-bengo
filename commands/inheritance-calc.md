@@ -1,6 +1,6 @@
 ---
 description: 家族関係図から法定相続分を自動計算
-allowed-tools: Read, Write, Glob, Bash(python3:*)
+allowed-tools: Read, Glob, Bash(python3 skills/inheritance-calc/calc.py:*), Bash(python3 skills/inheritance-calc/test_calc.py:*)
 ---
 
 家族関係図（/family-tree の出力データ）または戸籍情報から、民法に基づく法定相続分を自動計算する。

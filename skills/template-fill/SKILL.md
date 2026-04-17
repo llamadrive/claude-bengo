@@ -26,23 +26,57 @@ version: 1.0.0
 
 ## 監査ログ
 
-本スキルは処理対象のソース文書（PDF・画像）および出力 XLSX のファイル名・サイズ・SHA-256 を `~/.claude-bengo/audit.jsonl` に記録する。内容は記録しない。Step 2 の読取前と Step 6 の書込後に `skills/_lib/audit.py record` を実行する。
+本スキルは処理対象のソース文書（PDF・画像）および出力 XLSX のファイル名・サイズ・SHA-256 をアクティブ matter の `~/.claude-bengo/matters/{matter_id}/audit.jsonl` に記録する。内容は記録しない。Step 2 の読取前と Step 6 の書込後に `skills/_lib/audit.py record --matter {matter_id}` を実行する。
 
 ## 前提条件
 
-テンプレートが `/template-create` で事前登録されている必要がある。`templates/` ディレクトリに `{id}.yaml` + `{id}.xlsx` のペアが存在すること。
+アクティブな matter（事案）が設定されていること。テンプレートが `/template-create` で事前登録されている必要がある。アクティブ matter の templates ディレクトリ（`~/.claude-bengo/matters/{matter_id}/templates/`）に `{id}.yaml` + `{id}.xlsx` のペアが存在すること。
 
 ## ワークフロー
 
+### Step 0: Matter の解決
+
+処理開始前に、現在アクティブな matter を解決する:
+
+```bash
+python3 skills/_lib/matter.py resolve
+```
+
+戻り値の JSON から `matter_id` と `source` を取得する。
+
+- `matter_id` が null（`source=none`）の場合: **機密データを扱う本スキルは matter 設定なしでは実行できない**。以下のメッセージを表示して処理を中止する:
+
+  ```
+  エラー: アクティブな matter が設定されていない。
+  
+  以下のいずれかを実行してから再度試してほしい:
+    /matter-list         — 登録済み matter を確認
+    /matter-switch <id>  — 既存 matter に切替
+    /matter-create       — 新規 matter を作成
+    または --matter <id> フラグで明示指定
+  ```
+
+- `matter_id` が解決できた場合: 処理を続行する。ユーザーに**1 回だけ**アクティブ matter を確認する:
+
+  ```
+  matter '{matter_id}' で処理を続行する（解決元: {source}）。
+  ```
+
+続いてテンプレートディレクトリを解決する:
+
+```bash
+python3 skills/_lib/matter.py info {matter_id}
+```
+
+戻り値 JSON の `templates_dir` フィールドを以降のステップで `{matter_templates_dir}` として参照する。
+
 ### Step 1: テンプレート一覧の取得
 
-ユーザーの作業ディレクトリで Glob `templates/*.yaml` を検索し、`_schema.yaml` を除外する。
+Step 0 で解決した `{matter_templates_dir}/*.yaml` を Glob で検索し、`_schema.yaml` を除外する。**v2.0.0 ではテンプレートは matter ディレクトリ配下にのみ存在する。** 作業ディレクトリの `templates/` やプラグインディレクトリを検索してはならない。
 
-見つからない場合は、プラグインディレクトリ `~/.claude/plugins/claude-bengo/templates/` も確認する。サンプルテンプレートがあれば「サンプルをコピーして使用するか？」と確認し、承諾されれば作業ディレクトリの `templates/` にコピーする。
-
-- **0件の場合（両方の場所にテンプレートがない場合）**: ユーザーに以下の選択肢を提示する:
-  - ユーザーが $ARGUMENTS や会話で XLSX ファイルを指定している場合: 「テンプレートが未登録である。この XLSX をテンプレートとして登録してからデータ入力を行うか？」と確認し、承諾されれば `skills/template-create/SKILL.md` を Read して inline でテンプレート作成フローを実行した後、続けてデータ入力に進む。
-  - XLSX の指定がない場合: 「テンプレートが登録されていない。`/template-create` でテンプレートを登録してほしい。」と案内する。
+- **0件の場合**: ユーザーに以下の選択肢を提示する:
+  - ユーザーが $ARGUMENTS や会話で XLSX ファイルを指定している場合: 「現在の matter '{matter_id}' にはテンプレートが未登録である。この XLSX をテンプレートとして登録してからデータ入力を行うか？」と確認し、承諾されれば `skills/template-create/SKILL.md` を Read して inline でテンプレート作成フローを実行した後、続けてデータ入力に進む。
+  - XLSX の指定がない場合: 「現在の matter '{matter_id}' にはテンプレートが登録されていない。`/template-create` でテンプレートを登録してほしい。」と案内する。
 - **1件の場合**: 自動選択し、「テンプレート『○○』を使用する。よいか？」と確認する。
 - **複数件の場合**: 各YAMLを Read で読み取り、以下のような選択肢を提示する:
 
@@ -79,20 +113,20 @@ version: 1.0.0
 
 ### Step 3: テンプレート定義の読込
 
-選択されたYAMLを Read で読み込み、フィールド定義を取得する:
+選択された YAML（`{matter_templates_dir}/{id}.yaml`）を Read で読み込み、フィールド定義を取得する:
 - 各フィールドの `id`, `label`, `type`, `position`/`range`
 - テーブルフィールドの `columns` 定義
 
 ### Step 4: 出力ファイルの作成
 
 **通常モード:**
-テンプレートXLSXファイル（`templates/{id}.xlsx`）を出力先にコピーする。`cp` コマンドは Windows で動作しないため、クロスプラットフォームの Python ヘルパーを使う:
+matter のテンプレート XLSX（`{matter_templates_dir}/{id}.xlsx`）をユーザーの作業ディレクトリ（CWD）にコピーする。**出力は matter ディレクトリではなく、ユーザーの作業ディレクトリに配置する**（成果物であり、テンプレートではないため）。`cp` コマンドは Windows で動作しないため、クロスプラットフォームの Python ヘルパーを使う:
 
 ```bash
-python3 skills/_lib/copy_file.py --src "templates/{id}.xlsx" --dst "<出力先_filled.xlsx>"
+python3 skills/_lib/copy_file.py --src "{matter_templates_dir}/{id}.xlsx" --dst "<出力先_filled.xlsx>"
 ```
 
-出力ファイル名: `{元テンプレート名}_filled.xlsx`（またはユーザー指定）
+出力ファイル名: `{元テンプレート名}_filled.xlsx`（またはユーザー指定）。出力先はユーザー作業ディレクトリ配下。
 
 **追記モードの起動条件:**
 
@@ -122,10 +156,10 @@ python3 skills/_lib/copy_file.py --src "templates/{id}.xlsx" --dst "<出力先_f
 
 ### Step 5: ソース文書からのデータ抽出
 
-**各ソース文書について、読取前に監査ログに記録する:**
+**各ソース文書について、読取前に監査ログに記録する（Step 0 で解決した `{matter_id}` を付与）:**
 
 ```bash
-python3 skills/_lib/audit.py record --skill template-fill --event file_read --file "<source-path>"
+python3 skills/_lib/audit.py record --matter {matter_id} --skill template-fill --event file_read --file "<source-path>"
 ```
 
 その後、ソース文書を Read ツール（Claude vision）で読み取る。
@@ -169,10 +203,10 @@ python3 skills/_lib/audit.py record --skill template-fill --event file_read --fi
 
 抽出できなかったフィールドには `[要確認]` をセルに書き込み、`mcp__xlsx-editor__format_cells` で黄色背景（`#FFFF00`）を適用して視覚的に目立たせる。ユーザーに手動入力を促す。
 
-**書込完了後、監査ログに書込イベントを記録する:**
+**書込完了後、監査ログに書込イベントを記録する（アクティブ matter 宛）:**
 
 ```bash
-python3 skills/_lib/audit.py record --skill template-fill --event file_write --file "<output-xlsx>"
+python3 skills/_lib/audit.py record --matter {matter_id} --skill template-fill --event file_write --file "<output-xlsx>"
 ```
 
 ## セクション単位の入力
@@ -200,6 +234,6 @@ python3 skills/_lib/audit.py record --skill template-fill --event file_write --f
 
 ## エラーハンドリング
 
-- テンプレートXLSXが見つからない: YAMLの `templateFile` を確認し、パスの修正を提案する。
+- テンプレートXLSXが matter ディレクトリに見つからない: 該当 matter の `{matter_templates_dir}` を提示し、`/template-create` での登録を提案する。
 - ソース文書が読めない: スキャン品質の問題を報告し、OCR済みPDFの使用を提案する。
 - フィールド位置が実際のXLSXと一致しない: 警告を出し、`/template-create` での再登録を提案する。

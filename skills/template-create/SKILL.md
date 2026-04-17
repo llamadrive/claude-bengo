@@ -10,6 +10,42 @@ version: 1.0.0
 
 ## ワークフロー
 
+### Step 0: Matter の解決
+
+処理開始前に、現在アクティブな matter（事案）を解決する:
+
+```bash
+python3 skills/_lib/matter.py resolve
+```
+
+戻り値の JSON から `matter_id` と `source` を取得する。
+
+- `matter_id` が null（`source=none`）の場合: **テンプレートは事案に紐づいて保存されるため、本スキルは matter 設定なしでは実行できない**。以下のメッセージを表示して処理を中止する:
+
+  ```
+  エラー: アクティブな matter が設定されていない。
+  
+  以下のいずれかを実行してから再度試してほしい:
+    /matter-list         — 登録済み matter を確認
+    /matter-switch <id>  — 既存 matter に切替
+    /matter-create       — 新規 matter を作成
+    または --matter <id> フラグで明示指定
+  ```
+
+- `matter_id` が解決できた場合: 処理を続行する。ユーザーに**1 回だけ**アクティブ matter を確認する:
+
+  ```
+  matter '{matter_id}' で処理を続行する（解決元: {source}）。
+  ```
+
+続いて、テンプレート保存先ディレクトリを解決する:
+
+```bash
+python3 skills/_lib/matter.py info {matter_id}
+```
+
+戻り値 JSON の `templates_dir` フィールドを以降のステップで `{matter_templates_dir}` として参照する。
+
 ### Step 1: XLSXファイルの確認
 
 ユーザーにベースとなるXLSXファイルのパスを確認する。$ARGUMENTS で指定されている場合はそれを使用する。
@@ -86,16 +122,16 @@ version: 1.0.0
 
 ### Step 6: YAML保存
 
-確定したフィールド定義をYAML形式で `templates/{id}.yaml` に Write ツールで保存する（ユーザーの作業ディレクトリ内。プラグインディレクトリではない）。`templates/` ディレクトリが存在しない場合は `mkdir -p templates` で作成する。
+確定したフィールド定義をYAML形式で `{matter_templates_dir}/{id}.yaml` に Write ツールで保存する（アクティブ matter のテンプレートディレクトリ内。Step 0 で matter.py info から解決した `templates_dir` を使用する）。`{matter_templates_dir}` は matter 作成時に自動生成されているはずだが、万一存在しない場合は作成する。
 
-YAML形式は `templates/_schema.yaml` に準拠する。
+YAML形式はプラグインの `templates/_schema.yaml` に準拠する。
 
 ### Step 7: XLSXコピー
 
-元のXLSXファイルを `templates/{id}.xlsx` にコピーする。`cp` コマンドは Windows で動作しないため、クロスプラットフォームの Python ヘルパーを使う:
+元のXLSXファイルを `{matter_templates_dir}/{id}.xlsx` にコピーする。`cp` コマンドは Windows で動作しないため、クロスプラットフォームの Python ヘルパーを使う:
 
 ```bash
-python3 skills/_lib/copy_file.py --src "<source.xlsx>" --dst "templates/{id}.xlsx"
+python3 skills/_lib/copy_file.py --src "<source.xlsx>" --dst "{matter_templates_dir}/{id}.xlsx"
 ```
 
 元ファイルは変更しない。
@@ -103,9 +139,10 @@ python3 skills/_lib/copy_file.py --src "<source.xlsx>" --dst "templates/{id}.xls
 ### Step 8: 完了サマリー
 
 以下を表示する:
+- 対象 matter の ID
 - テンプレート名とID
 - 登録フィールド数（タイプ別内訳）
-- 保存先パス（YAML + XLSX）
+- 保存先パス（YAML + XLSX。matter ディレクトリ配下）
 - `/template-fill` での使用方法
 
 ## セル位置の変換
@@ -119,5 +156,5 @@ XLSXのセルアドレス（A1, B3 等）をYAMLの行列番号に変換する:
 
 - XLSX以外のファイル: 対応フォーマットを案内する。
 - 空のシート: 「テンプレートとして使用するセルがありません」と報告する。
-- 既存IDとの重複: 上書きするか別IDにするかユーザーに確認する。
-- templates/ ディレクトリが存在しない場合: 作成する。
+- 既存IDとの重複（現在の matter 内で既に同 ID のテンプレートがある）: 上書きするか別IDにするかユーザーに確認する。
+- matter のテンプレートディレクトリが存在しない場合: 作成する。

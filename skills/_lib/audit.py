@@ -22,15 +22,44 @@
 - Claude API の入出力本文
 
 ## ログ場所
-- デフォルト: `~/.claude-bengo/audit.jsonl`
+- デフォルト: `~/.claude-bengo/audit.jsonl`（グローバルログ。事案横断イベントの保存先）
 - 上書き: 環境変数 `CLAUDE_BENGO_AUDIT_PATH`
 - 無効化: `CLAUDE_BENGO_AUDIT_PATH=/dev/null` (POSIX) または `=NUL` (Windows)
+
+## 事案（matter）スコープのログ（v2.0.0 〜）
+
+複数事案を同一端末で扱う事務所向けに、事案ごとに独立した監査ログへ書き込める。
+
+```
+~/.claude-bengo/matters/{matter-id}/audit.jsonl
+```
+
+- `--matter <id>` フラグを `record` / `verify` / `export` に渡すと、その事案のログへ
+  ルーティングする（ハッシュチェーン・ロック・ローテーションは事案ごとに独立）。
+- `--matter` 未指定時は従来どおりグローバルログを使う。matter-create / matter-switch
+  のような事案横断イベント、および非機密スキル（law-search 等）はグローバル側に残す。
+- 環境変数 `CLAUDE_BENGO_AUDIT_AUTO_MATTER=1` を設定すると、`--matter` 未指定かつ
+  `CLAUDE_BENGO_AUDIT_PATH` も未設定の場合に `matter.resolve()` で自動解決し、
+  有効な事案が見つかればそのログへ書き込む。既定は opt-in（従来挙動を保つ）。
+- 事案が存在しない場合、`record` は exit 2 で終了する（先に `/matter-create` が必要）。
+  孤児ログを作らない設計。
+
+## 事案スコープ時の優先順位（高い順）
+
+1. 明示 `--matter <id>` フラグ
+2. 環境変数 `CLAUDE_BENGO_AUDIT_PATH`（テスト／カスタム設定向けの明示オーバーライド）
+3. `CLAUDE_BENGO_AUDIT_AUTO_MATTER=1` かつ `matter.resolve()` が有効 matter を返した場合
+4. 既定 `~/.claude-bengo/audit.jsonl`
 
 ## ハッシュチェーンによる改ざん検知
 
 各レコードには直前の行の SHA-256 ハッシュ値が `prev_hash` として埋め込まれる。
 先頭レコードは 64 個の 0 を使用する。行を書き換える・削除するとチェーンが破綻し、
 `verify` サブコマンドで検出可能となる。
+
+ハッシュチェーンは**ファイル単位**で独立している。事案 A のログと事案 B のログは
+別々のチェーンを持ち、互いに干渉しない。`verify --matter <id> --all` はその事案の
+アクティブログ＋ローテート済みログをまとめて検証する。
 
 ただしログファイル全体の削除は検知できない。WORM 要件がある場合は、顧客管理の
 追記専用ストレージ（例: S3 Object Lock）へ定期的にエクスポートすること。
@@ -39,9 +68,10 @@
 
 ```
 python3 skills/_lib/audit.py record --skill typo-check --event file_read --file "準備書面.docx"
+python3 skills/_lib/audit.py record --matter smith-v-jones --skill typo-check --event file_read --file "準備書面.docx"
 python3 skills/_lib/audit.py record --skill typo-check --event file_read --file "準備書面.docx" --log-filename
-python3 skills/_lib/audit.py export --since 2026-04-01 --skill typo-check --format csv
-python3 skills/_lib/audit.py verify
+python3 skills/_lib/audit.py export --matter smith-v-jones --since 2026-04-01 --format csv
+python3 skills/_lib/audit.py verify --matter smith-v-jones --all
 python3 skills/_lib/audit.py --self-test
 ```
 """
@@ -62,6 +92,30 @@ from typing import List, Optional, Tuple
 DEFAULT_AUDIT_PATH = Path.home() / ".claude-bengo" / "audit.jsonl"
 SESSION_ID_FILE = Path.home() / ".claude-bengo" / "session_id.txt"
 SESSION_TTL_SECONDS = 3600  # 1 時間
+
+
+def _load_matter_module():
+    """matter.py を遅延ロードする。
+
+    audit.py と matter.py は同じ `skills/_lib/` に同居しているため、
+    `__file__` の親ディレクトリを sys.path 先頭に挿入してインポートする。
+    他の呼出元の sys.path を汚さないため、インポート後は元に戻す。
+    """
+    import importlib
+
+    here = str(Path(__file__).resolve().parent)
+    added = False
+    if here not in sys.path:
+        sys.path.insert(0, here)
+        added = True
+    try:
+        return importlib.import_module("matter")
+    finally:
+        if added:
+            try:
+                sys.path.remove(here)
+            except ValueError:
+                pass
 
 VALID_EVENTS = {
     "file_read",
@@ -94,12 +148,65 @@ def _is_sentinel(p: Path) -> bool:
     return str(p) in SENTINEL_PATHS
 
 
-def _audit_path() -> Path:
-    """監査ログファイルのパスを取得する（環境変数で上書き可能）。"""
+def _audit_path(matter_id: Optional[str] = None) -> Path:
+    """監査ログファイルのパスを取得する。
+
+    優先順位:
+      1. 明示 `matter_id`（呼出側で解決・検証済み）
+      2. 環境変数 `CLAUDE_BENGO_AUDIT_PATH`（明示オーバーライド。テスト用途）
+      3. `CLAUDE_BENGO_AUDIT_AUTO_MATTER=1` かつ matter.resolve() が有効 matter を返す場合
+      4. 既定 `~/.claude-bengo/audit.jsonl`
+
+    matter_id が指定された場合は matter.matter_audit_path を経由するため、
+    `CLAUDE_BENGO_ROOT` 環境変数のオーバーライドも尊重される。
+    """
+    if matter_id:
+        m = _load_matter_module()
+        return m.matter_audit_path(matter_id)
+
     override = os.environ.get("CLAUDE_BENGO_AUDIT_PATH")
     if override:
         return Path(override)
+
+    # opt-in 自動解決
+    if os.environ.get("CLAUDE_BENGO_AUDIT_AUTO_MATTER") == "1":
+        try:
+            m = _load_matter_module()
+            result = m.resolve()
+            auto_id = result.get("matter_id")
+            if auto_id and result.get("exists"):
+                return m.matter_audit_path(auto_id)
+        except Exception:
+            # 自動解決失敗時はグローバルログへフォールバック（監査を止めない）
+            pass
+
     return DEFAULT_AUDIT_PATH
+
+
+def _resolve_matter_for_write(matter_id: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+    """書込用に matter_id を検証する。
+
+    戻り値: (resolved_matter_id, error_json_string)
+    - 引数 matter_id が None なら (None, None)
+    - 命名規則違反 → (None, JSON エラー)
+    - 事案ディレクトリ未作成 → (None, JSON エラー)
+    - 有効な場合 → (matter_id, None)
+    """
+    if not matter_id:
+        return None, None
+    m = _load_matter_module()
+    ok, reason = m.validate_matter_id(matter_id)
+    if not ok:
+        return None, json.dumps(
+            {"error": f"--matter の値が無効: {reason}"}, ensure_ascii=False
+        )
+    if not m.matter_exists(matter_id):
+        msg = (
+            f"エラー: matter '{matter_id}' が存在しない。\n"
+            f"先に `/matter-create {matter_id}` を実行するか、/matter-list で既存 matter を確認してほしい。"
+        )
+        return None, json.dumps({"error": msg}, ensure_ascii=False)
+    return matter_id, None
 
 
 def _max_bytes() -> int:
@@ -318,12 +425,59 @@ class _FileLock:
 # ---------------------------------------------------------------------------
 
 
+def _keep_count() -> Optional[int]:
+    """保持するローテート済みログの本数。`CLAUDE_BENGO_AUDIT_KEEP` で指定。
+
+    未設定または 0 以下なら None（無制限）。WORM 要件のある事務所向けは
+    通常 None のまま外部ストレージへエクスポートする。ディスク逼迫を避けたい
+    事務所は 10〜30 程度が目安。
+    """
+    v = os.environ.get("CLAUDE_BENGO_AUDIT_KEEP")
+    if not v:
+        return None
+    try:
+        n = int(v)
+        return n if n > 0 else None
+    except ValueError:
+        return None
+
+
+def _prune_rotations(active: Path, keep: int) -> None:
+    """ローテート済みログを古い順に削除し、keep 本のみ残す。
+
+    削除前に stderr へ通知して運用者が気づけるようにする（監査痕跡が消える操作のため）。
+    """
+    if not active.parent.exists():
+        return
+    prefix = active.name + "."
+    rotated = [
+        p for p in active.parent.iterdir()
+        if p.is_file()
+        and p.name.startswith(prefix)
+        and not p.name.endswith(".lock")
+    ]
+    rotated.sort(key=lambda p: p.name)  # 古い順
+    excess = max(0, len(rotated) - keep)
+    for p in rotated[:excess]:
+        try:
+            print(
+                f"INFO: audit.py pruning old rotated log (KEEP={keep}): {p.name}",
+                file=sys.stderr,
+            )
+            p.unlink()
+        except OSError:
+            pass
+
+
 def _rotate_if_needed(path: Path) -> Optional[str]:
     """ファイルサイズが閾値を超えていればローテートする。
 
     旧ログを `audit.jsonl.{YYYYMMDDTHHMMSS}` にリネームし、新しいログの
     先頭に置く `rotation` イベントの `prev_hash`（旧ログ末尾行のハッシュ）と
     リネーム後のファイル名を返す。ローテートしなかった場合は None。
+
+    `CLAUDE_BENGO_AUDIT_KEEP=N` が設定されている場合、ローテート後に古い
+    rotate ファイルを `N` 本を残して削除する（未設定なら削除しない）。
     """
     if _is_sentinel(path) or not path.exists():
         return None
@@ -346,6 +500,12 @@ def _rotate_if_needed(path: Path) -> Optional[str]:
         rotated = path.with_name(path.name + f".{ts}.{i}")
         i += 1
     os.rename(path, rotated)
+
+    # 保持数を超える古いローテート済みログを削除（opt-in）
+    keep = _keep_count()
+    if keep is not None:
+        _prune_rotations(path, keep)
+
     return json.dumps(
         {"prev_hash": continuation_hash, "rotated_from": rotated.name},
         ensure_ascii=False,
@@ -435,7 +595,19 @@ def cmd_record(args: argparse.Namespace) -> int:
         )
         return 1
 
-    path = _audit_path()
+    # 明示 --matter があれば検証（存在しなければ exit 2）
+    matter_id = getattr(args, "matter", None)
+    if matter_id:
+        resolved, err = _resolve_matter_for_write(matter_id)
+        if err is not None:
+            print(err, file=sys.stderr)
+            # 命名規則違反は 1、matter 未作成は 2
+            m = _load_matter_module()
+            ok, _ = m.validate_matter_id(matter_id)
+            return 1 if not ok else 2
+        path = _audit_path(matter_id=resolved)
+    else:
+        path = _audit_path()
 
     # センチネル（/dev/null 相当）の場合は短絡して成功扱いで戻る。
     # ここで戻らないと POSIX でも macOS/Linux で `NUL` という名のファイルが
@@ -527,7 +699,17 @@ def cmd_record(args: argparse.Namespace) -> int:
 
 
 def cmd_export(args: argparse.Namespace) -> int:
-    path = _audit_path()
+    matter_id = getattr(args, "matter", None)
+    if matter_id:
+        resolved, err = _resolve_matter_for_write(matter_id)
+        if err is not None:
+            print(err, file=sys.stderr)
+            m = _load_matter_module()
+            ok, _ = m.validate_matter_id(matter_id)
+            return 1 if not ok else 2
+        path = _audit_path(matter_id=resolved)
+    else:
+        path = _audit_path()
     if not path.exists():
         print(json.dumps({"error": f"audit log not found: {path}"}), file=sys.stderr)
         return 2
@@ -735,7 +917,20 @@ def _discover_rotated_siblings(active: Path) -> List[Path]:
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
-    path = Path(args.path) if args.path else _audit_path()
+    matter_id = getattr(args, "matter", None)
+    if args.path:
+        # --path は最優先。事案スコープ外の任意ファイルを検証する用途。
+        path = Path(args.path)
+    elif matter_id:
+        resolved, err = _resolve_matter_for_write(matter_id)
+        if err is not None:
+            print(err, file=sys.stderr)
+            m = _load_matter_module()
+            ok, _ = m.validate_matter_id(matter_id)
+            return 1 if not ok else 2
+        path = _audit_path(matter_id=resolved)
+    else:
+        path = _audit_path()
     if _is_sentinel(path):
         print(json.dumps({"info": f"audit disabled (path={path})"}, ensure_ascii=False))
         return 0
@@ -807,6 +1002,13 @@ def _self_test() -> int:
       7. サイズ閾値超過で rotation イベントが挿入される
       8. `filename` はデフォルト空、`--log-filename` でのみ記録される
       9. `filename_sha256` は常時記録される
+     10. `--matter <id>` で事案スコープのログへルーティングされる
+     11. 存在しない matter を指定すると exit 2 で失敗する
+     12. `CLAUDE_BENGO_AUDIT_AUTO_MATTER=1` で matter が自動解決される
+     13. `verify --matter <id>` が事案スコープログを検証する
+     14. `export --matter <id>` が事案スコープログのみ読む
+     15. 異なる matter への並行書込が相互干渉しない（ロックが別）
+     16. `verify --matter <id> --all` がローテート済み事案ログを含めて検証する
     """
     import tempfile
     import subprocess
@@ -1067,6 +1269,265 @@ def _self_test() -> int:
             f"optin_fn='{lines[1].get('filename') if len(lines) > 1 else '?'}'",
         )
 
+        # --- 10-16. matter スコープ関連テスト ---
+        # 事案スコープテスト用に CLAUDE_BENGO_ROOT を tmpdir 配下に固定する。
+        # matter.py は CLAUDE_BENGO_ROOT を尊重するため、ホームディレクトリを汚さない。
+        matter_root = tmpdir / "matter-root"
+        env_m = {k: v for k, v in os.environ.items() if k != "CLAUDE_BENGO_AUDIT_PATH"}
+        env_m["CLAUDE_BENGO_ROOT"] = str(matter_root)
+        env_m["CLAUDE_BENGO_SESSION_ID"] = "matter-selftest"
+        # matter.py の CLI で事案を作成する（同プロセスで作ると os.environ を変更する
+        # 必要があるが、サブプロセスで実行すれば副作用を本プロセスに及ぼさない）。
+        matter_py = str(Path(__file__).parent / "matter.py")
+        alpha_id = "selftest-alpha"
+        beta_id = "selftest-beta"
+        for mid in (alpha_id, beta_id):
+            subprocess.call(
+                [sys.executable, matter_py, "create", mid, "--title", f"Test {mid}"],
+                env=env_m,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        alpha_audit = matter_root / "matters" / alpha_id / "audit.jsonl"
+        beta_audit = matter_root / "matters" / beta_id / "audit.jsonl"
+
+        # --- 10. --matter で事案スコープへルーティング ---
+        rc = subprocess.call(
+            [
+                sys.executable,
+                __file__,
+                "record",
+                "--matter",
+                alpha_id,
+                "--skill",
+                "selftest",
+                "--event",
+                "file_read",
+                "--note",
+                "matter-routed",
+            ],
+            env=env_m,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        add(
+            "10. --matter routes to matter-scoped path",
+            rc == 0 and alpha_audit.exists() and alpha_audit.stat().st_size > 0,
+            f"rc={rc}, exists={alpha_audit.exists()}",
+        )
+
+        # --- 11. 存在しない matter → exit 2 ---
+        rc = subprocess.call(
+            [
+                sys.executable,
+                __file__,
+                "record",
+                "--matter",
+                "nonexistent-matter",
+                "--skill",
+                "selftest",
+                "--event",
+                "file_read",
+                "--note",
+                "should-fail",
+            ],
+            env=env_m,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        # 孤児ログが作られていないことも確認
+        orphan = matter_root / "matters" / "nonexistent-matter" / "audit.jsonl"
+        add(
+            "11. nonexistent matter → exit 2 (no orphan log)",
+            rc == 2 and not orphan.exists(),
+            f"rc={rc}, orphan_exists={orphan.exists()}",
+        )
+
+        # --- 12. CLAUDE_BENGO_AUDIT_AUTO_MATTER=1 で自動解決 ---
+        env_auto = dict(env_m)
+        env_auto["CLAUDE_BENGO_AUDIT_AUTO_MATTER"] = "1"
+        env_auto["MATTER_ID"] = alpha_id  # matter.resolve() が env から拾う
+        # グローバルログが誤って作られないよう、一旦 AUDIT_PATH を削除する
+        env_auto.pop("CLAUDE_BENGO_AUDIT_PATH", None)
+        before_size = alpha_audit.stat().st_size if alpha_audit.exists() else 0
+        rc = subprocess.call(
+            [
+                sys.executable,
+                __file__,
+                "record",
+                "--skill",
+                "selftest",
+                "--event",
+                "file_read",
+                "--note",
+                "auto-routed",
+            ],
+            env=env_auto,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        after_size = alpha_audit.stat().st_size if alpha_audit.exists() else 0
+        add(
+            "12. AUTO_MATTER=1 auto-resolves matter",
+            rc == 0 and after_size > before_size,
+            f"rc={rc}, grew={after_size - before_size} bytes",
+        )
+
+        # --- 13. verify --matter ---
+        # alpha に 20 レコード追加してチェーンを育てる
+        for i in range(20):
+            subprocess.call(
+                [
+                    sys.executable,
+                    __file__,
+                    "record",
+                    "--matter",
+                    alpha_id,
+                    "--skill",
+                    "selftest",
+                    "--event",
+                    "file_read",
+                    "--note",
+                    f"verify-{i}",
+                ],
+                env=env_m,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        proc = subprocess.run(
+            [sys.executable, __file__, "verify", "--matter", alpha_id],
+            env=env_m,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        add(
+            "13. verify --matter on matter-scoped log",
+            proc.returncode == 0 and b"fail=0" in proc.stdout,
+            f"rc={proc.returncode}",
+        )
+
+        # --- 14. export --matter ---
+        # beta にも1件書き込んで、export --matter alpha に beta の記録が混入しないことを確認
+        subprocess.call(
+            [
+                sys.executable,
+                __file__,
+                "record",
+                "--matter",
+                beta_id,
+                "--skill",
+                "selftest",
+                "--event",
+                "file_read",
+                "--note",
+                "beta-only",
+            ],
+            env=env_m,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        proc = subprocess.run(
+            [sys.executable, __file__, "export", "--matter", alpha_id],
+            env=env_m,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        export_ok = False
+        if proc.returncode == 0:
+            try:
+                recs = json.loads(proc.stdout.decode("utf-8"))
+                # どのレコードも note に "beta-only" を含まない
+                export_ok = all(r.get("note") != "beta-only" for r in recs) and len(recs) >= 20
+            except json.JSONDecodeError:
+                export_ok = False
+        add(
+            "14. export --matter filters to that matter's log",
+            export_ok,
+            f"rc={proc.returncode}",
+        )
+
+        # --- 15. 異なる matter への並行書込が相互干渉しない ---
+        # alpha と beta に同時に10回ずつ書込むプロセスを走らせる
+        parallel_procs = []
+        for target_mid in (alpha_id, beta_id):
+            code = (
+                "import subprocess, sys, os;\n"
+                "for j in range(10):\n"
+                "    subprocess.call([sys.executable, os.environ['AUDIT_PY'], 'record',\n"
+                "                     '--matter', os.environ['TARGET_MID'],\n"
+                "                     '--skill','selftest','--event','file_read',\n"
+                "                     '--note', f'parmatter-{j}'])\n"
+            )
+            env_par = dict(env_m)
+            env_par["AUDIT_PY"] = __file__
+            env_par["TARGET_MID"] = target_mid
+            env_par["CLAUDE_BENGO_SESSION_ID"] = f"par-{target_mid}"
+            parallel_procs.append(
+                subprocess.Popen(
+                    [sys.executable, "-c", code],
+                    env=env_par,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            )
+        for p in parallel_procs:
+            p.wait()
+        ok_a, fail_a, legacy_a, _ = _verify_file(alpha_audit)
+        ok_b, fail_b, legacy_b, _ = _verify_file(beta_audit)
+        add(
+            "15. concurrent writes to different matters don't interfere",
+            fail_a == 0 and fail_b == 0,
+            f"alpha(ok={ok_a},fail={fail_a}), beta(ok={ok_b},fail={fail_b})",
+        )
+
+        # --- 16. verify --matter <id> --all（ローテート込み）---
+        gamma_id = "selftest-gamma"
+        subprocess.call(
+            [sys.executable, matter_py, "create", gamma_id, "--title", "rot test"],
+            env=env_m,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        gamma_audit = matter_root / "matters" / gamma_id / "audit.jsonl"
+        env_rot_m = dict(env_m)
+        env_rot_m["CLAUDE_BENGO_AUDIT_MAX_BYTES"] = "2048"
+        env_rot_m["CLAUDE_BENGO_SESSION_ID"] = "rot-matter"
+        for i in range(30):
+            subprocess.call(
+                [
+                    sys.executable,
+                    __file__,
+                    "record",
+                    "--matter",
+                    gamma_id,
+                    "--skill",
+                    "selftest",
+                    "--event",
+                    "file_read",
+                    "--note",
+                    f"rot-{i}-" + ("x" * 100),
+                ],
+                env=env_rot_m,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        rotated_matter_files = list(gamma_audit.parent.glob("audit.jsonl.*"))
+        # .lock を除外
+        rotated_matter_files = [p for p in rotated_matter_files if not p.name.endswith(".lock")]
+        proc = subprocess.run(
+            [sys.executable, __file__, "verify", "--matter", gamma_id, "--all"],
+            env=env_m,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        add(
+            "16. verify --matter --all covers rotated matter logs",
+            proc.returncode == 0
+            and len(rotated_matter_files) >= 1
+            and b"fail=0" in proc.stdout,
+            f"rc={proc.returncode}, rotated={len(rotated_matter_files)}",
+        )
+
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
 
@@ -1091,6 +1552,10 @@ def main() -> int:
 
     # record
     p_rec = sub.add_parser("record", help="監査イベントを1件記録する")
+    p_rec.add_argument(
+        "--matter",
+        help="事案（matter）ID を指定し、その事案の audit.jsonl へ記録する",
+    )
     p_rec.add_argument("--skill", required=True, help="スキル名（例: typo-check）")
     p_rec.add_argument("--event", required=True, help=f"イベント種別 {sorted(VALID_EVENTS)}")
     p_rec.add_argument("--file", help="対象ファイルパス")
@@ -1111,13 +1576,21 @@ def main() -> int:
 
     # export
     p_exp = sub.add_parser("export", help="監査ログをエクスポートする")
+    p_exp.add_argument(
+        "--matter",
+        help="事案 ID を指定し、その事案のログのみをエクスポートする",
+    )
     p_exp.add_argument("--since", help="この日付以降のみ（YYYY-MM-DD）")
     p_exp.add_argument("--skill", help="このスキルの記録のみ")
     p_exp.add_argument("--format", choices=["json", "csv"], default="json", help="出力形式")
 
     # verify
     p_ver = sub.add_parser("verify", help="ハッシュチェーンの整合性を検証する")
-    p_ver.add_argument("--path", help="検証対象ファイル（既定は CLAUDE_BENGO_AUDIT_PATH）")
+    p_ver.add_argument(
+        "--matter",
+        help="事案 ID を指定し、その事案のログを検証する（--path 未指定時）",
+    )
+    p_ver.add_argument("--path", help="検証対象ファイル（--matter より優先）")
     p_ver.add_argument(
         "--all",
         action="store_true",

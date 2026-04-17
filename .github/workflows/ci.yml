@@ -31,6 +31,18 @@ jobs:
       - name: Run inheritance-calc unit tests (explicit)
         run: python3 skills/inheritance-calc/test_calc.py
 
+      - name: Run matter.py self-tests
+        run: python3 skills/_lib/matter.py --self-test
+
+      - name: Run audit.py self-tests
+        run: python3 skills/_lib/audit.py --self-test
+
+      - name: Run law-search cache self-tests
+        run: python3 skills/law-search/search.py self-test
+
+      - name: Run end-to-end integration tests
+        run: python3 scripts/e2e.py
+
       - name: Validate plugin.json
         shell: python
         run: |

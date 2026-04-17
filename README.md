@@ -133,7 +133,54 @@ git clone https://github.com/llamadrive/claude-bengo.git ~/.claude/plugins/claud
 git clone https://github.com/llamadrive/claude-bengo.git $HOME\.claude\plugins\claude-bengo
 ```
 
-必要なツール（xlsx-editor, docx-editor, html-report）は `.mcp.json` で自動設定される。バージョンはピン留めされており（例: `xlsx-mcp-server@1.1.0`）、`/bengo-update` 実行時に署名付きタグ経由で更新される。
+必要なツール（xlsx-editor, docx-editor, html-report）は `.mcp.json` で自動設定される。バージョンはピン留めされており（例: `@knorq/xlsx-mcp-server@2.0.0`）、`/bengo-update` 実行時に署名付きタグ経由で更新される。
+
+### 最初の matter（事案）を作成
+
+v2.0.0 以降、機密文書を扱うスキル（`/typo-check`, `/template-fill`, `/family-tree`, `/lawsuit-analysis` 等）は事案（matter）が設定されていないと動作しない。
+
+```
+/matter-create
+```
+
+対話で以下を入力する:
+
+- **matter ID** — ファイルシステム安全な英数字識別子。例: `smith-v-jones`, `2024-001`。省略時は `YYYYMMDD-{hex}` を自動生成
+- **title** — 人間可読な事案名（日本語可）
+- **client** — クライアント名
+- **case_number** — 事件番号（任意）。例: `令和6年（ワ）第1234号`
+
+事案ごとにテンプレートと監査ログが分離される。以降の操作は自動的にアクティブ事案のコンテキストで実行される。
+
+#### v1.x からの移行
+
+v1.x で `{cwd}/templates/` にテンプレートを蓄積していた場合:
+
+```
+/matter-create --import-from-cwd
+```
+
+既存テンプレートを新規事案に取り込む。元の `templates/` は残る。
+
+### アクティブ matter の仕組み
+
+現在どの matter が使われているかは 4 段階の優先順位で決まる（高い方が優先）:
+
+1. **`--matter <id>` フラグ** — コマンド毎に明示指定
+2. **`MATTER_ID` 環境変数** — シェルセッション単位
+3. **`{cwd}/.claude-bengo-matter-ref`** — 作業ディレクトリに置くポインタファイル（1 行で matter ID のみ記載）
+4. **`~/.claude-bengo/current-matter`** — `/matter-switch` で設定した既定値
+
+事案別のフォルダに `.claude-bengo-matter-ref` を置いておくと、`cd` するだけで自動的にその事案が選ばれる:
+
+```
+~/cases/smith-v-jones/
+├── .claude-bengo-matter-ref   ← "smith-v-jones" と書くだけ
+├── 訴状.pdf
+└── ...
+```
+
+現在のアクティブ matter を確認するには `/matter-info`、一覧は `/matter-list`。
 
 ### 企業ネットワーク下での利用
 
@@ -163,6 +210,50 @@ MCP サーバは npm に `--provenance` 付きで公開されている（`npm pu
 ### 既存 MCP サーバとの競合
 
 既に同名の MCP サーバを設定済みの場合は、既存の設定が優先される場合がある。競合が発生した場合はプラグインの `.mcp.json` から該当サーバを削除すること。
+
+### 複数台への展開（fleet 配布）
+
+Jamf / Intune / Ansible 等で複数の弁護士端末へ配布する場合、以下のいずれか:
+
+**Option A — 端末別セットアップ（推奨）**
+
+各端末で個別に `git clone` と `/matter-create` を実行する。事案データは端末ごとに分離される。同一ユーザーが複数端末で同じ事案に作業する場合は、`~/.claude-bengo/` を暗号化ボリューム（FileVault / BitLocker）経由で同期するか、`CLAUDE_BENGO_ROOT` を NFS / SMB マウントの共有ボリュームに向ける。
+
+**Option B — 配布スクリプト雛形（Jamf 等）**
+
+```bash
+#!/usr/bin/env bash
+set -e
+PLUGIN_DIR="$HOME/.claude/plugins/claude-bengo"
+if [ ! -d "$PLUGIN_DIR" ]; then
+  git clone --depth 1 --branch v2.0.1 \
+    https://github.com/llamadrive/claude-bengo.git \
+    "$PLUGIN_DIR"
+else
+  git -C "$PLUGIN_DIR" fetch --tags
+  git -C "$PLUGIN_DIR" checkout v2.0.1
+fi
+# MCP サーバの事前インストール（npx ブロック環境向け）
+npm install -g \
+  @knorq/xlsx-mcp-server@2.0.0 \
+  @knorq/docx-mcp-server@2.0.0 \
+  @knorq/html-report-server@2.0.0
+# 運用方針: 監査ログの保持数制限（例: 30本）
+echo 'export CLAUDE_BENGO_AUDIT_KEEP=30' >> "$HOME/.zshrc"
+```
+
+**監査ログの中央集約（推奨）**
+
+BigLaw / 法務部で中央集約が要件の場合、各端末で日次以上の頻度で以下を実行し、事務所管理の WORM ストレージ（S3 Object Lock / Azure Immutable Storage）へエクスポートする:
+
+```bash
+for m in $(python3 ~/.claude/plugins/claude-bengo/skills/_lib/matter.py list --format json | jq -r '.[].id'); do
+  python3 ~/.claude/plugins/claude-bengo/skills/_lib/audit.py export --matter "$m" --format csv \
+    > "/backup/audit-${m}-$(date +%Y%m%d).csv"
+done
+```
+
+本プラグインはローカル WORM を提供しない（全体削除検知不能）ため、外部ストレージへの定期エクスポートが唯一の完全な改ざん耐性手段となる。
 
 ### 使ってみる
 
@@ -285,17 +376,24 @@ python3 ~/.claude/plugins/claude-bengo/skills/_lib/audit.py export --format csv 
 
 ## コマンド一覧
 
-| コマンド | 機能 |
-|---------|------|
-| `/template-create` | XLSX書式をテンプレートとして登録 |
-| `/template-list` | 登録済みテンプレートの一覧 |
-| `/template-fill` | ソース文書からテンプレートに自動入力 |
-| `/family-tree` | 戸籍謄本から相続関係説明図を生成 |
-| `/typo-check` | 法律文書の校正（修正履歴付き） |
-| `/lawsuit-analysis` | 訴訟文書の分析レポート生成 |
-| `/inheritance-calc` | 法定相続分の自動計算 |
-| `/law-search` | 法令条文の検索・参照（e-Gov API） |
-| `/verify` | 動作確認 |
+| コマンド | 機能 | 事案必須 |
+|---------|------|----------|
+| `/matter-create` | 新規事案を登録（`--import-from-cwd` で v1.x 移行） | — |
+| `/matter-list` | 登録済み事案の一覧 + アクティブ事案表示 | — |
+| `/matter-switch` | 既定事案を切替 | — |
+| `/matter-info` | 事案詳細（テンプレート数・監査ログサイズ等） | — |
+| `/template-create` | XLSX書式をテンプレートとして登録 | ✅ |
+| `/template-list` | アクティブ事案のテンプレート一覧 | ✅ |
+| `/template-fill` | ソース文書からテンプレートに自動入力 | ✅ |
+| `/family-tree` | 戸籍謄本から相続関係説明図を生成 | ✅ |
+| `/typo-check` | 法律文書の校正（修正履歴付き） | ✅ |
+| `/lawsuit-analysis` | 訴訟文書の分析レポート生成 | ✅ |
+| `/inheritance-calc` | 法定相続分の自動計算 | — |
+| `/law-search` | 法令条文の検索・参照（e-Gov API） | — |
+| `/verify` | 動作確認 | — |
+| `/bengo-update` | プラグインを署名付きタグから更新 | — |
+
+「事案必須」= ✅ のコマンドは機密文書を扱うため、アクティブ matter が設定されていないと実行できない。未設定時はエラーで `/matter-create` や `/matter-switch` を案内する。
 
 ---
 

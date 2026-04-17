@@ -26,23 +26,51 @@ version: 1.0.0
 
 ## 監査ログ
 
-本スキルは処理対象のファイル名・サイズ・SHA-256 ハッシュを `~/.claude-bengo/audit.jsonl` に記録する。内容は記録しない。Step 1 の読取前と Step 6 の書込後に以下を実行する:
+本スキルは処理対象のファイル名・サイズ・SHA-256 ハッシュをアクティブ matter の `~/.claude-bengo/matters/{matter_id}/audit.jsonl` に記録する。内容は記録しない。Step 1 の読取前と Step 6 の書込後に以下を実行する:
 
 ```bash
-python3 skills/_lib/audit.py record --skill typo-check --event file_read --file "<path>"
-python3 skills/_lib/audit.py record --skill typo-check --event file_write --file "<path>"
+python3 skills/_lib/audit.py record --matter {matter_id} --skill typo-check --event file_read --file "<path>"
+python3 skills/_lib/audit.py record --matter {matter_id} --skill typo-check --event file_write --file "<path>"
 ```
 
-詳細は `python3 skills/_lib/audit.py --help` を参照。無効化は `CLAUDE_BENGO_AUDIT_PATH=/dev/null`。
+詳細は `python3 skills/_lib/audit.py --help` を参照。
 
 ## ワークフロー
 
-### Step 1: 文書読取
+### Step 0: Matter の解決
 
-DOCX ファイルのパスをユーザーに確認し、**読取前に監査ログに記録する:**
+処理開始前に、現在アクティブな matter（事案）を解決する:
 
 ```bash
-python3 skills/_lib/audit.py record --skill typo-check --event file_read --file "<path>"
+python3 skills/_lib/matter.py resolve
+```
+
+戻り値の JSON から `matter_id` と `source` を取得する。
+
+- `matter_id` が null（`source=none`）の場合: **機密データを扱う本スキルは matter 設定なしでは実行できない**。以下のメッセージを表示して処理を中止する:
+
+  ```
+  エラー: アクティブな matter が設定されていない。
+  
+  以下のいずれかを実行してから再度試してほしい:
+    /matter-list         — 登録済み matter を確認
+    /matter-switch <id>  — 既存 matter に切替
+    /matter-create       — 新規 matter を作成
+    または --matter <id> フラグで明示指定
+  ```
+
+- `matter_id` が解決できた場合: 処理を続行する。ユーザーに**1 回だけ**アクティブ matter を確認する:
+
+  ```
+  matter '{matter_id}' で処理を続行する（解決元: {source}）。
+  ```
+
+### Step 1: 文書読取
+
+DOCX ファイルのパスをユーザーに確認し、**読取前に監査ログに記録する（Step 0 で解決した `{matter_id}` を付与）:**
+
+```bash
+python3 skills/_lib/audit.py record --matter {matter_id} --skill typo-check --event file_read --file "<path>"
 ```
 
 その後 `mcp__docx-editor__read_document` でパラグラフを取得する。
@@ -153,10 +181,10 @@ denylist ヒット時の挙動: 一括承認を要求されても「この修正
 
 承認された修正を `mcp__docx-editor__edit_paragraph` で適用する。複数の修正がある場合は `mcp__docx-editor__edit_paragraphs`（複数形）で一括適用してパフォーマンスを向上させる。
 
-**修正適用後、監査ログに書込イベントを記録する:**
+**修正適用後、監査ログに書込イベントを記録する（アクティブ matter 宛）:**
 
 ```bash
-python3 skills/_lib/audit.py record --skill typo-check --event file_write --file "<path>" --note "修正{N}件適用"
+python3 skills/_lib/audit.py record --matter {matter_id} --skill typo-check --event file_write --file "<path>" --note "修正{N}件適用"
 ```
 
 - `track_changes: true` を必ず指定し、修正履歴として記録する。

@@ -5,20 +5,34 @@
 ユーザーがこのプラグインを初めて使用する場合（会話の最初のメッセージで法律関連の作業を依頼された場合、または「何ができる？」「使い方は？」と聞かれた場合）、以下の案内を日本語で表示する:
 
 ```
-claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン
+claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v2.0.0
 
-■ 利用可能なコマンド:
+■ 事案（matter）管理:
+  /matter-create   — 新規事案を登録（v1.x から移行する場合は --import-from-cwd）
+  /matter-list     — 登録済み事案の一覧 + アクティブ事案
+  /matter-switch   — アクティブ事案を切替
+  /matter-info     — 事案の詳細表示
+
+■ 機密文書を扱うコマンド（アクティブ事案が必要）:
   /typo-check      — 法律文書（DOCX）の誤字脱字・表記揺れを校正する
   /family-tree     — 戸籍謄本PDFから相続関係説明図を生成する
-  /law-search      — e-Gov法令APIから条文を検索・参照する（2,078法令対応）
   /template-create — XLSXの裁判所書式をテンプレートとして登録する
   /template-fill   — 登録済みテンプレートにPDFからデータを自動入力する
   /lawsuit-analysis — 訴訟文書を分析しレポートを生成する
 
-■ まずは /typo-check で校正を試すか、/law-search 民法709条 で条文を検索してみてください。
+■ 事案設定不要なコマンド:
+  /law-search      — e-Gov法令APIから条文を検索・参照する（2,078法令対応）
+  /inheritance-calc — 法定相続分を決定論的に計算する
+
+■ 初めて使う場合:
+  1. /matter-create で最初の事案を作成
+     （v1.x ユーザーは /matter-create --import-from-cwd で既存テンプレートを取込）
+  2. /typo-check 準備書面.docx 等で校正を試す
+     または /law-search 民法709条 で条文を検索
 
 ⚠ 本プラグインで処理される文書は Anthropic の Claude API を通じてクラウドで処理されます。
   クライアントの機密文書を処理する前に、所属事務所のAI利用ポリシーを確認してください。
+  監査ログは事案ごとに ~/.claude-bengo/matters/{id}/audit.jsonl に SHA-256 ハッシュチェーン付きで記録されます。
 ```
 
 ## データプライバシー・守秘義務
@@ -80,14 +94,18 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 - 非対応フォーマット: 「このファイル形式には対応していない。対応形式: PDF, DOCX, XLSX, PNG, JPG」
 - ファイルを暗黙にスキップしない。処理できないファイルは必ずユーザーに報告する。
 
-## テンプレート
+## テンプレート（v2.0.0 〜）
 
-テンプレートはユーザーの**作業ディレクトリ**内の `templates/` に `{id}.yaml` + `{id}.xlsx` のペアで保存される（プラグインディレクトリ内ではない）。
+テンプレートは**アクティブな事案（matter）**のディレクトリ `~/.claude-bengo/matters/{matter-id}/templates/` に `{id}.yaml` + `{id}.xlsx` のペアで保存される（v1.x の `{cwd}/templates/` ではない）。
 
-- `/template-create` で新規登録
-- `/template-list` で一覧表示
-- `/template-fill` で選択・入力
+- `/template-create` で新規登録（アクティブ事案のテンプレートディレクトリに保存される）
+- `/template-list` で一覧表示（アクティブ事案のテンプレートのみ列挙）
+- `/template-fill` で選択・入力（出力は CWD に配置される）
 
-テンプレートは作業ディレクトリに紐づく。別のディレクトリに同じテンプレートを使いたい場合は `templates/` フォルダごとコピーする。共通テンプレートをよく使う場合は、ホームディレクトリに共通 `templates/` を作成し、各案件フォルダからシンボリックリンクを張る方法もある。
+テンプレートは事案に紐づく。別の事案で同じテンプレートを使いたい場合は:
+- 同じテンプレートを新しい事案で再登録する、または
+- `~/.claude-bengo/matters/{A}/templates/` から `~/.claude-bengo/matters/{B}/templates/` に手動でコピーする
+
+v1.x で `{cwd}/templates/` を使用していた場合は `/matter-create --import-from-cwd` で新規事案に取り込む。
 
 フォーマット仕様はプラグインの `templates/_schema.yaml` を参照する。

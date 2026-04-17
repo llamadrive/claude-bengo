@@ -26,9 +26,37 @@ version: 1.0.0
 
 ## 監査ログ
 
-本スキルは処理対象の戸籍 PDF および生成 HTML のファイル名・サイズ・SHA-256 を `~/.claude-bengo/audit.jsonl` に記録する。内容は記録しない。
+本スキルは処理対象の戸籍 PDF および生成 HTML のファイル名・サイズ・SHA-256 をアクティブ matter の `~/.claude-bengo/matters/{matter_id}/audit.jsonl` に記録する。内容は記録しない。
 
 ## ワークフロー
+
+### Step 0: Matter の解決
+
+処理開始前に、現在アクティブな matter（事案）を解決する:
+
+```bash
+python3 skills/_lib/matter.py resolve
+```
+
+戻り値の JSON から `matter_id` と `source` を取得する。
+
+- `matter_id` が null（`source=none`）の場合: **機密データを扱う本スキルは matter 設定なしでは実行できない**。以下のメッセージを表示して処理を中止する:
+
+  ```
+  エラー: アクティブな matter が設定されていない。
+  
+  以下のいずれかを実行してから再度試してほしい:
+    /matter-list         — 登録済み matter を確認
+    /matter-switch <id>  — 既存 matter に切替
+    /matter-create       — 新規 matter を作成
+    または --matter <id> フラグで明示指定
+  ```
+
+- `matter_id` が解決できた場合: 処理を続行する。ユーザーに**1 回だけ**アクティブ matter を確認する:
+
+  ```
+  matter '{matter_id}' で処理を続行する（解決元: {source}）。
+  ```
 
 ### Step 1: 戸籍謄本PDFの取得
 
@@ -39,10 +67,10 @@ version: 1.0.0
 
 注目人物（中心人物）の指定があればメモする（任意）。
 
-**各 PDF について読取前に監査ログに記録する:**
+**各 PDF について読取前に監査ログに記録する（Step 0 で解決した `{matter_id}` を付与）:**
 
 ```bash
-python3 skills/_lib/audit.py record --skill family-tree --event file_read --file "<pdf-path>"
+python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --event file_read --file "<pdf-path>"
 ```
 
 ### Step 2: タイムライン抽出（Step 1 of 2）
@@ -142,9 +170,9 @@ python3 skills/_lib/audit.py record --skill family-tree --event file_read --file
 4. テンプレート内の `__GRAPH_DATA_B64__` を Base64 文字列で置換する。
 5. Write ツールで `family_tree_{YYYY-MM-DD}.html` として出力する。
 6. エンコーダの入力に使った一時 JSON ファイル（`.claude-bengo-familytree.json`）を削除する。
-7. **監査ログに書込イベントを記録する:**
+7. **監査ログに書込イベントを記録する（アクティブ matter 宛）:**
    ```bash
-   python3 skills/_lib/audit.py record --skill family-tree --event file_write --file "family_tree_{YYYY-MM-DD}.html"
+   python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --event file_write --file "family_tree_{YYYY-MM-DD}.html"
    ```
 8. ユーザーに「ブラウザで開くとインタラクティブな家族関係図が表示されます」と案内する。
 

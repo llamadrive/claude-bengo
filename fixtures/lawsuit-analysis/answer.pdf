@@ -1,0 +1,67 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1288 >>
+stream
+BT
+/F1 10 Tf
+1.2 Tf 12 TL
+50 800 Td
+([SYNTHETIC STUB FIXTURE - NOT FOR PRODUCTION]) Tj
+T* (Represents: toben-sho \(answer\) for /lawsuit-analysis) Tj
+T* () Tj
+T* (Case: Reiwa 5-nen \(wa\) Dai 1234-go) Tj
+T* (Corresponds to complaint.pdf in same directory) Tj
+T* (Filed: Reiwa 5-nen 7-gatsu 10-nichi) Tj
+T* () Tj
+T* (Defendant: OTSUYAMA Jiro \(represented by counsel\)) Tj
+T* () Tj
+T* (Answer to complaint \(seikyu no shushi ni tai suru toben\):) Tj
+T* (  1. Plaintiff's claims shall be dismissed.) Tj
+T* (  2. Plaintiff shall bear the costs.) Tj
+T* () Tj
+T* (Response to facts \(seikyu no gen'in ni tai suru ninhi\):) Tj
+T* (  Paragraph 1: DENIED \(hinin\)) Tj
+T* (    Defendant asserts the JPY 3,000,000 transfer was a gift,) Tj
+T* (    not a loan. No loan agreement was made.) Tj
+T* (  Paragraph 2: PARTIALLY ADMITTED \(ichibu mitomeru\)) Tj
+T* (    Defendant received a letter from Plaintiff but denies it) Tj
+T* (    constituted a lawful demand.) Tj
+T* (  Paragraph 3: ADMITTED \(mitomeru\)) Tj
+T* (    Defendant has not repaid \(because no debt exists\).) Tj
+T* () Tj
+T* (Defense \(kogen\):) Tj
+T* (  Beneficial gift defense \(zoyo no kogen\)) Tj
+T* () Tj
+T* (Evidence: Otsu-no. 1 \(email exchange re: gift\)) Tj
+T* () Tj
+T* (Replace with real synthetic answer PDF for demos.) Tj
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000001587 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R /Info << /Title (answer stub) >> >>
+startxref
+1657
+%%EOF

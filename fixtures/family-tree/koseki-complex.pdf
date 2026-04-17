@@ -1,0 +1,62 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1129 >>
+stream
+BT
+/F1 10 Tf
+1.2 Tf 12 TL
+50 800 Td
+([SYNTHETIC STUB FIXTURE - NOT FOR PRODUCTION]) Tj
+T* (Represents: koseki-touhon - 3 generations with daikyu souzoku) Tj
+T* () Tj
+T* (Honseki: Tokyo-to Chiyoda-ku Kasumigaseki 1-1-1) Tj
+T* () Tj
+T* (Generation 1 \(deceased\):) Tj
+T* (  KONO Taro, born Taisho 10-nen 1-gatsu 1-nichi,) Tj
+T* (    died Reiwa 5-nen 2-gatsu 14-nichi) Tj
+T* (  KONO Hanako, born Taisho 12-nen, died Heisei 30-nen) Tj
+T* () Tj
+T* (Generation 2:) Tj
+T* (  KONO Ichiro \(chonan\) - ALIVE, born Showa 20-nen) Tj
+T* (  KONO Jiro \(jinan\) - DIED Reiwa 2-nen 6-gatsu 10-nichi) Tj
+T* (    \(died before Taro, triggers daikyu souzoku for Jiro's children\)) Tj
+T* (  KONO Saburo \(sannan\) - ALIVE, born Showa 28-nen) Tj
+T* () Tj
+T* (Generation 3 \(Jiro's children - daikyu souzoku heirs\):) Tj
+T* (  KONO Shiro, born Heisei 10-nen 4-gatsu 1-nichi) Tj
+T* (  KONO Goro, born Heisei 13-nen 7-gatsu 15-nichi) Tj
+T* () Tj
+T* (This fixture exercises 3-generation extraction + daikyu souzoku) Tj
+T* (detection in /family-tree and /inheritance-calc.) Tj
+T* () Tj
+T* (Replace with real synthetic koseki for production demos.) Tj
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000001428 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R /Info << /Title (koseki-complex stub) >> >>
+startxref
+1498
+%%EOF

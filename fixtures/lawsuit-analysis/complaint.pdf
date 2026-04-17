@@ -1,0 +1,63 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1206 >>
+stream
+BT
+/F1 10 Tf
+1.2 Tf 12 TL
+50 800 Td
+([SYNTHETIC STUB FIXTURE - NOT FOR PRODUCTION]) Tj
+T* (Represents: sojo \(complaint\) for /lawsuit-analysis) Tj
+T* () Tj
+T* (Case: Reiwa 5-nen \(wa\) Dai 1234-go) Tj
+T* (Court: Tokyo District Court, Civil Division 1) Tj
+T* (Filed: Reiwa 5-nen 6-gatsu 1-nichi) Tj
+T* (Subject: Loan repayment claim \(kashikin henkan seikyu jiken\)) Tj
+T* () Tj
+T* (Plaintiff: KONO Taro, Tokyo-to Chiyoda-ku Kasumigaseki 1-1-1) Tj
+T* (Defendant: OTSUYAMA Jiro, Tokyo-to Shinjuku-ku Nishi-Shinjuku 2-2-2) Tj
+T* () Tj
+T* (Claim amount: JPY 3,000,000 + annual 15% interest from 2023-04-01) Tj
+T* () Tj
+T* (Facts \(jiken no keii\):) Tj
+T* (  1. Reiwa 4-nen 3-gatsu 1-nichi: Plaintiff lent JPY 3,000,000) Tj
+T* (     to Defendant under oral agreement, repayment due 2023-12-31) Tj
+T* (  2. Reiwa 5-nen 1-gatsu 15-nichi: Plaintiff sent demand letter) Tj
+T* (     by certified mail \(naiyo shomei\)) Tj
+T* (  3. Defendant has not responded or repaid) Tj
+T* () Tj
+T* (Evidence: Ko-no. 1 \(demand letter copy\), Ko-no. 2 \(bank transfer record\)) Tj
+T* () Tj
+T* (Request: Defendant shall pay JPY 3,000,000 plus interest.) Tj
+T* () Tj
+T* (Replace with real synthetic complaint PDF for demos.) Tj
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000001505 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R /Info << /Title (complaint stub) >> >>
+startxref
+1575
+%%EOF

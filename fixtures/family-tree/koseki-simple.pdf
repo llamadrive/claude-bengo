@@ -1,0 +1,55 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 832 >>
+stream
+BT
+/F1 10 Tf
+1.2 Tf 12 TL
+50 800 Td
+([SYNTHETIC STUB FIXTURE - NOT FOR PRODUCTION]) Tj
+T* (Represents: koseki-touhon \(koseki-simple.pdf\)) Tj
+T* () Tj
+T* (Content summary \(ASCII only; replace with real PDF for demos\):) Tj
+T* () Tj
+T* (Honseki: Tokyo-to Chiyoda-ku Kasumigaseki 1-1-1) Tj
+T* (Hittosha \(head\): KONO Taro, born Showa 40-nen 1-gatsu 1-nichi) Tj
+T* (Spouse: KONO Hanako, born Showa 42-nen 3-gatsu 20-nichi) Tj
+T* (Child 1: KONO Ichiro, born Heisei 2-nen 5-gatsu 5-nichi) Tj
+T* (Child 2: KONO Jiro, born Heisei 5-nen 8-gatsu 8-nichi) Tj
+T* () Tj
+T* (Relationships:) Tj
+T* (  Taro + Hanako \(married Showa 60-nen 4-gatsu 1-nichi\)) Tj
+T* (  -> Ichiro \(chonan\), Jiro \(jinan\)) Tj
+T* () Tj
+T* (All data is FICTIONAL. To demo /family-tree, replace with real) Tj
+T* (synthetic koseki PDF per fixtures/README.md.) Tj
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000001130 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R /Info << /Title (koseki-simple stub) >> >>
+startxref
+1200
+%%EOF

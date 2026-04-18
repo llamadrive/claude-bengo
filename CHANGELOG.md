@@ -2,6 +2,44 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.11.0] - 2026-04-19
+
+`/family-tree` 出力後に**既定のブラウザで viewer を自動起動**するようになった。
+前バージョンの「ユーザーが Finder → viewer タブにドラッグ&ドロップ」は
+2 ウィンドウ + 3 手順で煩雑だったのを、**ワンコマンドで 0 手順**に改善。
+
+### Added
+
+- **`skills/family-tree/open_viewer.py`** — `.agent` ファイルを URI-encode
+  して URL hash に載せ、Python `webbrowser` モジュール経由で既定ブラウザ
+  を起動する helper。hash fragment はサーバに送信されないため legal
+  document 内容がネットワーク上に漏れない。
+- `commands/family-tree.md`: allowed-tools に
+  `Bash(python3 skills/family-tree/open_viewer.py:*)` を追加。
+
+### Changed
+
+- **`skills/family-tree/SKILL.md` Step 4**: 出力後に `open_viewer.py` を
+  呼び出すフローを追加。Claude Desktop でも追加ブラウザタブが開くのみで
+  動作に支障なし（MCP のインライン描画と並存）。
+- SSH / CI 等ブラウザ無し環境向けに `--no-open` フラグ（URL を stdout に
+  出すだけ）を提供。
+
+### Rationale
+
+v2.10.0 で `.agent` 単一出力に簡素化したが、Claude Code CLI ユーザーが
+毎回「Finder でファイルを見つけて、viewer を別タブで開いて、ドラッグ」
+という 3 ステップを踏む必要があった。Python の `webbrowser.open()` は
+macOS / Linux / Windows 全て同じインターフェースで既定ブラウザを起動
+できる（クロスプラットフォーム標準ライブラリ）ため、プラグイン側で
+自動化できる。
+
+### Verification
+
+- `open_viewer.py --no-open` で URL 生成テスト済み（12KB URL, browser で
+  描画確認済み）
+- `scripts/verify.py`: 39 passed / 0 failed / 0 warnings
+
 ## [2.10.0] - 2026-04-19
 
 `/family-tree` を **`.agent` 単一出力** に簡素化。HTML 出力は廃止し、閲覧・印刷は

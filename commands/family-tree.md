@@ -1,6 +1,6 @@
 ---
 description: 戸籍謄本PDFから家族関係を分析し相続関係説明図（.agent 形式）を生成
-allowed-tools: Read, Write, Glob, Bash(python3 skills/_lib/audit.py:*), Bash(python3 skills/_lib/matter.py:*)
+allowed-tools: Read, Write, Glob, Bash(python3 skills/_lib/audit.py:*), Bash(python3 skills/_lib/matter.py:*), Bash(python3 skills/family-tree/open_viewer.py:*)
 ---
 
 戸籍謄本のPDF文書から人物と関係性を抽出し、裁判所標準形式（相続関係説明図）の `.agent` ファイルを生成する。

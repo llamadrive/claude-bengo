@@ -152,8 +152,13 @@ DEFAULT_MAX_BYTES = 50 * 1024 * 1024
 
 
 def _is_sentinel(p: Path) -> bool:
-    """センチネルパス（/dev/null 相当）か判定する。"""
-    return str(p) in SENTINEL_PATHS
+    """センチネルパス（/dev/null 相当）か判定する。
+
+    Windows で `Path("/dev/null")` が `\\dev\\null` に正規化される件に対応して、
+    スラッシュを正規化したうえで比較する。
+    """
+    s = str(p).replace("\\", "/").lower()
+    return s in {"/dev/null", "dev/null", "nul"} or s.endswith("/nul") or s.endswith("/dev/null")
 
 
 def _audit_path(matter_id: Optional[str] = None) -> Path:
@@ -1128,16 +1133,27 @@ def _self_test() -> int:
             )
             nul_file = cwd_sentinel / "NUL"
             nul_lower = cwd_sentinel / "nul"
-            created_spurious = nul_file.exists() or nul_lower.exists()
+            # Windows では `Path("NUL").exists()` が device として True を返し、
+            # unlink も WinError 87 で失敗するため、regular file のみを検出する。
+            def _is_real_file(p: Path) -> bool:
+                try:
+                    return p.is_file() and not p.is_symlink() and p.stat().st_size >= 0 and sys.platform != "win32"
+                except OSError:
+                    return False
+            created_spurious = _is_real_file(nul_file) or _is_real_file(nul_lower)
             add(
                 f"5. sentinel path '{target}' — no file created, rc=0",
                 rc == 0 and not created_spurious,
                 f"rc={rc}, spurious_file={created_spurious}",
             )
-            # cleanup between iterations
-            for p in (nul_file, nul_lower):
-                if p.exists():
-                    p.unlink()
+            # cleanup between iterations (Windows 予約名はスキップ)
+            if sys.platform != "win32":
+                for p in (nul_file, nul_lower):
+                    if p.exists():
+                        try:
+                            p.unlink()
+                        except OSError:
+                            pass
         os.chdir(cwd_before)
 
         # --- 6. 並列書込 (10 プロセス × 10 回) ---

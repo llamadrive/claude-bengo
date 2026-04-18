@@ -1,0 +1,20 @@
+# Force LF line endings on all text files to keep SHA-256 checksums
+# stable across platforms. templates/_bundled/_manifest.sha256 records
+# hashes computed on LF-normalized content; without this rule Windows
+# checkouts would convert LF→CRLF and break integrity verification.
+
+* text=auto eol=lf
+
+# Binary files — don't touch
+*.pdf binary
+*.xlsx binary
+*.docx binary
+*.pptx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.tar binary
+*.gz binary

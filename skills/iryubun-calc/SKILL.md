@@ -63,3 +63,14 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill iryubun-calc --
 ## セルフテスト
 
 `python3 skills/iryubun-calc/test_calc.py` — 15 件の実務典型ケース。
+
+## 次の一手（ユーザーに提案する）
+
+計算完了時、結果表示の後に以下を提案する:
+
+```
+💡 次の一手:
+  - 法定相続分を確認: /inheritance-calc（未実行の場合）
+  - 遺留分侵害額請求の内容証明を作成: /template-install → 「内容証明」
+  - 民法 1042 条の条文を確認: /law-search 民法1042条
+```

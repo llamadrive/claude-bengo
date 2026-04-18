@@ -65,3 +65,14 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill property-divisi
 ## セルフテスト
 
 `python3 skills/property-division-calc/test_calc.py` — 12 件の典型ケース。
+
+## 次の一手（ユーザーに提案する）
+
+計算完了時、結果表示の後に以下を提案する:
+
+```
+💡 次の一手:
+  - 養育費・婚姻費用を計算: /child-support-calc（子がいる場合）
+  - 離婚協議書を作成: /template-install → 「離婚協議書」を選択
+  - 完成した協議書を校正: /typo-check 離婚協議書.docx
+```

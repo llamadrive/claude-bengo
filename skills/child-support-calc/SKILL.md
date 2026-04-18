@@ -164,3 +164,14 @@ python3 skills/child-support-calc/test_calc.py
 - 高額所得者警告
 - 子 3 人以上の指数合算
 - 年収上昇に伴う月額の単調増加
+
+## 次の一手（ユーザーに提案する）
+
+計算完了時、結果表示の後に以下を提案する:
+
+```
+💡 次の一手:
+  - 財産分与を計算: /property-division-calc（離婚時の財産整理）
+  - 調停申立書を作成: /template-install → 「調停申立書」系
+  - 令和元年算定方式の条文背景: /law-search 民法766条
+```

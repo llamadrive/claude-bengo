@@ -48,4 +48,13 @@ python3 skills/_lib/matter.py resolve
 
 ## 0件の場合
 
-登録済み matter がない場合は `/matter-create` を案内する。
+登録済み matter がない場合、以下のメッセージで選択肢を案内する:
+
+```
+登録済み事案なし。初回利用の場合は次のいずれか:
+
+  🚀 30 分ツアーで全機能に触れる        → /quickstart
+  ✨ 最初の事案を作る                   → /matter-create
+  💡 何ができるか見てみる                → /help
+  🔧 インストール動作を確認              → /verify
+```

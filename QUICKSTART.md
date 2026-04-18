@@ -194,5 +194,5 @@ GitHub Issues: https://github.com/llamadrive/claude-bengo/issues
 
 - **`RUNBOOK.md`** — 初回インストール時の動作確認チェックリスト
 - **`CHANGELOG.md`** — バージョン別の変更履歴
-- **`README.md`** — プラグイン全体の概要と全 21 コマンドの一覧
+- **`README.md`** — プラグイン全体の概要と全 23 コマンドの一覧
 - **`skills/*/SKILL.md`** — 各スキルの詳細仕様（Claude Code は自動で読む）

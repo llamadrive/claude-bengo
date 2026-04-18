@@ -52,4 +52,13 @@ matter '{matter_id}' の登録済みテンプレート:
   /template-create — 新しいテンプレートを登録する
 ```
 
-テンプレートが0件の場合は、`/template-create` で現在の matter にテンプレートを登録するよう案内する。
+テンプレートが0件の場合は、以下のメッセージで 3 つの選択肢を案内する:
+
+```
+matter '{matter_id}' にテンプレートは未登録。
+
+以下のいずれか:
+  📦 同梱書式から選ぶ（推奨・31 種類）   → /template-install
+  ✏️  独自の XLSX 書式を登録              → /template-create <XLSXパス>
+  💡 何ができるか確認                     → /help で 1「書類を作成する」を選ぶ
+```

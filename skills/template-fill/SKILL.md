@@ -277,3 +277,14 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill template-fill -
 - テンプレートXLSXが matter ディレクトリに見つからない: 該当 matter の `{matter_templates_dir}` を提示し、`/template-create` での登録を提案する。
 - ソース文書が読めない: スキャン品質の問題を報告し、OCR済みPDFの使用を提案する。
 - フィールド位置が実際のXLSXと一致しない: 警告を出し、`/template-create` での再登録を提案する。
+
+## 次の一手（ユーザーに提案する）
+
+Step 7 の結果サマリー表示の後に以下を提案する:
+
+```
+💡 次の一手:
+  - 完成した書類を校正: /typo-check <出力 XLSX の隣に作った DOCX>
+  - 他の書式も入力: /template-list で同じ事案の登録書式を確認
+  - 別の同梱書式を追加: /template-install
+```

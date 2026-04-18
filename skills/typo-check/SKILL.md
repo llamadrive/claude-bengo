@@ -208,3 +208,14 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill typo-check --ev
 - DOCX 以外のファイル: 対応フォーマットを案内する。
 - パスワード保護: エラーを報告し保護解除を依頼する。
 - 空文書: 「校正対象のテキストがありません」と報告する。
+
+## 次の一手（ユーザーに提案する）
+
+校正完了時、結果表示の後に以下を提案する:
+
+```
+💡 次の一手:
+  - 書面全体を分析: /lawsuit-analysis <同じ書面 or 対応書面>
+  - 別の書類を作成: /template-install や /template-fill
+  - 引用する法令を確認: /law-search <法令名>
+```

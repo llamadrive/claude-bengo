@@ -199,7 +199,7 @@ v2.9.0 以降、家族関係図は **2 種類の形式で並行出力**する。
 
 #### 4a. `.agent` JSON 出力
 
-Step 3 で構築した FlatPerson / Relationship を以下のスキーマの単一 section にラップする:
+Step 3 で構築した FlatPerson / Relationship を以下のスキーマの単一 section にラップする。**`description` フィールドは含めない**（agent-format renderer がタイトル直下に冗長テキストを表示するため、裁判所提出文書の見た目を崩す）。section label のみでコンテキストを示す:
 
 ```json
 {

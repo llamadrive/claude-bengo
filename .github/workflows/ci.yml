@@ -10,6 +10,12 @@ jobs:
   verify:
     name: Verify plugin integrity
     runs-on: ${{ matrix.os }}
+    # Windows の cp1252 コンソールで Japanese text / ━ 罫線が
+    # UnicodeEncodeError を起こすため、全 Python 実行に UTF-8 を強制する。
+    # POSIX では既定が UTF-8 のため no-op。
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: "1"
     strategy:
       fail-fast: false
       matrix:

@@ -29,6 +29,16 @@ import sys
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+# Windows cp1252 コンソールでは Unicode 箱罫 (━) が UnicodeEncodeError を起こす。
+# Python 3.7+ の reconfigure で強制的に UTF-8 にして、失敗時は BOX_CHAR を ASCII に
+# フォールバックする。これで macOS / Linux / Windows 全てで同一出力になる。
+try:
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    BOX_CHAR = "\u2501"  # ━
+except (AttributeError, OSError):
+    BOX_CHAR = "-"
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -53,9 +63,9 @@ class Report:
 
 def header(title: str) -> None:
     print()
-    print("━" * 40)
+    print(BOX_CHAR * 40)
     print(f"  {title}")
-    print("━" * 40)
+    print(BOX_CHAR * 40)
 
 
 def run(cmd: List[str], timeout: int = 60) -> Tuple[int, str, str]:
@@ -350,9 +360,9 @@ def main() -> int:
 
     # --- Summary ---
     print()
-    print("━" * 40)
+    print(BOX_CHAR * 40)
     print(f"  結果: {len(r.passes)} passed, {len(r.failures)} failed, {len(r.warnings)} warnings")
-    print("━" * 40)
+    print(BOX_CHAR * 40)
 
     if r.failures:
         print()

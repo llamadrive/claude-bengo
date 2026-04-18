@@ -93,6 +93,11 @@ DEFAULT_AUDIT_PATH = Path.home() / ".claude-bengo" / "audit.jsonl"
 SESSION_ID_FILE = Path.home() / ".claude-bengo" / "session_id.txt"
 SESSION_TTL_SECONDS = 3600  # 1 時間
 
+# Python 3.8 では `__file__` が相対のまま残ることがあり、self-test 内で
+# subprocess が `cwd` を変えた時に「No such file」で失敗する（Python 3.9+ の
+# bpo-20443 で絶対化される）。module load 時に一度だけ解決しておく。
+SELF_PATH = os.path.abspath(__file__)
+
 
 def _load_matter_module():
     """matter.py を遅延ロードする。
@@ -1036,7 +1041,7 @@ def _self_test() -> int:
             rc = subprocess.call(
                 [
                     sys.executable,
-                    __file__,
+                    SELF_PATH,
                     "record",
                     "--skill",
                     "selftest",
@@ -1107,7 +1112,7 @@ def _self_test() -> int:
             rc = subprocess.call(
                 [
                     sys.executable,
-                    __file__,
+                    SELF_PATH,
                     "record",
                     "--skill",
                     "selftest",
@@ -1179,7 +1184,7 @@ def _self_test() -> int:
             subprocess.call(
                 [
                     sys.executable,
-                    __file__,
+                    SELF_PATH,
                     "record",
                     "--skill",
                     "selftest",
@@ -1221,7 +1226,7 @@ def _self_test() -> int:
         subprocess.call(
             [
                 sys.executable,
-                __file__,
+                    SELF_PATH,
                 "record",
                 "--skill",
                 "selftest",
@@ -1238,7 +1243,7 @@ def _self_test() -> int:
         subprocess.call(
             [
                 sys.executable,
-                __file__,
+                    SELF_PATH,
                 "record",
                 "--skill",
                 "selftest",
@@ -1298,7 +1303,7 @@ def _self_test() -> int:
         rc = subprocess.call(
             [
                 sys.executable,
-                __file__,
+                    SELF_PATH,
                 "record",
                 "--matter",
                 alpha_id,
@@ -1323,7 +1328,7 @@ def _self_test() -> int:
         rc = subprocess.call(
             [
                 sys.executable,
-                __file__,
+                    SELF_PATH,
                 "record",
                 "--matter",
                 "nonexistent-matter",
@@ -1356,7 +1361,7 @@ def _self_test() -> int:
         rc = subprocess.call(
             [
                 sys.executable,
-                __file__,
+                    SELF_PATH,
                 "record",
                 "--skill",
                 "selftest",
@@ -1382,7 +1387,7 @@ def _self_test() -> int:
             subprocess.call(
                 [
                     sys.executable,
-                    __file__,
+                    SELF_PATH,
                     "record",
                     "--matter",
                     alpha_id,
@@ -1398,7 +1403,7 @@ def _self_test() -> int:
                 stderr=subprocess.DEVNULL,
             )
         proc = subprocess.run(
-            [sys.executable, __file__, "verify", "--matter", alpha_id],
+            [sys.executable, SELF_PATH, "verify", "--matter", alpha_id],
             env=env_m,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -1414,7 +1419,7 @@ def _self_test() -> int:
         subprocess.call(
             [
                 sys.executable,
-                __file__,
+                    SELF_PATH,
                 "record",
                 "--matter",
                 beta_id,
@@ -1430,7 +1435,7 @@ def _self_test() -> int:
             stderr=subprocess.DEVNULL,
         )
         proc = subprocess.run(
-            [sys.executable, __file__, "export", "--matter", alpha_id],
+            [sys.executable, SELF_PATH, "export", "--matter", alpha_id],
             env=env_m,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -1499,7 +1504,7 @@ def _self_test() -> int:
             subprocess.call(
                 [
                     sys.executable,
-                    __file__,
+                    SELF_PATH,
                     "record",
                     "--matter",
                     gamma_id,
@@ -1518,7 +1523,7 @@ def _self_test() -> int:
         # .lock を除外
         rotated_matter_files = [p for p in rotated_matter_files if not p.name.endswith(".lock")]
         proc = subprocess.run(
-            [sys.executable, __file__, "verify", "--matter", gamma_id, "--all"],
+            [sys.executable, SELF_PATH, "verify", "--matter", gamma_id, "--all"],
             env=env_m,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

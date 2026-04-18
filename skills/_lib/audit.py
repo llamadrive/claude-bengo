@@ -929,6 +929,168 @@ def _discover_rotated_siblings(active: Path) -> List[Path]:
     return candidates
 
 
+def cmd_ingest(args: argparse.Namespace) -> int:
+    """監査ログを claude-bengo-cloud にアップロードする。
+
+    Bearer token で認証（firm_api_tokens で検証）。ndjson (改行区切り JSON)
+    を `application/x-ndjson` で POST する。リクエストはバッチ分割され、
+    冪等 — 同じエントリを複数回送信しても cloud 側でハッシュチェーンで
+    重複検出される設計（MVP では単純に全件 insert するが、将来重複排除予定）。
+    """
+    import urllib.request
+    import urllib.error
+
+    token = args.token or os.environ.get("CLAUDE_BENGO_CLOUD_TOKEN")
+    if not token:
+        print(
+            json.dumps(
+                {
+                    "error": (
+                        "Bearer token が未指定。--token か環境変数 "
+                        "CLAUDE_BENGO_CLOUD_TOKEN を設定してほしい。"
+                    )
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
+        )
+        return 2
+
+    matter_id = getattr(args, "matter", None)
+    if matter_id:
+        m = _load_matter_module()
+        ok, reason = m.validate_matter_id(matter_id)
+        if not ok or not m.matter_exists(matter_id):
+            print(
+                json.dumps(
+                    {"error": f"matter '{matter_id}' が無効または未作成: {reason}"},
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+            )
+            return 2
+        path = m.matter_audit_path(matter_id)
+    else:
+        path = DEFAULT_AUDIT_PATH
+
+    if not path.exists():
+        print(
+            json.dumps({"error": f"ログファイルが存在しない: {path}"}, ensure_ascii=False),
+            file=sys.stderr,
+        )
+        return 2
+
+    # Collect entries, optionally filtered by --since.
+    since: Optional[_dt.date] = None
+    if args.since:
+        try:
+            since = _dt.date.fromisoformat(args.since)
+        except ValueError:
+            print(
+                json.dumps(
+                    {"error": f"--since は YYYY-MM-DD 形式で: {args.since}"},
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+            )
+            return 2
+
+    entries: List[dict] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # tolerate partial/corrupt final lines
+            if since is not None:
+                ts = rec.get("ts", "")
+                try:
+                    rec_date = _dt.date.fromisoformat(ts[:10])
+                    if rec_date < since:
+                        continue
+                except Exception:
+                    pass
+            if matter_id:
+                rec["matter_id"] = matter_id
+            entries.append(rec)
+
+    if args.dry_run:
+        print(
+            json.dumps(
+                {
+                    "would_send": len(entries),
+                    "source": str(path),
+                    "url": args.url,
+                    "matter": matter_id,
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
+
+    if not entries:
+        print(
+            json.dumps({"info": "送信対象のエントリなし（0件）"}, ensure_ascii=False)
+        )
+        return 0
+
+    batch_size = max(1, min(args.batch_size, 10_000))
+    sent = 0
+    for i in range(0, len(entries), batch_size):
+        batch = entries[i : i + batch_size]
+        body = "\n".join(json.dumps(e, ensure_ascii=False) for e in batch).encode("utf-8")
+        req = urllib.request.Request(
+            args.url,
+            data=body,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/x-ndjson",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                resp_body = resp.read().decode("utf-8", errors="replace")
+                resp_json = json.loads(resp_body) if resp_body else {}
+                sent += int(resp_json.get("imported", len(batch)))
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="replace")
+            print(
+                json.dumps(
+                    {
+                        "error": f"HTTP {e.code}: {err_body}",
+                        "sent_before_failure": sent,
+                    },
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        except urllib.error.URLError as e:
+            print(
+                json.dumps(
+                    {
+                        "error": f"network error: {e.reason}",
+                        "sent_before_failure": sent,
+                    },
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+            )
+            return 1
+
+    print(
+        json.dumps(
+            {"sent": sent, "batches": (len(entries) + batch_size - 1) // batch_size},
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     matter_id = getattr(args, "matter", None)
     if args.path:
@@ -1608,6 +1770,40 @@ def main() -> int:
     p_exp.add_argument("--skill", help="このスキルの記録のみ")
     p_exp.add_argument("--format", choices=["json", "csv"], default="json", help="出力形式")
 
+    # ingest
+    p_ing = sub.add_parser(
+        "ingest",
+        help="監査ログを claude-bengo-cloud にアップロードする",
+    )
+    p_ing.add_argument(
+        "--matter",
+        help="事案 ID を指定し、その事案のログのみ送信する。未指定時はグローバルログ。",
+    )
+    p_ing.add_argument(
+        "--url",
+        required=True,
+        help="cloud エンドポイント URL（例: https://cloud.example.com/api/audit/ingest）",
+    )
+    p_ing.add_argument(
+        "--token",
+        help="Bearer token。未指定時は環境変数 CLAUDE_BENGO_CLOUD_TOKEN を使う。",
+    )
+    p_ing.add_argument(
+        "--since",
+        help="この日付以降のみ（YYYY-MM-DD）。未指定時は全件送信（冪等、重複は cloud 側でマージ）。",
+    )
+    p_ing.add_argument(
+        "--batch-size",
+        type=int,
+        default=500,
+        help="1 HTTP リクエストあたりのエントリ数（既定 500、cloud 側上限 10000）",
+    )
+    p_ing.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="送信せず、何件送る予定か stdout に出力する。",
+    )
+
     # verify
     p_ver = sub.add_parser("verify", help="ハッシュチェーンの整合性を検証する")
     p_ver.add_argument(
@@ -1632,6 +1828,8 @@ def main() -> int:
         return cmd_export(args)
     elif args.command == "verify":
         return cmd_verify(args)
+    elif args.command == "ingest":
+        return cmd_ingest(args)
     ap.print_help(sys.stderr)
     return 1
 

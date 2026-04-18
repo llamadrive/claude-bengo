@@ -1,23 +1,115 @@
 {
-  "_description": "家族関係テスト: 複雑家族（離婚・再婚・養子・死亡含む）の抽出期待値",
-  "_note": "koseki-complex.pdf をfixturesに配置してテストする",
+  "_description": "3世代・家督相続・改製・除籍を含む複雑戸籍の抽出期待値",
+  "_source": "koseki-complex.pdf (sha256: 1071ce6dda0fbbd30be27b624d94664078539689c703f7c85b1107eacefcbb79)",
+  "_source_url": "https://www.city.kita.lg.jp/_res/projects/default_project/_page_/001/001/539/shouwakaisei.pdf",
+  "_license": "東京都北区公開の見本PDF（『見本』透かし入り、公共ドメイン、合成データ）",
+  "_format": "昭和32年法務省令改製原戸籍（縦書き・旧字体）",
+  "_lineage_note": "同一北田家の継続戸籍として koseki-heisei6.pdf（平成6年改製原戸籍）および koseki-current.pdf（現在戸籍）も fixtures/family-tree/ 配下に同梱。複数戸籍の連結テストに使用可能。",
+  "_scenario": "被相続人=北田宗太郎（大正4年1月5日死亡、家督相続発生）、または北田幸太を被相続人とする生前対策シミュレーション。書式=標準（相続関係説明図）または拡張（3世代家系図）",
+  "_complexity_flags": [
+    "家督相続（旧法・大正4年1月5日、宗太郎死亡による幸太への承継）",
+    "改製による除籍（昭和33年6月11日、鈴の除籍）",
+    "婚姻による除籍・新戸籍編製（昭和34年11月7日、二郎の赤羽由美子との婚姻）",
+    "戸籍欄名の行政区画変更による更正（昭和7年・昭和23年）",
+    "3世代（宗太郎 → 幸太 → 一郎・二郎）",
+    "2系統の親族（北田家・佐藤家）"
+  ],
   "persons": [
-    { "id": "p1", "name": "甲野太郎", "role": "祖父", "birthday": "昭和10年5月1日", "deathDate": "平成25年2月14日" },
-    { "id": "p2", "name": "甲野はな", "role": "祖母", "birthday": "昭和12年8月20日" },
-    { "id": "p3", "name": "甲野次郎", "role": "父", "birthday": "昭和35年1月15日" },
-    { "id": "p4", "name": "乙野良子", "role": "母（前妻）", "birthday": "昭和38年6月10日" },
-    { "id": "p5", "name": "丙野美紀", "role": "母（後妻）", "birthday": "昭和40年9月3日" },
-    { "id": "p6", "name": "甲野一郎", "role": "長男", "birthday": "昭和63年7月10日" },
-    { "id": "p7", "name": "甲野二郎", "role": "次男", "birthday": "平成3年4月22日" },
-    { "id": "p8", "name": "甲野春子", "role": "養女", "birthday": "平成5年12月1日" }
+    {
+      "id": "p1",
+      "name": "北田 宗太郎",
+      "role": "前戸主（幸太の父）",
+      "birthday": null,
+      "address": "北豊島郡王子町下十條二百三十番地（当時）",
+      "deathDate": "大正4年1月5日"
+    },
+    {
+      "id": "p2",
+      "name": "北田 美代",
+      "role": "母（幸太・鈴の母）",
+      "birthday": null,
+      "address": null,
+      "deathDate": null
+    },
+    {
+      "id": "p3",
+      "name": "北田 幸太",
+      "role": "主戸（長男、家督相続人）",
+      "birthday": "明治43年1月1日",
+      "address": "東京都北区王子本町一丁目十五番地",
+      "deathDate": null
+    },
+    {
+      "id": "p4",
+      "name": "佐藤 忠義",
+      "role": "父（由紀の父）",
+      "birthday": null,
+      "address": "北豊島郡滝野川町大字滝野川千百○拾番地（当時）",
+      "deathDate": null
+    },
+    {
+      "id": "p5",
+      "name": "佐藤 由佳",
+      "role": "母（由紀の母）",
+      "birthday": null,
+      "address": null,
+      "deathDate": null
+    },
+    {
+      "id": "p6",
+      "name": "北田 由紀（旧姓 佐藤）",
+      "role": "妻（長女）",
+      "birthday": "大正10年2月1日",
+      "address": "東京都北区王子本町一丁目十五番地",
+      "deathDate": null
+    },
+    {
+      "id": "p7",
+      "name": "北田 鈴",
+      "role": "妹（二女、改製により除籍）",
+      "birthday": "明治15年9月16日",
+      "address": "北豊島郡滝野川町大字滝野川（従前戸籍）",
+      "deathDate": null
+    },
+    {
+      "id": "p8",
+      "name": "北田 一郎",
+      "role": "長男",
+      "birthday": "昭和18年9月10日",
+      "address": "東京都北区王子本町一丁目十五番地",
+      "deathDate": null
+    },
+    {
+      "id": "p9",
+      "name": "北田 二郎",
+      "role": "二男（婚姻により除籍・新戸籍編製）",
+      "birthday": "昭和19年8月8日",
+      "address": "東京都北区王子本町一丁目十五番地（昭和34年除籍後、新戸籍同所）",
+      "deathDate": null
+    },
+    {
+      "id": "p10",
+      "name": "赤羽 由美子",
+      "role": "二郎の妻（koseki-heisei6.pdf で詳細）",
+      "birthday": "昭和17年9月20日",
+      "address": "東京都北区赤羽一丁目一番地（従前戸籍）",
+      "deathDate": null
+    }
   ],
   "relationships": [
-    { "type": "spouse", "person1Id": "p1", "person2Id": "p2" },
-    { "type": "parent-child", "person1Id": "p1", "person2Id": "p3" },
-    { "type": "spouse", "person1Id": "p3", "person2Id": "p4", "details": "離婚" },
-    { "type": "spouse", "person1Id": "p3", "person2Id": "p5", "details": "再婚" },
-    { "type": "parent-child", "person1Id": "p3", "person2Id": "p6" },
-    { "type": "parent-child", "person1Id": "p3", "person2Id": "p7" },
-    { "type": "parent-child", "person1Id": "p3", "person2Id": "p8", "details": "養子" }
+    { "type": "spouse",       "person1Id": "p1", "person2Id": "p2", "details": "宗太郎+美代（推定）" },
+    { "type": "spouse",       "person1Id": "p4", "person2Id": "p5", "details": "佐藤忠義+由佳（推定）" },
+    { "type": "spouse",       "person1Id": "p3", "person2Id": "p6", "details": "昭和17年2月29日 婚姻（由紀の姉が届出同日入籍）" },
+    { "type": "spouse",       "person1Id": "p9", "person2Id": "p10", "details": "昭和34年11月7日 婚姻（東京都北区王子本町一丁目15番地に新戸籍編製）" },
+    { "type": "parent-child", "person1Id": "p1", "person2Id": "p3", "details": "長男（家督相続人）" },
+    { "type": "parent-child", "person1Id": "p2", "person2Id": "p3", "details": "長男" },
+    { "type": "parent-child", "person1Id": "p1", "person2Id": "p7", "details": "二女" },
+    { "type": "parent-child", "person1Id": "p2", "person2Id": "p7", "details": "二女" },
+    { "type": "parent-child", "person1Id": "p4", "person2Id": "p6", "details": "長女" },
+    { "type": "parent-child", "person1Id": "p5", "person2Id": "p6", "details": "長女" },
+    { "type": "parent-child", "person1Id": "p3", "person2Id": "p8", "details": "長男" },
+    { "type": "parent-child", "person1Id": "p6", "person2Id": "p8", "details": "長男" },
+    { "type": "parent-child", "person1Id": "p3", "person2Id": "p9", "details": "二男" },
+    { "type": "parent-child", "person1Id": "p6", "person2Id": "p9", "details": "二男" }
   ]
 }

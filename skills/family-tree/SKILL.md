@@ -190,7 +190,16 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --e
 
 v2.10.0 以降、家族関係図は **`.agent` ファイルの単一出力**とし、閲覧手段は環境に応じて使い分ける。`.agent` が canonical representation で、HTML は自動生成せず web viewer から生成可能（PDF ボタン）。
 
-**Step 3 で構築した FlatPerson / Relationship を以下のスキーマの単一 section にラップする。`description` フィールドは含めない**（agent-format renderer がタイトル直下に冗長テキストを表示するため、裁判所提出文書の見た目を崩す）。section label のみでコンテキストを示す:
+**Step 3 で構築した FlatPerson / Relationship を以下のスキーマの単一 section にラップする。`description` フィールドは含めない**（agent-format renderer がタイトル直下に冗長テキストを表示するため、裁判所提出文書の見た目を崩す）。section label のみでコンテキストを示す。
+
+**以下の inline schema は agent-format v0.1.6 時点のスナップショット。正式仕様と最新スキーマは必ず以下を参照する（本ファイルより優先）:**
+
+- **公式 JSON Schema**: https://github.com/knorq-ai/agent-format/blob/main/schemas/agent.schema.json
+- **仕様書 (SPEC § 4.13)**: https://github.com/knorq-ai/agent-format/blob/main/SPEC.md
+- **実例 (3 世代 北田家)**: https://github.com/knorq-ai/agent-format/blob/main/examples/inheritance-jp-3gen.agent
+
+agent-format 側で section 形状が変わった場合（例: v0.2 で新フィールド追加）、本 inline schema は追従していない可能性がある。疑わしい時は上記 URL で確認すること。
+
 
 ```json
 {
@@ -234,19 +243,25 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --e
 
 #### ブラウザで viewer を自動起動
 
-出力直後に `open_viewer.py` を呼び、ユーザーの**既定のブラウザで viewer を自動起動**する。ファイル内容は URI-encode して URL ハッシュに載せるため、viewer のサーバ（GitHub Pages）には payload が送信されない（hash fragment はクライアントに留まる）。
+出力直後に `open_viewer.py` を `--auto` フラグ付きで呼ぶ。**Claude Code CLI (`$CLAUDECODE=1`) の場合のみ**ユーザーの既定ブラウザで viewer を起動し、それ以外（Claude Desktop / Cursor 等の MCP Apps 経由）ではブラウザ起動を抑止して URL を stdout に出す。
+
+Claude Desktop 内で `render_agent_file` を使ってインライン描画するシナリオで、2 重にブラウザタブが開くのを防ぐ。
+
+ファイル内容は URI-encode して URL ハッシュに載せるため、viewer のサーバ（GitHub Pages）には payload が送信されない（hash fragment はクライアントに留まる）。
 
 ```bash
-python3 skills/family-tree/open_viewer.py --input family_tree_{YYYY-MM-DD}.agent
+python3 skills/family-tree/open_viewer.py --input family_tree_{YYYY-MM-DD}.agent --auto
 ```
 
-ブラウザがない環境（SSH・CI 等）や、ユーザーが明示的に「開かないで」と指示した場合は `--no-open` で URL のみ stdout に出す:
+**フラグの動作:**
 
-```bash
-python3 skills/family-tree/open_viewer.py --input family_tree_{YYYY-MM-DD}.agent --no-open
-```
+| フラグ | 動作 |
+|---|---|
+| `--auto` | `$CLAUDECODE=1` 時のみブラウザ起動、それ以外は URL 印字 |
+| `--no-open` | 常に URL 印字のみ（SSH / CI / ヘッドレス環境用） |
+| （無指定） | 環境を問わず常にブラウザ起動を試みる（既定） |
 
-Claude Desktop で `render_agent_file` MCP ツールを使う場合は、ブラウザタブが追加で開くだけで動作に支障はない。もし 2 重表示を避けたければユーザーから「ブラウザを開かないで」と言ってもらう。
+**Windows 注意:** 12KB を超える URL では Windows の一部ブラウザ経路で切り詰めが発生する可能性がある。警告を stderr に出すが、万一ブランクページが開いたら `--no-open` で URL を取得し viewer にドラッグ&ドロップでフォールバック。
 
 #### ユーザーへの案内
 

@@ -5,7 +5,7 @@
 ユーザーがこのプラグインを初めて使用する場合（会話の最初のメッセージで法律関連の作業を依頼された場合、または「何ができる？」「使い方は？」と聞かれた場合）、以下の案内を日本語で表示する:
 
 ```
-claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v2.11.0
+claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v2.12.0
 
 覚えるコマンドは 3 つだけ:
   /help        — タスクから機能を探す（今日何をしたい？）
@@ -117,8 +117,8 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 
 - テンプレート入力結果: `{元テンプレート名}_filled.xlsx`
 - 校正結果: `{元ファイル名}_reviewed.docx`
-- 家族関係図: `family_tree_{YYYY-MM-DD}.agent`（canonical、MCP Apps でインライン描画・web viewer でドラッグ&ドロップ閲覧・PDF化）
-- 訴訟分析レポート: `lawsuit_report_{YYYY-MM-DD}.html`
+- 家族関係図: `family_tree_{YYYY-MM-DD}.agent`（canonical、MCP Apps でインライン描画・web viewer で自動起動閲覧・PDF化）
+- 訴訟分析レポート: `lawsuit_report_{YYYY-MM-DD}.agent`（同上、6 section: metrics / report / timeline / table×3）
 
 出力先はユーザーに確認する。指定がなければ入力ファイルと同じディレクトリに出力する。
 同名ファイルが既に存在する場合は上書きするかユーザーに確認する。

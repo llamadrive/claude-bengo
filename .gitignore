@@ -22,6 +22,7 @@ __pycache__/
 family_tree_*.html
 family_tree_*.agent
 lawsuit_report_*.html
+lawsuit_report_*.agent
 *_reviewed.docx
 *_filled.xlsx
 .claude-bengo-familytree.json

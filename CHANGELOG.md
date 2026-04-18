@@ -2,6 +2,58 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.12.0] - 2026-04-19
+
+`/lawsuit-analysis` を `.agent` 単一出力へ移行（`/family-tree` と同じ方針）。
+訴訟分析レポートが MCP Apps クライアントでインライン描画され、Claude Code
+CLI では既定のブラウザで自動起動される。合わせて `open_viewer.py` に
+Claude Desktop 自動検知（`CLAUDECODE` 環境変数チェック）と Windows 長 URL
+警告を追加、family-tree SKILL.md に schema 参照注記を追加。
+
+### Changed
+
+- **`/lawsuit-analysis` 出力: HTML → `.agent`**
+  - Before (v2.11.0): `lawsuit_report_*.html` via `mcp__html-report`
+  - After (v2.12.0): `lawsuit_report_*.agent` を 6 section 構成で出力
+    - `metrics` — 文書数・人物数・タイムライン項目数・主張数
+    - `report` — 事件概要 + キーポイント
+    - `timeline` — 事件タイムライン
+    - `table` — 登場人物（役割・重要度付き）
+    - `table` — 主張と認否（`type: status` カラムで認否バッジ色分け）
+    - `table` — 証拠一覧（甲号証・乙号証）
+  - viewpoint (原告/被告/中立) による主張テーブルの行順制御を継続
+
+- **`skills/family-tree/open_viewer.py` に Claude Desktop 検知追加**
+  - `--auto` フラグ: `$CLAUDECODE=1` のときのみブラウザ起動。Claude
+    Desktop （MCP で既にインライン描画される）では URL を stdout に
+    出すだけ。2 重タブ問題を回避。
+  - Windows 長 URL 警告（`WIN_URL_WARN = 32_000 chars`）を追加。
+  - `/family-tree` と `/lawsuit-analysis` の両方で `--auto` を使用。
+
+- **`skills/family-tree/SKILL.md` に schema reference 注記**
+  - Inline schema は v0.1.6 時点のスナップショット、正式仕様は agent-format
+    repo の `schemas/agent.schema.json` と `SPEC.md § 4.13` を参照する旨を
+    明示。将来 v0.2 で形状が変わった時の drift 防止。
+  - `/lawsuit-analysis` の SKILL.md にも同様の注記を追加。
+
+### Removed
+
+- `skills/lawsuit-analysis/references/report-structure-guide.md` —
+  旧 HTML フロー専用のガイド、.agent 化で不要に
+
+### Migration impact
+
+パイロット弁護士は `/lawsuit-analysis` 実行時、従来と同じ入力・同じ
+ワークフロー・同じ Step 3.5 の解釈確認を経るが、最終出力が HTML から
+`.agent` + ブラウザ viewer に変わる。印刷したい場合は viewer の PDF
+ボタンで A3 or A4 HTML を生成してブラウザから印刷。
+
+### Verification
+
+- `scripts/verify.py`: 39 passed / 0 failed / 0 warnings
+- `open_viewer.py --auto` を `CLAUDECODE=1` と未設定の両方で動作確認済み
+- family-tree SKILL.md に schema source-of-truth URL 3 本を追記
+
 ## [2.11.0] - 2026-04-19
 
 `/family-tree` 出力後に**既定のブラウザで viewer を自動起動**するようになった。

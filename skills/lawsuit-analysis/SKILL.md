@@ -213,33 +213,172 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill lawsuit-analysi
 **確認後**、ユーザーの回答をメモし、Step 4 以降の処理に反映する。特に viewpoint は
 レポート全体のトーンを決めるため、未確認のまま進めない。
 
-### Step 4: HTMLレポート生成
+### Step 4: `.agent` JSON 出力（単一出力）
 
-`mcp__html-report__render_report` でレポートを生成する。レポート構造の詳細は `skills/lawsuit-analysis/references/report-structure-guide.md` を Read ツールで読み込んで参照する。
+v2.12.0 以降、訴訟分析レポートは `.agent` ファイルの単一出力とする。family-tree と同じく、Claude Desktop ではインライン描画、Claude Code では自動でブラウザ viewer が起動する。
 
-推奨ブロック構成:
-1. **ヘッダ**: 事件名、事件番号
-2. **概要**: summary を section + paragraph で表示
-3. **キーメトリクス**: stat_cards（文書数、登場人物数、タイムライン項目数）
-4. **タイムライン**: timeline ブロックで時系列表示
-5. **登場人物**: card_grid で人物プロフィール
-6. **関係図**: 関係性をテーブルまたは diagram で表示
-7. **主張と認否**: table ブロックで認否ステータスをバッジ色分け
-   - 認める → 緑バッジ
-   - 否認 → 赤バッジ
-   - 一部認める → 黄バッジ
-   - 不知 → 青バッジ
-   - 不明 → グレーバッジ
+以下の inline schema は **agent-format v0.1.6 時点のスナップショット**。正式仕様は以下を参照する（本ファイルより優先）:
 
-### Step 5: 出力
+- **公式 JSON Schema**: https://github.com/knorq-ai/agent-format/blob/main/schemas/agent.schema.json
+- **仕様書 (SPEC § 4.1 〜 4.12)**: https://github.com/knorq-ai/agent-format/blob/main/SPEC.md
 
-HTMLファイルとして `lawsuit_report_{YYYY-MM-DD}.html` に出力する。
-出力先はユーザーに確認する。
+Step 3 で抽出した構造化データを agent-format の標準 section に写像する。`description` フィールドは含めない（タイトル下に冗長テキストが出るため）:
 
-**出力後、監査ログに書込イベントを記録する（アクティブ matter 宛）:**
+```json
+{
+  "version": "0.1",
+  "name": "<事件名> 訴訟分析",
+  "icon": "⚖️",
+  "createdAt": "<ISO 8601>",
+  "updatedAt": "<ISO 8601>",
+  "config": { "proactive": false },
+  "sections": [
+    {
+      "id": "sec-metrics",
+      "type": "metrics",
+      "label": "概要",
+      "icon": "📊",
+      "order": 0,
+      "data": {
+        "cards": [
+          { "id": "m1", "label": "文書数", "value": "5", "trend": "neutral" },
+          { "id": "m2", "label": "登場人物", "value": "4", "trend": "neutral" },
+          { "id": "m3", "label": "タイムライン項目", "value": "12", "trend": "neutral" },
+          { "id": "m4", "label": "主張", "value": "6", "trend": "neutral" }
+        ]
+      }
+    },
+    {
+      "id": "sec-summary",
+      "type": "report",
+      "label": "事件概要",
+      "icon": "📝",
+      "order": 1,
+      "data": {
+        "template": "# 概要\n\n{{summary}}\n\n## キーポイント\n\n{{keyPoints}}",
+        "reports": [
+          {
+            "id": "r1",
+            "title": "事件概要",
+            "content": "<Step 3 の summary テキスト + keyPoints を箇条書きで展開>",
+            "createdAt": "<ISO 8601>",
+            "updatedAt": "<ISO 8601>"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sec-timeline",
+      "type": "timeline",
+      "label": "事件タイムライン",
+      "icon": "📅",
+      "order": 2,
+      "data": {
+        "items": [
+          {
+            "id": "e1",
+            "title": "<event title>",
+            "description": "<event description>",
+            "startDate": "<YYYY-MM-DD or 'unknown'>",
+            "status": "completed"
+          }
+        ],
+        "milestones": []
+      }
+    },
+    {
+      "id": "sec-characters",
+      "type": "table",
+      "label": "登場人物",
+      "icon": "👥",
+      "order": 3,
+      "data": {
+        "columns": [
+          { "id": "name", "name": "氏名", "type": "text" },
+          { "id": "role", "name": "役割", "type": "select", "options": ["原告", "被告", "証人", "弁護士", "裁判官", "関係者"] },
+          { "id": "description", "name": "説明", "type": "text" },
+          { "id": "importance", "name": "重要度", "type": "number" }
+        ],
+        "rows": [
+          { "id": "p1", "name": "<name>", "role": "原告", "description": "<desc>", "importance": 8 }
+        ]
+      }
+    },
+    {
+      "id": "sec-arguments",
+      "type": "table",
+      "label": "主張と認否",
+      "icon": "⚔️",
+      "order": 4,
+      "data": {
+        "columns": [
+          { "id": "title", "name": "主張", "type": "text" },
+          { "id": "party", "name": "当事者", "type": "select", "options": ["原告", "被告"] },
+          { "id": "ninhi", "name": "認否", "type": "status" },
+          { "id": "supporting_points", "name": "根拠（証拠ID参照可）", "type": "text" },
+          { "id": "opposing_points", "name": "反論", "type": "text" }
+        ],
+        "rows": [
+          { "id": "a1", "title": "<主張>", "party": "原告", "ninhi": "認める", "supporting_points": "甲第1号証...", "opposing_points": "..." }
+        ]
+      }
+    },
+    {
+      "id": "sec-evidence",
+      "type": "table",
+      "label": "証拠一覧",
+      "icon": "📎",
+      "order": 5,
+      "data": {
+        "columns": [
+          { "id": "number", "name": "号証番号", "type": "text" },
+          { "id": "party", "name": "提出当事者", "type": "select", "options": ["原告", "被告"] },
+          { "id": "title", "name": "表題", "type": "text" },
+          { "id": "date", "name": "作成日", "type": "date" },
+          { "id": "purpose", "name": "立証趣旨", "type": "text" }
+        ],
+        "rows": [
+          { "id": "ev1", "number": "甲第1号証", "party": "原告", "title": "<title>", "date": "<YYYY-MM-DD>", "purpose": "<purpose>" }
+        ]
+      }
+    }
+  ],
+  "memory": { "observations": [], "preferences": {} }
+}
+```
+
+**Viewpoint (Step 3.5 で確認) の反映:**
+
+- `(a) 原告側` / `(b) 被告側`: 主張テーブルの `party == <stance>` の行を先頭に並べる（`rows` 配列の順）
+- `(c) 中立`: 主張テーブルをそのまま並置
+- `(d) 未定`: `memory.observations` に「立場未指定」を追加
+
+**認否ステータスのバッジ色:** agent-format v0.1.6 の `type: "status"` カラムは値に応じて自動で色分け（認める=緑、否認=赤、一部認める=黄、不知=青、不明=グレー）。renderer 側でハンドリング。
+
+Write ツールで `lawsuit_report_{YYYY-MM-DD}.agent` として作業ディレクトリに出力する。
+
+### Step 5: 出力 + 監査ログ + viewer 自動起動
+
+**監査ログ:**
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill lawsuit-analysis --event file_write --file "<output-path>"
+python3 skills/_lib/audit.py record --matter {matter_id} --skill lawsuit-analysis --event file_write --file "lawsuit_report_{YYYY-MM-DD}.agent"
+```
+
+**ブラウザ自動起動（Claude Code CLI 時のみ）:**
+
+```bash
+python3 skills/family-tree/open_viewer.py --input lawsuit_report_{YYYY-MM-DD}.agent --auto
+```
+
+**ユーザーへの案内:**
+
+```
+訴訟分析レポートを `lawsuit_report_{YYYY-MM-DD}.agent` に出力した。
+
+  📱 Claude Desktop: render_agent_file MCP でインライン描画
+  🌐 Claude Code: 既定のブラウザで viewer が自動起動（6 セクション: 概要メトリクス・
+     事件概要・タイムライン・登場人物・主張と認否・証拠一覧）
 ```
 
 ### Step 6: サマリー表示

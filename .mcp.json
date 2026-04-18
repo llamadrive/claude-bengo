@@ -14,7 +14,7 @@
     },
     "agent-format": {
       "command": "npx",
-      "args": ["-y", "@agent-format/mcp@0.1.5"]
+      "args": ["-y", "@agent-format/mcp@0.1.6"]
     }
   }
 }

@@ -186,7 +186,51 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --e
 
 **注意:** Step 2 のタイムラインには birthPlace, deathPlace, marriageInfo, generation 等の詳細情報が含まれるが、FlatPerson は可視化に必要な最小限のフィールドのみ保持する。詳細情報は Step 5 のサマリーテキストで出力する。
 
-### Step 4: HTML生成
+### Step 4: 出力生成（dual output）
+
+v2.9.0 以降、家族関係図は **2 種類の形式で並行出力**する。用途により使い分ける:
+
+| 出力 | 用途 | レンダリング |
+|---|---|---|
+| `family_tree_{YYYY-MM-DD}.agent` | Claude Desktop 内でのインライン表示・`.agent` viewer での共有 | `@agent-format/mcp` が MCP 経由で描画（`inheritance-diagram` section, `jp-court` variant） |
+| `family_tree_{YYYY-MM-DD}.html` | ブラウザで開いて印刷・裁判所提出用 PDF 出力 | 自己完結 HTML（現行テンプレート） |
+
+両者とも同じ SVG レイアウトを描画する（agent-format v0.1.5+ の renderer は claude-bengo テンプレと同じコードパスを使用）。
+
+#### 4a. `.agent` JSON 出力
+
+Step 3 で構築した FlatPerson / Relationship を以下のスキーマの単一 section にラップする:
+
+```json
+{
+  "version": "0.1",
+  "name": "<被相続人名> 相続関係説明図",
+  "icon": "👨‍👩‍👧",
+  "createdAt": "<ISO 8601>",
+  "updatedAt": "<ISO 8601>",
+  "config": { "proactive": false },
+  "sections": [
+    {
+      "id": "sec-1",
+      "type": "inheritance-diagram",
+      "label": "相続関係説明図（<被相続人名> 被相続人）",
+      "icon": "⚖️",
+      "order": 0,
+      "data": {
+        "variant": "jp-court",
+        "focusedPersonId": "<decedent person id>",
+        "persons": [ ... Step 3 の persons ... ],
+        "relationships": [ ... Step 3 の relationships ... ]
+      }
+    }
+  ],
+  "memory": { "observations": [], "preferences": {} }
+}
+```
+
+Write ツールで `family_tree_{YYYY-MM-DD}.agent` として出力する。
+
+#### 4b. HTML 出力（現行挙動、印刷用）
 
 1. `assets/family-tree-template.html` を Read ツールで読み込む。
 2. Step 3 で構築した JSON データを作業ディレクトリ配下の一時ファイル（`.claude-bengo-familytree.json`）に Write で書き出す。**作業ディレクトリを使う理由:** `/tmp` は Windows に存在しないため、クロスプラットフォームで確実に書込可能な場所として CWD を選ぶ。
@@ -198,15 +242,35 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --e
 4. テンプレート内の `__GRAPH_DATA_B64__` を Base64 文字列で置換する。
 5. Write ツールで `family_tree_{YYYY-MM-DD}.html` として出力する。
 6. エンコーダの入力に使った一時 JSON ファイル（`.claude-bengo-familytree.json`）を削除する。
-7. **監査ログに書込イベントを記録する（アクティブ matter 宛）:**
-   ```bash
-   python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --event file_write --file "family_tree_{YYYY-MM-DD}.html"
-   ```
-8. ユーザーに「ブラウザで開くとインタラクティブな家族関係図が表示されます」と案内する。
 
 **セキュリティ上の根拠:** Base64 エンコーディングにより、戸籍 PDF に埋め込まれた `</script>`、`<!--<script>`、HTML コメント区切りなどの文字列が HTML パーサーに解釈されない。家族関係図 HTML はユーザーの `file://` 権限で開かれるため、この防御は必須である。
 
 **なぜ `python3 -c` ではなくスクリプトファイルか:** プラグインの `allowed-tools` は特定のスクリプト（`encode.py`）のみに Bash 権限を限定している。`python3 -c` での任意コード実行は許可されていない（注入攻撃対策）。
+
+#### 4c. 監査ログ
+
+2 つの出力ファイルをそれぞれ記録する:
+
+```bash
+python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --event file_write --file "family_tree_{YYYY-MM-DD}.agent"
+python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --event file_write --file "family_tree_{YYYY-MM-DD}.html"
+```
+
+#### 4d. ユーザーへの案内
+
+2 パターンある旨を明示する:
+
+```
+相続関係説明図を出力した:
+
+  📱 Claude Desktop で見る:
+     family_tree_{YYYY-MM-DD}.agent を開く
+     （agent-format MCP 経由でインライン描画）
+
+  🖨️ 印刷・裁判所提出 PDF:
+     family_tree_{YYYY-MM-DD}.html をブラウザで開く
+     → 「印刷 / PDF出力」ボタン
+```
 
 ### Step 5: データサマリー
 

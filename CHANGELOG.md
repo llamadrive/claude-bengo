@@ -2,6 +2,50 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.9.0] - 2026-04-19
+
+`/family-tree` が `.agent` JSON を並行出力するようになり、Claude Desktop
+内で **インライン描画** される（ブラウザで HTML を開く必要がなくなる）。
+裁判所提出用の印刷 PDF が必要な場合は従来どおり `.html` も同時出力される。
+
+### Added
+
+- **`.agent` JSON 出力（`/family-tree`）**
+  出力が 2 ファイル体制になった:
+  - `family_tree_{YYYY-MM-DD}.agent` — Claude Desktop 内で `@agent-format/mcp`
+    経由でインライン描画。`inheritance-diagram` section / `jp-court` variant
+  - `family_tree_{YYYY-MM-DD}.html` — ブラウザ印刷・裁判所提出 PDF 出力用
+    （従来どおり、レイアウトも同一）
+  同じ graph data から 2 形式を生成するため、視覚結果は一致する。
+
+- **`.mcp.json` に `@agent-format/mcp@0.1.4` を追加**
+  新規スキル不要、`.agent` ファイル全般を Claude Desktop で描画可能に。
+  upstream: https://github.com/knorq-ai/agent-format issue #1
+  （`inheritance-diagram` section type を upstream に実装済み）
+
+### Why dual output
+
+パイロット弁護士からのフィードバック: 「Claude Desktop でチャット中に
+ブラウザを別途開くのは UX が途切れる」。
+かつ裁判所提出・印刷用途には依然として self-contained HTML が必要。
+単一の graph data から両方を同時生成することで、**Claude Desktop 用途と
+裁判所提出用途の両立**を実現した。
+
+### Verification
+
+- agent-format repo で 37/37 renderer tests 通過（5 件の新規テスト含む）
+- `scripts/verify.py`: 39 passed / 0 failed / 0 warnings
+- `inheritance-diagram` section の SVG レイアウトは既存 `skills/family-tree/
+  assets/family-tree-template.html`（295 行 SVG 生成 JS）と pixel-for-pixel
+  一致するよう実装
+
+### 次の優先
+
+- `/lawsuit-analysis` も `.agent` JSON 出力に切替（既存 section types:
+  `timeline` + `table` + `metrics` + `report` のみで足りる）
+- `claude-bengo-cloud`（別 repo）の auth 配線と audit ingestion で
+  事務所管理者ダッシュボードを MVP 到達
+
 ## [2.8.0] - 2026-04-18
 
 `/family-tree` 精度向上リリース。実戦で弁護士から「Claude が勝手に前提を

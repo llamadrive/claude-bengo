@@ -2,6 +2,79 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.8.0] - 2026-04-18
+
+`/family-tree` 精度向上リリース。実戦で弁護士から「Claude が勝手に前提を
+置いて結果が不正確」というフィードバックを受けて、解釈判断をユーザーに
+委ねる設計へ転換。併せて合成スタブ fixture を東京都北区公開の公共ドメイン
+見本 PDF（3 世代家督相続ケース）に差し替え、旧字体縦書き戸籍からの抽出が
+回帰テストされる体制に格上げした。
+
+### Added
+
+- **`family-tree/SKILL.md` Step 2.5 — 解釈の確認（必須）**
+  タイムライン抽出後・グラフ構築前に、以下 4 点をユーザーに確認する:
+  1. 被相続人の確定（死亡記載なし/複数候補時）
+  2. 尊属（祖父母世代）の扱い（標準書式 vs 拡張書式）
+  3. 字体（旧字体保持 vs 新字体統一）
+  4. 補助戸籍の有無（除籍謄本・改製原戸籍の同時処理の可否）
+  推測でデフォルト値を選ばず、ユーザーに判断を委ねる原則。
+
+- **実戦的 koseki fixtures（3 世代北田家系譜）**
+  `fixtures/family-tree/` を合成スタブから公共ドメイン見本に差し替え:
+  - `koseki-simple.pdf` (1.86 MB) — llamadrive 提供サンプル、永和家の単純
+    戸籍（平成期全部事項証明書）
+  - `koseki-complex.pdf` (264 KB) — **昭和32年改製原戸籍**（北田家）、
+    3 世代・家督相続・改製除籍・2 系統親族
+  - `koseki-heisei6.pdf` (59 KB) — **平成6年改製原戸籍**（北田家 2 代目
+    二郎世帯）、婚姻による新戸籍編製・長女の離家
+  - `koseki-current.pdf` (58 KB) — **現在戸籍**（平成19年改製後、電子）、
+    北田家現行
+  後者 3 通は同一家系の継続戸籍として multi-koseki 連結テストに使用可。
+  すべて「見本」透かし入りの公共ドメイン文書（東京都北区公開）。
+  `expected-simple.json` と `expected-complex.json` も実内容と source メタ
+  データ（URL, SHA-256, complexity flags）を保持する形式に更新。
+
+- **`scripts/build_stub_fixtures.py` 再実行ガード**
+  `[SYNTHETIC STUB FIXTURE` マーカーを持たない PDF/DOCX を検出した場合は
+  `[SKIP]` 表示で上書きしない。CI で stub generator が再実行されても実
+  fixture を保護する。
+
+- **`skills/family-tree/references/koseki-extraction-guide.md` +110 行**
+  実サンプルから学んだパース Tips を 6 節追加:
+  - 旧数字（大字）完全対応表（壱〜萬）+ 組み合わせ日付例
+  - 身分事項 vs メタ事項 判別ルール表
+  - 家督相続（旧法・昭和22年以前）のパースと被相続人フラグ付与
+  - 「姉」「妹」単独漢字の意味（届出人との続柄）
+  - 記載形式判別フロー（平成6年式 vs 改製原戸籍）
+  - 相続関係説明図の描画範囲制約と法務省公式サンプル参照
+
+- **`.gitignore` にスキル出力アーティファクトを追加**
+  `family_tree_*.html`, `lawsuit_report_*.html`, `*_reviewed.docx`,
+  `*_filled.xlsx`, `.claude-bengo-familytree.json`
+
+### Feedback memory（永続化）
+
+- **Ask Before Assume** (`feedback_ask_before_assume.md`)
+  法律文書の抽出・可視化スキルは、抽出結果に影響する決定的な判断を
+  ユーザーに無断で行わない。事実抽出と解釈による既定値は常に分離する。
+  family-tree 以外のスキル（lawsuit-analysis, template-fill 等）にも
+  今後順次適用する。
+
+### Verification
+
+- 3 世代戸籍で `/family-tree` を実地検証: 8 名 + 11 関係を正しく抽出、
+  テンプレが再帰的に 3 世代を相続関係説明図形式で描画することを確認
+- `scripts/verify.py`: 39 passed / 0 failed / 0 warnings（fixtures 差替後）
+- 監査ログ: matter `demo-kitada-fixture` / `demo-eiwa-souzoku` で
+  file_read / file_write のハッシュチェーンが維持されることを確認
+
+### 次の優先
+
+- 他スキル（`/lawsuit-analysis`, `/template-fill`）への Step 2.5 展開
+- multi-koseki 連結モード（3 通の北田戸籍を 1 回で処理）
+- Tier 2 弁護士パイロット投入
+
 ## [2.7.0] - 2026-04-17
 
 Track A Phase 4 + Track B Phase 2 の最終スコープ拡張。同梱テンプレートを

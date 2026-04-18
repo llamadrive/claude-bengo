@@ -2,6 +2,51 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.10.0] - 2026-04-19
+
+`/family-tree` を **`.agent` 単一出力** に簡素化。HTML 出力は廃止し、閲覧・印刷は
+agent-format web viewer に委譲する。`.mcp.json` で固定している `@agent-format/mcp@0.1.7`
+が UI 側に「Open in browser」「PDF」ボタンを提供するため、同じ HTML を claude-bengo
+側で毎回生成する必要がなくなった。
+
+### Changed
+
+- **`/family-tree` 出力: dual → single**
+  - Before (v2.9.0): `family_tree_*.agent` + `family_tree_*.html`（同じ SVG を 2 形式で出力）
+  - After (v2.10.0): `family_tree_*.agent` のみ
+  - 印刷用 HTML は agent-format web viewer の「PDF」ボタンで on-demand 生成
+  - token 節約 + ファイル数半減
+
+- **閲覧ワークフロー差別化**
+  - Claude Desktop / Cursor 等の MCP Apps 対応クライアント → 自動インライン描画（ユーザー操作不要）
+  - Claude Code / CLI / 非対応クライアント → web viewer にドラッグ&ドロップ
+
+### Removed
+
+- `skills/family-tree/encode.py`（Base64 エンコーダ、HTML テンプレート用）
+- `skills/family-tree/assets/family-tree-template.html`（295 行の SVG 生成 JS）
+- `commands/family-tree.md` の `Bash(python3 skills/family-tree/encode.py:*)` 許可
+
+### Rationale
+
+agent-format repo 側の `@agent-format/renderer@0.1.4` に inheritance-diagram section
+の完全な実装（React port）と、web viewer に Open in browser + PDF ボタンが揃った
+時点で、claude-bengo 側で HTML を生成する意味がなくなった。単一責務原則に従って
+「claude-bengo = 戸籍抽出 + `.agent` 生成」「agent-format = 表示・印刷・共有」と
+境界を明確化した。
+
+### Verification
+
+- `scripts/verify.py`: 38 passed / 0 failed / 0 warnings（encode.py が削除されたため syntax check が 1 件減）
+- SKILL.md に schema source-of-truth URL と example URL を追記
+- 既存 `fixtures/family-tree/` は `.agent` 変換に影響なし（持続）
+
+### 参照
+
+- agent-format schema: https://github.com/knorq-ai/agent-format/blob/main/schemas/agent.schema.json
+- Example `.agent`: https://github.com/knorq-ai/agent-format/blob/main/examples/inheritance-jp-3gen.agent
+- web viewer: https://knorq-ai.github.io/agent-format/
+
 ## [2.9.0] - 2026-04-19
 
 `/family-tree` が `.agent` JSON を並行出力するようになり、Claude Desktop

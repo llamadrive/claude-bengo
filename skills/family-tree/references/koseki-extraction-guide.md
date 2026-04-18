@@ -397,7 +397,7 @@ PDF 読取時、以下の順で形式を判別する:
 
 ### 相続関係説明図の描画範囲（重要）
 
-`skills/family-tree/assets/family-tree-template.html` は**相続関係三角形**のみを描画する。
+`@agent-format/renderer` の `inheritance-diagram` section（`jp-court` variant）は**相続関係三角形**のみを描画する。
 具体的には:
 
 - **描画される:** 被相続人 + 配偶者 + 子孫（子・孫・ひ孫...再帰的）

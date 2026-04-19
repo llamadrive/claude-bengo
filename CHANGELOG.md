@@ -2,6 +2,30 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.1.2] - 2026-04-19
+
+v3.1.0/v3.1.1 のフォローアップ。拡張書式（事案整理）でも `variant:
+"jp-court"` を使うよう SKILL.md を修正。
+
+### Problem
+
+v3.1.0 は 拡張書式（b）で variant を省略するよう指示していた。その結果、
+lawyer が全員描画を希望する事案整理用の出力で renderer が generic genealogy
+レイアウトにフォールバックし、Japanese 法律実務の必須体裁（最後の住所 /
+出生 / 死亡 / （被相続人）ラベル、二重線配偶者エッジ）が失われていた。
+
+### Fix
+
+jp-court plugin 0.1.1 は尊属を含む全員を jp-court スタイルで描画するよう
+拡張されたため、標準（a）・拡張（b）どちらでも `variant: "jp-court"` を指定
+するよう `skills/family-tree/SKILL.md` と `references/koseki-extraction-guide.md`
+を修正。
+
+- 標準（a）: heir-only persons + `variant: "jp-court"`
+- 拡張（b）: all persons + `variant: "jp-court"`
+
+違いは `data.persons` の中身のみ。視覚スタイルは常に Japanese 法定体裁。
+
 ## [3.1.1] - 2026-04-19
 
 v3.1.0 リリース後に得た upstream からの補足情報に追従する patch release。

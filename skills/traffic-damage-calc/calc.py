@@ -170,9 +170,33 @@ LIVING_COST_DEDUCTION = {
     ("female", "single"): Fraction(30, 100),
 }
 
-# 法定利率（中間利息控除用）
-# 改正民法 404 条: 2020/04/01 より年 3%。事故日が 2020/04/01 以降の事案に適用
-LEGAL_INTEREST_RATE = Fraction(3, 100)
+# 法定利率（中間利息控除・遅延損害金用）
+# 改正民法 404 条: 2020/04/01 より年 3%、それ以前は年 5%。
+# 事故日（不法行為時）によって分岐する — 赤い本 p. 375 ほか判例実務に従う。
+LEGAL_INTEREST_RATE_POST_2020 = Fraction(3, 100)
+LEGAL_INTEREST_RATE_PRE_2020 = Fraction(5, 100)
+INTEREST_RATE_CHANGE_DATE = "2020-04-01"
+
+# 互換のため旧シンボルも残す（事故日非依存で呼ばれる既存テスト用デフォルト）
+LEGAL_INTEREST_RATE = LEGAL_INTEREST_RATE_POST_2020
+
+
+def _rate_for_accident_date(accident_date: Optional[str]) -> Fraction:
+    """事故日から適用法定利率を決定する。
+
+    2020/04/01 以降の不法行為: 3%
+    それより前: 5%
+    日付が不明/不正な場合は 3%（直近判例基準）を返す。
+    """
+    if not accident_date:
+        return LEGAL_INTEREST_RATE_POST_2020
+    try:
+        import datetime as _dt
+        d = _dt.date.fromisoformat(accident_date)
+    except (ValueError, TypeError):
+        return LEGAL_INTEREST_RATE_POST_2020
+    cutoff = _dt.date(2020, 4, 1)
+    return LEGAL_INTEREST_RATE_POST_2020 if d >= cutoff else LEGAL_INTEREST_RATE_PRE_2020
 
 # 弁護士費用（判例実務: 認容額の 10%）
 LAWYER_FEE_RATE = Fraction(10, 100)
@@ -241,7 +265,7 @@ def _consolation_lookup(table: List[List[int]], hospital_months: int, outpatient
 # ---------------------------------------------------------------------------
 
 
-def _leibniz_coefficient(years: int, rate: Fraction = LEGAL_INTEREST_RATE) -> Fraction:
+def _leibniz_coefficient(years: int, rate: Fraction = LEGAL_INTEREST_RATE_POST_2020) -> Fraction:
     """Leibniz 係数（中間利息控除）。
 
     年利 r, n 年分の現在価値係数 = Σ(1 / (1+r)^k) for k=1..n
@@ -377,8 +401,11 @@ def _calc_lost_wages(payload: dict) -> Dict[str, int]:
     return {"daily_wage": daily, "days_off": days_off, "total": total}
 
 
-def _calc_loss_of_future_earnings(payload: dict) -> Dict[str, int]:
-    """後遺障害逸失利益（将来得られたはずの収入の喪失）。"""
+def _calc_loss_of_future_earnings(payload: dict, rate: Fraction) -> Dict[str, int]:
+    """後遺障害逸失利益（将来得られたはずの収入の喪失）。
+
+    `rate` は事故日から決定した法定利率（2020/04/01 前後で 5% / 3%）。
+    """
     disability = payload.get("disability")
     if not disability:
         return {"total": 0, "note": "後遺障害なし"}
@@ -405,7 +432,7 @@ def _calc_loss_of_future_earnings(payload: dict) -> Dict[str, int]:
         annual_income = WAGE_CENSUS_FEMALE_ALL_AGE
 
     loss_rate = DISABILITY_LOSS_RATES[grade]
-    leibniz = _leibniz_coefficient(years)
+    leibniz = _leibniz_coefficient(years, rate)
     total_f = Fraction(annual_income) * loss_rate * leibniz
     total = _to_int(total_f)
 
@@ -416,11 +443,12 @@ def _calc_loss_of_future_earnings(payload: dict) -> Dict[str, int]:
         "loss_rate": f"{loss_rate.numerator}/{loss_rate.denominator} ({float(loss_rate)*100:.0f}%)",
         "years": years,
         "leibniz": f"{float(leibniz):.4f}",
+        "interest_rate": f"{float(rate)*100:.0f}%",
     }
 
 
-def _calc_death_lost_earnings(payload: dict) -> Dict[str, int]:
-    """死亡逸失利益。"""
+def _calc_death_lost_earnings(payload: dict, rate: Fraction) -> Dict[str, int]:
+    """死亡逸失利益。`rate` は事故日由来の法定利率。"""
     death = payload.get("death")
     if not death:
         return {"total": 0, "note": "死亡なし"}
@@ -456,7 +484,7 @@ def _calc_death_lost_earnings(payload: dict) -> Dict[str, int]:
             key = ("female", "single")
     deduction_rate = LIVING_COST_DEDUCTION[key]
 
-    leibniz = _leibniz_coefficient(years)
+    leibniz = _leibniz_coefficient(years, rate)
     effective_rate = Fraction(1) - deduction_rate
     total_f = Fraction(annual_income) * effective_rate * leibniz
     total = _to_int(total_f)
@@ -467,6 +495,7 @@ def _calc_death_lost_earnings(payload: dict) -> Dict[str, int]:
         "deduction_rate": f"{float(deduction_rate)*100:.0f}%",
         "years": years,
         "leibniz": f"{float(leibniz):.4f}",
+        "interest_rate": f"{float(rate)*100:.0f}%",
     }
 
 
@@ -482,13 +511,26 @@ def _calc_hospitalization_consolation(payload: dict) -> Dict[str, int]:
     hosp_months = _months_from_days(hosp_days)
     outp_months = _months_from_days(outp_days)
 
-    severity = (med.get("severity") or "major").lower()
+    # severity は必須。未指定で別表 I（通常傷害、金額高）に silently default すると
+    # 軽傷（むち打ち等）案件で慰謝料を 30-50% 過大請求してしまう — 弁護士にとって
+    # 実害のある malpractice-adjacent 挙動のため、ここで明示エラーにする。
+    severity_raw = med.get("severity")
+    if severity_raw is None:
+        raise ValueError(
+            "medical.severity は必須。'major'（別表 I・骨折等他覚所見あり）または "
+            "'minor'（別表 II・むち打ち等他覚所見なし軽傷）を明示的に指定してほしい。"
+        )
+    severity = str(severity_raw).lower()
     if severity in ("minor", "minor_whiplash", "soft_tissue"):
         amount = _consolation_lookup(_TABLE_II, hosp_months, outp_months)
         table = "赤い本別表 II（軽傷用）"
-    else:
+    elif severity in ("major", "standard"):
         amount = _consolation_lookup(_TABLE_I, hosp_months, outp_months)
         table = "赤い本別表 I（通常傷害）"
+    else:
+        raise ValueError(
+            f"medical.severity は 'major' か 'minor' のいずれか（受信: {severity_raw}）"
+        )
 
     return {
         "total": amount,
@@ -543,10 +585,13 @@ def compute_damages(payload: dict) -> dict:
     """交通事故損害賠償額を計算する。"""
     _validate(payload)
 
+    accident_date = (payload.get("accident") or {}).get("date")
+    rate = _rate_for_accident_date(accident_date)
+
     pos = _calc_positive_damages(payload)
     lost_wages = _calc_lost_wages(payload)
-    future_loss = _calc_loss_of_future_earnings(payload)
-    death_loss = _calc_death_lost_earnings(payload)
+    future_loss = _calc_loss_of_future_earnings(payload, rate)
+    death_loss = _calc_death_lost_earnings(payload, rate)
     hosp_consol = _calc_hospitalization_consolation(payload)
     disability_consol = _calc_disability_consolation(payload)
     death_consol = _calc_death_consolation(payload)
@@ -563,8 +608,9 @@ def compute_damages(payload: dict) -> dict:
     )
 
     # 過失相殺
+    # Fraction(str(fault)) により float 表現誤差を回避（例: 1.13% を正確に 113/10000 に変換）
     fault = payload.get("accident", {}).get("victim_fault_percent", 0)
-    fault_frac = Fraction(int(fault * 100), 10000)  # 10.5% → 0.105 相当
+    fault_frac = Fraction(str(fault)) / 100
     after_fault_f = Fraction(subtotal) * (Fraction(1) - fault_frac)
     after_fault = _to_int(after_fault_f)
 
@@ -586,12 +632,12 @@ def compute_damages(payload: dict) -> dict:
                 d2 = _dt.date.fromisoformat(settlement_date)
                 days = (d2 - d1).days
                 if days > 0:
-                    # after_fault を元本とし、年率 3% × 日数 / 365
-                    interest_f = Fraction(after_fault) * LEGAL_INTEREST_RATE * Fraction(days, 365)
+                    # after_fault を元本とし、事故日由来の法定利率 × 日数 / 365
+                    interest_f = Fraction(after_fault) * rate * Fraction(days, 365)
                     delay_info = {
                         "days": days,
                         "amount": _to_int(interest_f),
-                        "note": f"年 3%（改正民法 404条）× {days}日",
+                        "note": f"年 {float(rate)*100:.0f}%（改正民法 404条）× {days}日",
                     }
             except (ValueError, TypeError):
                 delay_info = {"note": "日付パースに失敗"}
@@ -623,7 +669,7 @@ def compute_damages(payload: dict) -> dict:
             "赤い本 2024 年版の表値・係数を使用",
             "過失相殺は民法 722 条 2 項に基づき被害者過失割合を控除",
             "弁護士費用は損害額の 10%（判例実務、民法 709 条類推）",
-            "遅延損害金は改正民法 404 条の 3%（2020/04 以降）を使用",
+            f"中間利息控除・遅延損害金は事故日由来の法定利率 {float(rate)*100:.0f}%（2020/04/01 境界分岐、改正民法 404条）を使用",
             "損益相殺（自賠責既払額・労災・健康保険等）は本計算器では控除しない — 別途差し引き要",
         ],
     }

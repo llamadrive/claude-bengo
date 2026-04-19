@@ -186,6 +186,52 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill family-tree --e
 
 **注意:** Step 2 のタイムラインには birthPlace, deathPlace, marriageInfo, generation 等の詳細情報が含まれるが、FlatPerson は可視化に必要な最小限のフィールドのみ保持する。詳細情報は Step 5 のサマリーテキストで出力する。
 
+### Step 3.5: 出典（source_ref）の必須検証
+
+**このステップを完了するまで Step 4（.agent 出力）に進んではならない。** 裁判所提出用 相続関係説明図に ハルシネーションした人物・関係性が混入すると懲戒・損害賠償事案に直結するため、ハルシネーション除去ではなく**プログラム的出典強制**で防ぐ。
+
+各 person と各 relationship に `source_ref` を**必須**として付与する:
+
+```json
+{
+  "persons": [
+    {
+      "id": "p1",
+      "name": "山田太郎",
+      "role": "父",
+      "birthday": "昭和35年1月15日",
+      "source_ref": {
+        "pdf": "koseki-01.pdf",
+        "page": 2,
+        "quote": "筆頭者: 山田太郎　生年月日: 昭和35年1月15日"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "parent-child",
+      "person1Id": "p1",
+      "person2Id": "p3",
+      "details": "長男",
+      "source_ref": {
+        "pdf": "koseki-01.pdf",
+        "page": 3,
+        "quote": "【父】山田太郎　長男として出生"
+      }
+    }
+  ]
+}
+```
+
+**検証プロトコル:**
+
+1. 全 persons に `source_ref.pdf` / `source_ref.page` / `source_ref.quote` が揃っているか確認する。欠落があれば、その人物は戸籍から実在を確認できていない可能性が高いため、**ユーザーに該当人物を提示して削除するか補足情報を求める。** 削除も補足もなければ `.agent` を出力しない。
+2. 全 relationships に `source_ref` が揃っているか確認する。欠落があれば同上。
+3. 各 `source_ref.quote` が実際に PDF 該当ページにある文字列か、Read ツールで PDF の該当ページを読み直して照合する（spot check: 抽出された 1/3 程度の source_ref をランダムに検証する）。
+4. 検証が完了したら、Step 4 に進む。`source_ref` 自体は `.agent` の payload には含めず（裁判所提出 PDF に Internal metadata を残さないため）、Step 5 のサマリー JSON にのみ保持する。
+
+**この検証をスキップした場合、裁判所提出書面にハルシネーションが混入する直接的原因になる。** `--skip-source-ref-verification` のような抜け道は提供しない（意図的判断で裁判所提出を後回しにする場合はユーザーが source_ref を手入力すればよい）。
+
 ### Step 4: `.agent` ファイル出力（単一出力）
 
 v2.10.0 以降、家族関係図は **`.agent` ファイルの単一出力**とし、閲覧手段は環境に応じて使い分ける。`.agent` が canonical representation で、HTML は自動生成せず web viewer から生成可能（PDF ボタン）。

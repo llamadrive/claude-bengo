@@ -1,6 +1,6 @@
 ---
 description: claude-bengo プラグインの動作確認テストを実行
-allowed-tools: Read, Write, Glob, mcp__xlsx-editor__*, mcp__docx-editor__*, mcp__html-report__*
+allowed-tools: Read, Write, Glob, mcp__xlsx-editor__*, mcp__docx-editor__*, mcp__html-report__*, mcp__agent-format__*
 ---
 
 claude-bengo の各機能の動作を確認する。

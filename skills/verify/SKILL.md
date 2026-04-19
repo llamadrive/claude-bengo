@@ -21,9 +21,10 @@ MCP サーバの疎通と fixtures の存在を確認する。
 1. `mcp__xlsx-editor__get_workbook_info` を任意の fixtures XLSX に対して呼び出し、応答を確認する。
 2. `mcp__docx-editor__get_document_info` を任意の fixtures DOCX に対して呼び出し、応答を確認する。
 3. `mcp__html-report__get_component_examples` を呼び出し、応答を確認する。
-4. Glob で `fixtures/` 配下の各サブディレクトリにファイルが存在することを確認する。
-5. Glob で `templates/_schema.yaml` が存在することを確認する。
-6. Glob で `skills/*/SKILL.md` を検索し、見つかったスキルを列挙する。件数はハードコードしない — Glob の結果をそのまま使う。
+4. `mcp__agent-format__render_agent_inline` に極小の `.agent` 文書（例: `{"version":"0.1","name":"ping","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","config":{"proactive":false},"sections":[],"memory":{"observations":[],"preferences":{}}}`）を渡して、応答が返ることを確認する。
+5. Glob で `fixtures/` 配下の各サブディレクトリにファイルが存在することを確認する。
+6. Glob で `templates/_schema.yaml` が存在することを確認する。
+7. Glob で `skills/*/SKILL.md` を検索し、見つかったスキルを列挙する。件数はハードコードしない — Glob の結果をそのまま使う。
 
 **出力:**
 ```
@@ -33,9 +34,10 @@ MCP サーバの疎通と fixtures の存在を確認する。
   [1] xlsx-editor MCP ............. OK
   [2] docx-editor MCP ............. OK
   [3] html-report MCP ............. OK
-  [4] fixtures .................... OK ({N} dirs)
-  [5] templates ................... OK
-  [6] skills ...................... OK ({M} skills)
+  [4] agent-format MCP ............ OK
+  [5] fixtures .................... OK ({N} dirs)
+  [6] templates ................... OK
+  [7] skills ...................... OK ({M} skills)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   結果: 全項目 OK
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

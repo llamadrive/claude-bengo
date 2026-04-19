@@ -258,6 +258,47 @@ def test_15_multi_month_aggregation() -> bool:
     return _check("15. 複数月合算", ok, f"{r['summary']['total_unpaid_within_statute']:,}")
 
 
+def test_17_per_record_statute_boundary() -> bool:
+    """F-003: 記録ごとに 2020/04/01 境界で時効年数が切替わる.
+
+    filing_date=2023-04-15 のとき:
+      - 2020-03 記録（支払期日 < 2020/04/01）: 2 年時効 → cutoff 2021-04-15 → 時効外
+      - 2020-04 記録（支払期日 ≥ 2020/04/01）: 3 年時効 → cutoff 2020-04-15 → 時効内
+      - 2019-01 記録: 2 年時効 → 時効外
+    """
+    payload = {
+        "employee": {"monthly_salary": 300_000},
+        "work_hours": {"monthly_scheduled_hours": 150},
+        "monthly_records": [
+            {"year_month": "2019-01", "legal_overtime_h": 10},  # 旧法 2 年 → 時効外
+            {"year_month": "2020-03", "legal_overtime_h": 10},  # 旧法 2 年 → 時効外
+            {"year_month": "2020-04", "legal_overtime_h": 10},  # 新法 3 年 → 時効内
+            {"year_month": "2022-01", "legal_overtime_h": 10},  # 新法 3 年 → 時効内
+        ],
+        "options": {
+            "filing_date": "2023-04-15",
+            # statute_override なし → per-record で決める
+        },
+    }
+    r = compute(payload)
+    # 時効内: 2020-04 と 2022-01 のみ → 10×2 × 2000 × 1.25 = 50,000
+    in_s = r["summary"]["total_unpaid_within_statute"]
+    # 各記録の statute_years_applied をチェック
+    by_month = {m["year_month"]: m["statute_years_applied"] for m in r["per_month"]}
+    ok = (
+        in_s == 50_000
+        and by_month["2019-01"] == 2
+        and by_month["2020-03"] == 2
+        and by_month["2020-04"] == 3
+        and by_month["2022-01"] == 3
+    )
+    return _check(
+        "17. 記録ごとの時効年数（2020/04 境界）",
+        ok,
+        f"within={in_s:,}, years={by_month}",
+    )
+
+
 def test_16_statute_2_years_legacy() -> bool:
     """改正前事案の時効 2 年."""
     payload = {
@@ -298,6 +339,7 @@ def run_all() -> int:
         test_14_validation_negative_hours,
         test_15_multi_month_aggregation,
         test_16_statute_2_years_legacy,
+        test_17_per_record_statute_boundary,
     ]
     passed = sum(1 for t in tests if t())
     total = len(tests)

@@ -13,7 +13,13 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from calc import recalculate, _rate_for_principal
+from calc import (
+    recalculate,
+    _rate_for_principal,
+    _accrue_overpayment_interest,
+    OVERPAYMENT_RATE_PRE_2020,
+    OVERPAYMENT_RATE_POST_2020,
+)
 
 
 def _check(name: str, cond: bool, detail: str = "") -> bool:
@@ -291,6 +297,58 @@ def test_15_partial_interest_payment() -> bool:
     )
 
 
+def test_17_overpayment_rate_pre_2020_only() -> bool:
+    """F-002: 2020/03/31 以前に終結した事案は 5% が全期間に適用される."""
+    import datetime as _dt
+    from fractions import Fraction
+    event = _dt.date(2015, 1, 1)
+    final = _dt.date(2019, 12, 31)
+    interest = _accrue_overpayment_interest(event, final, 100_000)
+    days = (final - event).days
+    expected = Fraction(100_000) * OVERPAYMENT_RATE_PRE_2020 * Fraction(days, 365)
+    ok = interest == expected
+    return _check("17. 2020 前に終結した事案は全期間 5%", ok, f"{float(interest):.2f}")
+
+
+def test_18_overpayment_rate_post_2020_only() -> bool:
+    """F-002: 2020/04/01 以降の事案は 3%."""
+    import datetime as _dt
+    from fractions import Fraction
+    event = _dt.date(2021, 1, 1)
+    final = _dt.date(2023, 12, 31)
+    interest = _accrue_overpayment_interest(event, final, 100_000)
+    days = (final - event).days
+    expected = Fraction(100_000) * OVERPAYMENT_RATE_POST_2020 * Fraction(days, 365)
+    ok = interest == expected
+    return _check("18. 2020 後の事案は 3%", ok, f"{float(interest):.2f}")
+
+
+def test_19_overpayment_rate_bifurcates_at_boundary() -> bool:
+    """F-002: 境界跨ぎは前段 5% + 後段 3% の合算。"""
+    import datetime as _dt
+    from fractions import Fraction
+    event = _dt.date(2018, 4, 1)
+    final = _dt.date(2022, 4, 1)
+    cutoff = _dt.date(2020, 4, 1)
+    interest = _accrue_overpayment_interest(event, final, 100_000)
+    pre_days = (cutoff - event).days
+    post_days = (final - cutoff).days
+    expected = (
+        Fraction(100_000) * OVERPAYMENT_RATE_PRE_2020 * Fraction(pre_days, 365)
+        + Fraction(100_000) * OVERPAYMENT_RATE_POST_2020 * Fraction(post_days, 365)
+    )
+    # 旧実装（統一 5%）より低い額になっているはず
+    old_uniform_5pct = Fraction(100_000) * OVERPAYMENT_RATE_PRE_2020 * Fraction(
+        (final - event).days, 365
+    )
+    ok = interest == expected and interest < old_uniform_5pct
+    return _check(
+        "19. 境界跨ぎは 5%+3% 分割",
+        ok,
+        f"bifurcated {float(interest):.0f} vs uniform5% {float(old_uniform_5pct):.0f}",
+    )
+
+
 def test_16_reject_bool_amount() -> bool:
     """amount=True は拒否 (V26-OPS-002). bool は int のサブクラスだが取引金額として無意味."""
     try:
@@ -323,6 +381,9 @@ def run_all() -> int:
         test_14_zero_days_no_interest,
         test_15_partial_interest_payment,
         test_16_reject_bool_amount,
+        test_17_overpayment_rate_pre_2020_only,
+        test_18_overpayment_rate_post_2020_only,
+        test_19_overpayment_rate_bifurcates_at_boundary,
     ]
     passed = sum(1 for t in tests if t())
     total = len(tests)

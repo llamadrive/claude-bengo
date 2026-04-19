@@ -21,9 +21,12 @@ from calc import (
     compute_damages,
     _leibniz_coefficient,
     _months_from_days,
+    _rate_for_accident_date,
     DISABILITY_LOSS_RATES,
     DISABILITY_CONSOLATION,
     LEGAL_INTEREST_RATE,
+    LEGAL_INTEREST_RATE_POST_2020,
+    LEGAL_INTEREST_RATE_PRE_2020,
 )
 
 
@@ -331,6 +334,7 @@ def test_14_positive_damages_total() -> bool:
             "hospital_days": 10, "outpatient_days": 30,
             "medical_fees": 500_000, "transportation": 30_000, "equipment": 50_000,
             "nursing_days_hospital": 5, "nursing_days_outpatient": 10,
+            "severity": "major",
         },
     }
     r = compute_damages(payload)
@@ -425,8 +429,8 @@ def test_18_no_disability_no_death() -> bool:
     return _check("18. 後遺障害・死亡なしの単純ケース", ok)
 
 
-def test_19_severity_defaults_to_major() -> bool:
-    """severity 未指定時は別表 I（通常傷害）扱い."""
+def test_19_severity_required() -> bool:
+    """severity は必須。未指定時は ValueError（silent-default で軽傷を別表 I にしないため）."""
     payload = {
         "victim": {"name": "x", "age_at_accident": 30, "gender": "male",
                    "occupation_type": "salaried", "annual_income": 5_000_000,
@@ -434,11 +438,71 @@ def test_19_severity_defaults_to_major() -> bool:
         "accident": {"date": "2024-04-01", "victim_fault_percent": 0},
         "medical": {"hospital_days": 0, "outpatient_days": 60},  # severity 省略
     }
-    r = compute_damages(payload)
-    hosp = r["breakdown"]["hospitalization_consolation"]
-    # 別表 I、通院 2 月 = 52 万
-    ok = hosp["total"] == 520_000 and "別表 I" in hosp["table"]
-    return _check("19. severity 省略時は別表 I", ok, f"{hosp['total']:,} 円")
+    try:
+        compute_damages(payload)
+        return _check("19. severity 未指定は ValueError", False, "拒否されなかった")
+    except ValueError as e:
+        return _check("19. severity 未指定は ValueError", "severity" in str(e), str(e)[:80])
+
+
+def test_21_pre_2020_interest_rate() -> bool:
+    """F-001: 事故日 2020/03/31 以前は年 5% を使う（改正前 民法 404 条）."""
+    pre = _rate_for_accident_date("2020-03-31")
+    post = _rate_for_accident_date("2020-04-01")
+    on_change = _rate_for_accident_date("2020-04-01")
+    ok = pre == LEGAL_INTEREST_RATE_PRE_2020 and post == LEGAL_INTEREST_RATE_POST_2020 and on_change == Fraction(3, 100)
+    return _check(
+        "21. 2020/04/01 境界で利率 5%↔3% を切替",
+        ok,
+        f"pre={float(pre):.2%}, post={float(post):.2%}",
+    )
+
+
+def test_22_pre_2020_inflates_future_loss() -> bool:
+    """F-001: 事故日 2019 の逸失利益は 2024 より少額（5% 割引で現在価値が下がる）."""
+    base = {
+        "victim": {"name": "x", "age_at_accident": 35, "gender": "male",
+                   "occupation_type": "salaried", "annual_income": 5_000_000,
+                   "is_household_supporter": True},
+        "medical": {"hospital_days": 0, "outpatient_days": 180, "severity": "minor"},
+        "disability": {"grade": 12, "years_until_67": 32},
+    }
+    p_old = dict(base, accident={"date": "2019-01-01", "victim_fault_percent": 0})
+    p_new = dict(base, accident={"date": "2024-04-01", "victim_fault_percent": 0})
+    r_old = compute_damages(p_old)["breakdown"]["future_earnings_loss"]["total"]
+    r_new = compute_damages(p_new)["breakdown"]["future_earnings_loss"]["total"]
+    # 5% 割引は現在価値を約 25-30% 下げる
+    ok = r_old < r_new and (r_new - r_old) > r_new * 0.2
+    return _check(
+        "22. 2019 事故は 2024 事故より Leibniz 現在価値が小さい（5%→3%）",
+        ok,
+        f"2019: {r_old:,}, 2024: {r_new:,}, delta: {r_new - r_old:,}",
+    )
+
+
+def test_23_fault_precision_fraction() -> bool:
+    """F-005: 過失 1.13% が Fraction(str()) で正確に反映される."""
+    payload_zero = {
+        "victim": {"name": "x", "age_at_accident": 35, "gender": "male",
+                   "occupation_type": "salaried", "annual_income": 5_000_000,
+                   "is_household_supporter": True},
+        "accident": {"date": "2024-04-01", "victim_fault_percent": 0},
+        "medical": {"hospital_days": 0, "outpatient_days": 60, "severity": "major"},
+    }
+    payload_fault = dict(payload_zero)
+    payload_fault["accident"] = {"date": "2024-04-01", "victim_fault_percent": 1.13}
+    sub = compute_damages(payload_zero)["summary"]["after_fault_reduction"]
+    after = compute_damages(payload_fault)["summary"]["after_fault_reduction"]
+    # expected reduction: subtotal * 0.0113 exact
+    expected_reduction = int(sub * 113 / 10000 + 0.5)
+    actual_reduction = sub - after
+    # 旧実装 Fraction(int(1.13*100), 10000) は float で 112 → 誤差が出る
+    ok = abs(actual_reduction - expected_reduction) <= 1
+    return _check(
+        "23. 過失 1.13% の Fraction 精度",
+        ok,
+        f"expected_reduction={expected_reduction}, actual={actual_reduction}",
+    )
 
 
 def test_20_high_fault_70pct() -> bool:
@@ -483,8 +547,11 @@ def run_all() -> int:
         test_16_grade_loss_rate_table_completeness,
         test_17_self_employed_lost_wages,
         test_18_no_disability_no_death,
-        test_19_severity_defaults_to_major,
+        test_19_severity_required,
         test_20_high_fault_70pct,
+        test_21_pre_2020_interest_rate,
+        test_22_pre_2020_inflates_future_loss,
+        test_23_fault_precision_fraction,
     ]
     passed = 0
     for t in tests:

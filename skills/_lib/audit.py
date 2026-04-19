@@ -172,6 +172,11 @@ def _audit_path(matter_id: Optional[str] = None) -> Path:
 
     matter_id が指定された場合は matter.matter_audit_path を経由するため、
     `CLAUDE_BENGO_ROOT` 環境変数のオーバーライドも尊重される。
+
+    F-010: CLAUDE_BENGO_AUDIT_PATH は `~/.claude-bengo/` 配下またはセンチネル
+    （/dev/null 相当）に限定する。それ以外のパスは
+    `CLAUDE_BENGO_AUDIT_ALLOW_EXTERNAL_PATH=1` の明示オプトインがない限り拒否
+    する。悪意ある `.envrc` 等による監査記録の秘密裏の外部流出を防ぐため。
     """
     if matter_id:
         m = _load_matter_module()
@@ -179,7 +184,41 @@ def _audit_path(matter_id: Optional[str] = None) -> Path:
 
     override = os.environ.get("CLAUDE_BENGO_AUDIT_PATH")
     if override:
-        return Path(override)
+        p = Path(override).expanduser()
+        # センチネルは無条件で許可（テスト・CI 用）
+        if _is_sentinel(p):
+            return p
+        allow_external = os.environ.get("CLAUDE_BENGO_AUDIT_ALLOW_EXTERNAL_PATH") == "1"
+        if allow_external:
+            return p
+        # 許可対象:
+        #   - ~/.claude-bengo/ 配下（CLAUDE_BENGO_ROOT 上書きも尊重）
+        #   - システム一時ディレクトリ配下（テスト・CI 用。機密データが書き込まれる
+        #     想定がないため）。macOS では /tmp と /var/folders/... は異なる
+        #     物理パスだが両方許可する。
+        root_override = os.environ.get("CLAUDE_BENGO_ROOT")
+        root = Path(root_override).expanduser() if root_override else (Path.home() / ".claude-bengo")
+        import tempfile as _tempfile
+        allowed_roots = [root, Path(_tempfile.gettempdir()), Path("/tmp"), Path("/var/folders"), Path("/var/tmp")]
+        try:
+            # 親ディレクトリ経由で symlink 解決（ファイル未作成でも親は存在）
+            parent = p.parent
+            parent_abs = parent.resolve() if parent.exists() else parent.absolute()
+            resolved_str = str(parent_abs / p.name)
+            for ar in allowed_roots:
+                if not ar.exists() and ar != root:
+                    continue
+                ar_abs = ar.resolve() if ar.exists() else ar.absolute()
+                root_str = str(ar_abs).rstrip(os.sep) + os.sep
+                if resolved_str == str(ar_abs) or resolved_str.startswith(root_str):
+                    return p
+        except (OSError, ValueError):
+            pass
+        raise ValueError(
+            f"CLAUDE_BENGO_AUDIT_PATH={override} は ~/.claude-bengo/ 配下でもセンチネルでもない。"
+            "外部パスへの監査記録リダイレクトは、悪意ある環境変数設定による秘密裏の流出リスクがある。"
+            "本当に外部パスへ書きたい場合は CLAUDE_BENGO_AUDIT_ALLOW_EXTERNAL_PATH=1 を併せて設定してほしい。"
+        )
 
     # opt-in 自動解決
     if os.environ.get("CLAUDE_BENGO_AUDIT_AUTO_MATTER") == "1":
@@ -397,16 +436,32 @@ class _FileLock:
             fallback_reason = f"lockfile open failed: {e}"
             self._mode = None
 
-        # ロック取得失敗時は非ロック続行するが、stderr に警告を出す。
-        # 並行書込ではチェーン破綻の可能性があるため、運用者に可視化する。
-        # 環境変数 `CLAUDE_BENGO_AUDIT_SILENT_LOCK_FALLBACK=1` で抑止可能。
+        # F-006: ロック取得失敗時は fail-closed にする。
+        # 並行書込ではチェーン破綻が生じうるため、compliance 目的では黙って
+        # unlocked 続行すべきでない。NFS / WSL1 / Docker volume 等の lockd 未対応
+        # 環境で意図的に unlocked で使う場合は CLAUDE_BENGO_AUDIT_ALLOW_UNLOCKED=1
+        # を設定する（運用者の明示オプトイン）。
         if self._mode is None and fallback_reason:
-            if os.environ.get("CLAUDE_BENGO_AUDIT_SILENT_LOCK_FALLBACK") != "1":
-                print(
-                    f"WARN: audit.py _FileLock fallback to unlocked mode ({fallback_reason}). "
-                    "Concurrent writes may break the hash chain. "
-                    "Set CLAUDE_BENGO_AUDIT_SILENT_LOCK_FALLBACK=1 to suppress.",
-                    file=sys.stderr,
+            if os.environ.get("CLAUDE_BENGO_AUDIT_ALLOW_UNLOCKED") == "1":
+                # opt-in: 警告のみで続行
+                if os.environ.get("CLAUDE_BENGO_AUDIT_SILENT_LOCK_FALLBACK") != "1":
+                    print(
+                        f"WARN: audit.py _FileLock fallback to unlocked mode ({fallback_reason}). "
+                        "Concurrent writes may break the hash chain.",
+                        file=sys.stderr,
+                    )
+            else:
+                # 既定: fail-closed
+                try:
+                    if self._fh is not None:
+                        self._fh.close()
+                finally:
+                    self._fh = None
+                raise RuntimeError(
+                    f"audit.py: ファイルロック取得失敗 ({fallback_reason}). "
+                    "並行書込でハッシュチェーンが破綻しうるため中止した。"
+                    "この環境で意図的にロックなし書込を許可するには "
+                    "CLAUDE_BENGO_AUDIT_ALLOW_UNLOCKED=1 を設定してほしい。"
                 )
         return self
 
@@ -483,14 +538,24 @@ def _prune_rotations(active: Path, keep: int) -> None:
 
 
 def _rotate_if_needed(path: Path) -> Optional[str]:
-    """ファイルサイズが閾値を超えていればローテートする。
+    """ファイルサイズが閾値を超えていればローテートする（F-007 atomicity 対応）。
 
-    旧ログを `audit.jsonl.{YYYYMMDDTHHMMSS}` にリネームし、新しいログの
-    先頭に置く `rotation` イベントの `prev_hash`（旧ログ末尾行のハッシュ）と
-    リネーム後のファイル名を返す。ローテートしなかった場合は None。
+    旧挙動: rename(active → rotated) → caller が new file に rotation record を書込。
+    この 2 ステップの間でクラッシュすると new file は存在せず、次回起動時に
+    ZERO_HASH から始まる fresh log が作られ、rotated sibling との連続性が
+    検知できない（tamper indistinguishable）。
 
-    `CLAUDE_BENGO_AUDIT_KEEP=N` が設定されている場合、ローテート後に古い
-    rotate ファイルを `N` 本を残して削除する（未設定なら削除しない）。
+    F-007: staging ファイル経由で「rotation record の書込 → rename swap」を
+    ほぼ 1 ステップにする:
+      1. rotation record JSON line を `{path}.rotation-staging` に書く
+      2. active → rotated にリネーム
+      3. staging → active にリネーム
+    これで crash 発生時にも少なくとも staging ファイルに rotation anchor が
+    残り、次回起動時の recover で検知できる。加えて、active が先に消えている
+    状態で fresh start しても、staging が優先される。
+
+    戻り値: rotation record の JSON 文字列（呼び出し元は補助的に参照可能）、
+    またはローテートしなかった場合の None。
     """
     if _is_sentinel(path) or not path.exists():
         return None
@@ -512,7 +577,37 @@ def _rotate_if_needed(path: Path) -> Optional[str]:
     while rotated.exists():
         rotated = path.with_name(path.name + f".{ts}.{i}")
         i += 1
+
+    # rotation record を staging ファイルに事前書込（crash-safe 化）
+    rotation_rec = _build_record(
+        skill="_audit",
+        event="rotation",
+        filename="",
+        filename_sha256="",
+        bytes_=None,
+        sha256="",
+        api_calls=0,
+        note=f"rotated from {rotated.name}",
+        prev_hash=continuation_hash,
+        rotated_from=rotated.name,
+    )
+    staging = path.with_name(path.name + ".rotation-staging")
+    with open(staging, "w", encoding="utf-8") as sf:
+        sf.write(json.dumps(rotation_rec, ensure_ascii=False) + "\n")
+        try:
+            sf.flush()
+            os.fsync(sf.fileno())
+        except (OSError, AttributeError, ValueError):
+            pass
+    try:
+        os.chmod(staging, 0o600)
+    except (OSError, NotImplementedError):
+        pass
+
+    # active → rotated
     os.rename(path, rotated)
+    # staging → active（new ログは rotation record 1 行で開始）
+    os.rename(staging, path)
 
     # 保持数を超える古いローテート済みログを削除（opt-in）
     keep = _keep_count()
@@ -520,9 +615,50 @@ def _rotate_if_needed(path: Path) -> Optional[str]:
         _prune_rotations(path, keep)
 
     return json.dumps(
-        {"prev_hash": continuation_hash, "rotated_from": rotated.name},
+        {
+            "prev_hash": continuation_hash,
+            "rotated_from": rotated.name,
+            "already_written": True,  # caller は rotation record を重複追記しない
+        },
         ensure_ascii=False,
     )
+
+
+def _recover_rotation_staging(path: Path) -> None:
+    """起動時: クラッシュで中断された rotation の staging ファイルを復旧する。
+
+    ケース:
+      - staging 存在 + active 不在 → staging → active にリネームして復旧
+      - staging 存在 + active 存在 → 中途半端な状態。staging を残すと次回
+        rotation で上書きされるため削除して `{staging}.orphaned.{ts}` に退避。
+    """
+    staging = path.with_name(path.name + ".rotation-staging")
+    if not staging.exists():
+        return
+    if not path.exists():
+        # クリーンリカバリ: staging を active に昇格
+        try:
+            os.rename(staging, path)
+            print(
+                f"INFO: audit.py recovered rotation staging {staging.name} → {path.name}",
+                file=sys.stderr,
+            )
+        except OSError as e:
+            print(
+                f"WARN: audit.py rotation staging recovery failed: {e}",
+                file=sys.stderr,
+            )
+    else:
+        ts = _dt.datetime.now().strftime("%Y%m%dT%H%M%S")
+        orphan = staging.with_name(staging.name + f".orphaned.{ts}")
+        try:
+            os.rename(staging, orphan)
+            print(
+                f"WARN: audit.py orphaned rotation staging (active file exists) → {orphan.name}",
+                file=sys.stderr,
+            )
+        except OSError:
+            pass
 
 
 def _write_line_atomic(path: Path, line: str, prev_hash_override: Optional[str] = None) -> None:
@@ -662,23 +798,12 @@ def cmd_record(args: argparse.Namespace) -> int:
     try:
         _ensure_parent(path)
         with _FileLock(path):
-            # ローテーション（必要なら）
-            rotation_meta = _rotate_if_needed(path)
-            if rotation_meta is not None:
-                meta = json.loads(rotation_meta)
-                rot_rec = _build_record(
-                    skill="_audit",
-                    event="rotation",
-                    filename="",
-                    filename_sha256="",
-                    bytes_=None,
-                    sha256="",
-                    api_calls=0,
-                    note=f"rotated from {meta['rotated_from']}",
-                    prev_hash=meta["prev_hash"],
-                    rotated_from=meta["rotated_from"],
-                )
-                _write_line_atomic(path, json.dumps(rot_rec, ensure_ascii=False))
+            # F-007: クラッシュ中断された rotation staging の復旧（冪等）
+            _recover_rotation_staging(path)
+
+            # ローテーション（必要なら）。F-007 対応後は rotation record が
+            # staging 経由で新 active に書込済みのため、ここでは追加書込しない。
+            _rotate_if_needed(path)
 
             # 通常レコードの prev_hash を計算し、追記
             prev_hash = _compute_prev_hash(path)
@@ -694,6 +819,13 @@ def cmd_record(args: argparse.Namespace) -> int:
                 prev_hash=prev_hash,
             )
             _write_line_atomic(path, json.dumps(record, ensure_ascii=False))
+    except RuntimeError as e:
+        # F-006: flock 取得失敗などの fail-closed 条件
+        print(
+            json.dumps({"error": str(e)}, ensure_ascii=False),
+            file=sys.stderr,
+        )
+        return 2
     except OSError as e:
         print(
             json.dumps({"error": f"failed to write audit log: {e}"}, ensure_ascii=False),
@@ -738,7 +870,10 @@ def cmd_export(args: argparse.Namespace) -> int:
             )
             return 1
 
+    # F-009: 破損行を sum する（export でも verify と同じ扱いにする）
     records = []
+    malformed_count = 0
+    allow_corruption = getattr(args, "allow_corruption", False)
     try:
         with path.open("r", encoding="utf-8") as f:
             for line in f:
@@ -748,7 +883,8 @@ def cmd_export(args: argparse.Namespace) -> int:
                 try:
                     rec = json.loads(line)
                 except json.JSONDecodeError:
-                    continue  # 破損行は無視する
+                    malformed_count += 1
+                    continue  # 破損行は後でまとめて警告
                 if args.skill and rec.get("skill") != args.skill:
                     continue
                 if since_date:
@@ -763,6 +899,27 @@ def cmd_export(args: argparse.Namespace) -> int:
     except OSError as e:
         print(json.dumps({"error": f"failed to read audit log: {e}"}), file=sys.stderr)
         return 2
+
+    if malformed_count > 0 and not allow_corruption:
+        print(
+            json.dumps(
+                {
+                    "error": (
+                        f"監査ログに {malformed_count} 件の破損行を検出した。export を中止。"
+                        "verify で整合を取ってから再実行してほしい。"
+                        "緊急時は --allow-corruption で破損行をスキップして出力可能（非推奨）。"
+                    )
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
+        )
+        return 3
+    if malformed_count > 0 and allow_corruption:
+        print(
+            f"WARN: {malformed_count} 件の破損行をスキップして export する (--allow-corruption)",
+            file=sys.stderr,
+        )
 
     if args.format == "csv":
         import csv
@@ -995,33 +1152,75 @@ def cmd_ingest(args: argparse.Namespace) -> int:
             )
             return 2
 
+    # F-009: 読取対象には rotated sibling も含める。過去期間の ingest で
+    # rotated sibling が抜けるとクラウド側でチェーン再構築不能。
+    ingest_paths: List[Path] = []
+    if matter_id:
+        ingest_paths.extend(_discover_rotated_siblings(path))
+    ingest_paths.append(path)
+
+    # F-009: 不正行を厳格に扱う。verify/export/ingest で挙動が分かれていた
+    # 旧実装では、malformed 行を export/ingest が silently skip する一方
+    # verify が FAIL するというギャップが、攻撃者による証拠隠蔽を助けた。
+    # 既定で malformed 行を検知したら拒否する。運用上どうしても先に進めたい
+    # 場合は --allow-corruption で opt-in する。
     entries: List[dict] = []
-    with path.open("r", encoding="utf-8") as f:
-        for raw_line in f:
-            stripped = raw_line.rstrip("\n")
-            if not stripped.strip():
-                continue
-            try:
-                rec = json.loads(stripped)
-            except json.JSONDecodeError:
-                continue  # tolerate partial/corrupt final lines
-            if since is not None:
-                ts = rec.get("ts", "")
+    malformed: List[Tuple[str, int, str]] = []  # (file, lineno, raw)
+    allow_corruption = getattr(args, "allow_corruption", False)
+    for p in ingest_paths:
+        if not p.exists():
+            continue
+        with p.open("r", encoding="utf-8") as f:
+            for lineno, raw_line in enumerate(f, start=1):
+                stripped = raw_line.rstrip("\n")
+                if not stripped.strip():
+                    continue
                 try:
-                    rec_date = _dt.date.fromisoformat(ts[:10])
-                    if rec_date < since:
-                        continue
-                except Exception:
-                    pass
-            if matter_id:
-                rec["matter_id"] = matter_id
-            # Phase C-1: compute this_hash BEFORE we mutate the record for
-            # transport. Cloud uses this to verify the chain (each entry's
-            # prev_hash must match the previous entry's this_hash).
-            # We hash the RAW line bytes so the value is independent of
-            # JSON re-serialization quirks (space-after-colon, key order).
-            rec["this_hash"] = hashlib.sha256(stripped.encode("utf-8")).hexdigest()
-            entries.append(rec)
+                    rec = json.loads(stripped)
+                except json.JSONDecodeError:
+                    malformed.append((str(p), lineno, stripped[:120]))
+                    continue
+                if since is not None:
+                    ts = rec.get("ts", "")
+                    try:
+                        rec_date = _dt.date.fromisoformat(ts[:10])
+                        if rec_date < since:
+                            continue
+                    except Exception:
+                        pass
+                if matter_id:
+                    rec["matter_id"] = matter_id
+                # F-008: 送信先（クラウド）がハッシュチェーンを再構成できるよう、
+                # 元の行バイト列（JSON re-serialization quirks に独立）を raw_line
+                # として添付する。this_hash = sha256(raw_line) である。
+                rec["raw_line"] = stripped
+                rec["this_hash"] = hashlib.sha256(stripped.encode("utf-8")).hexdigest()
+                entries.append(rec)
+
+    if malformed and not allow_corruption:
+        print(
+            json.dumps(
+                {
+                    "error": (
+                        f"監査ログに {len(malformed)} 件の破損行を検出した。ingest を中止。"
+                        "冪等性を保証するため、破損行は verify で整合を取ってから再度 ingest してほしい。"
+                        "緊急時は --allow-corruption で破損行をスキップして送信可能（非推奨）。"
+                    ),
+                    "malformed_samples": [
+                        {"file": f, "line": ln, "preview": prev}
+                        for (f, ln, prev) in malformed[:5]
+                    ],
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
+        )
+        return 3
+    if malformed and allow_corruption:
+        print(
+            f"WARN: {len(malformed)} 件の破損行をスキップして送信する (--allow-corruption)",
+            file=sys.stderr,
+        )
 
     if args.dry_run:
         print(
@@ -1775,6 +1974,11 @@ def main() -> int:
     p_exp.add_argument("--since", help="この日付以降のみ（YYYY-MM-DD）")
     p_exp.add_argument("--skill", help="このスキルの記録のみ")
     p_exp.add_argument("--format", choices=["json", "csv"], default="json", help="出力形式")
+    p_exp.add_argument(
+        "--allow-corruption",
+        action="store_true",
+        help="破損行を silently skip する（非推奨・緊急運用時のみ）",
+    )
 
     # ingest
     p_ing = sub.add_parser(
@@ -1808,6 +2012,11 @@ def main() -> int:
         "--dry-run",
         action="store_true",
         help="送信せず、何件送る予定か stdout に出力する。",
+    )
+    p_ing.add_argument(
+        "--allow-corruption",
+        action="store_true",
+        help="破損行を silently skip する（非推奨・緊急運用時のみ）",
     )
 
     # verify

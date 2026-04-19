@@ -2,6 +2,97 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.13.0] - 2026-04-19
+
+パイロット前 deep-review の 13 件の 🔴 MUST FIX と doc drift 一掃。計算器の統
+計的境界（2020/04/01 法定利率改正）・監査ログの compliance 強度・LLM ハル
+シネーション防御の 3 軸で、パイロット投入時に弁護士へ見せて恥ずかしい挙動を
+除去する。
+
+### Fixed — Calculator correctness (malpractice blast radius)
+
+- **`traffic-damage-calc`** — 改正民法 404 条の 2020/04/01 境界を実装。Leibniz
+  係数・遅延損害金の法定利率を事故日で分岐（3% ↔ 5%）。旧実装は pre-2020 事故
+  で逸失利益を ~20-30% 過大計上していた。`_rate_for_accident_date()` 追加。
+- **`traffic-damage-calc`** — `medical.severity` を必須化。旧実装の silent default
+  `major`（別表 I、高額）は軽症（むち打ち）案件で慰謝料を 30-50% 過大請求する
+  malpractice-adjacent 挙動だった。未指定は `ValueError` で明示エラー。
+- **`traffic-damage-calc`** — 過失割合の `Fraction(str(fault))/100` 化。旧実装
+  `Fraction(int(fault*100), 10000)` は `1.13%` 等で IEEE754 表現誤差により
+  0.01% ズレが発生していた。
+- **`debt-recalc`** — 過払金利息を 2020/04/01 境界で分割累積（5% → 3%）。各事象
+  発生日から最終日までを前段・後段で分けて計算。`_accrue_overpayment_interest()`
+  追加。旧実装は統一 5% で post-2020 事案を過大請求していた。
+- **`overtime-calc`** — 労基法 115 条時効を per-record 判定に変更。支払期日が
+  2020/04/01 以降 → 3 年、以前 → 2 年。混在期間の請求で時効内月を正しく選別
+  できるようになる。`_statute_years_for_payday()` 追加。
+
+### Fixed — Audit log compliance integrity
+
+- **`audit.py:_FileLock` fail-closed 化 (F-006)** — flock 取得失敗時は既定で
+  `RuntimeError` を raise する（旧: warning + unlocked 続行）。NFS / WSL1 /
+  Docker volume 等 lockd 未対応環境で意図的に unlocked 書込を許可するには
+  `CLAUDE_BENGO_AUDIT_ALLOW_UNLOCKED=1` を明示指定する。チェーン黙示破綻を防ぐ。
+- **`audit.py:_rotate_if_needed` staging 方式に変更 (F-007)** — rotation record
+  を `.rotation-staging` に事前書込してから 2-step rename（active → rotated、
+  staging → active）。クラッシュ時の `_recover_rotation_staging` 復旧処理を
+  `cmd_record` 冒頭で呼ぶ。従来の「rename の後でクラッシュ」→「新ファイル
+  欠落 / ZERO_HASH で再開」で改ざんと区別不能の問題を解消。
+- **`audit.py:cmd_ingest` に `raw_line` フィールド追加 (F-008)** — クラウド側
+  が chain を再検証できるよう、各 entry に元の行バイト列を添える。
+  `this_hash = sha256(raw_line)` である。`matter_id` を後付けしてもハッシュが
+  壊れない設計へ。ingest は rotated sibling も含めて送るよう拡張。
+- **`audit.py:cmd_export / cmd_ingest` で破損行を拒否 (F-009)** — verify が
+  FAIL する一方で export/ingest が silently skip する旧実装の不整合を解消。
+  破損行検出時は exit 3 で中止、`--allow-corruption` で opt-in のみ許可。
+- **`audit.py:_audit_path` で env-path をサンドボックス化 (F-010)** —
+  `CLAUDE_BENGO_AUDIT_PATH` は `~/.claude-bengo/` 配下またはシステム一時
+  ディレクトリ配下でのみ有効。それ以外は `CLAUDE_BENGO_AUDIT_ALLOW_EXTERNAL_PATH=1`
+  が必要。悪意ある `.envrc` による秘密裏の監査迂回を防ぐ。
+
+### Changed — LLM hallucination guard
+
+- **`skills/family-tree/SKILL.md` Step 3.5 追加** — 全 person / relationship に
+  `source_ref: {pdf, page, quote}` の必須添付を要求。抜け漏れがあれば `.agent`
+  出力を拒否する。裁判所提出 相続関係説明図 にハルシネートされた人物・
+  関係性が混入する経路を根本断ち。spot-check プロトコルも明記。
+- **`skills/lawsuit-analysis/SKILL.md` Step 3.3 追加** — 決定論的な抽出検証
+  フェーズ。`arguments[].supporting_points` 中の `ev\d+` 参照が `evidence[].id`
+  に実在するかチェック。`ninhi` には `ninhi_source` の添付を必須化。
+  relationship のエンドポイントが characters に実在するか検証。
+- **`skills/template-fill/SKILL.md` Step 5 構造化** — 各フィールド抽出を
+  `{value, source, confidence}` の構造化レコードに変更。`confidence < 0.8` の
+  フィールドは自動的に `[要確認]` として黄色背景で書込む（旧: 抽出失敗のみ）。
+  低解像度 OCR / 手書き / 曖昧参照でのハルシネーション混入を抑止。
+
+### Changed — Doc drift
+
+- `RUNBOOK.md` の `/verify` 期待出力を 7 チェックに同期（agent-format MCP 追加）
+- `RUNBOOK.md` の tamper デモを `"\"skill\":"` 置換に変更（旧 `"校正"` は
+  template-fill 後にヒットしない dead demo）。空置換時はハードエラー化
+- `README.md` の MCP 依存表に agent-format を追加し、全パッケージ名に `@knorq/`
+  スコープを復元。`commands: 7件 / skills: 6件` の stale カウントを実測値に更新
+- `CHEATSHEET.md` footer を v2.8.0 → v2.13.0 に
+- `QUICKSTART.md` から "v2.8.0 以降" の reference 削除
+- `README.md` データ保持セクションは公式 URL に canonical 化（旧: "30日間"
+  ハードコード）
+
+### Added
+
+- `commands/verify.md` allowed-tools に `mcp__agent-format__*` を追加
+
+### Migration notes
+
+- `CLAUDE_BENGO_AUDIT_PATH` を従来 `~/.claude-bengo/` 外に指していた自動化は
+  `CLAUDE_BENGO_AUDIT_ALLOW_EXTERNAL_PATH=1` の併用が必要になる
+- NFS / WSL1 等で flock が動かない環境の自動化は
+  `CLAUDE_BENGO_AUDIT_ALLOW_UNLOCKED=1` の併用が必要になる（本番では非推奨）
+- `/traffic-damage-calc` 呼び出しで `medical.severity` を省略していた経路は
+  明示指定（`major` / `minor`）が必要
+- `debt-recalc` の summary に `overpayment_interest` キーを追加。旧
+  `overpayment_interest_5pct` は後方互換のため残すが 2020/04/01 以降は 3% 分
+  を含む点に注意
+
 ## [2.12.0] - 2026-04-19
 
 `/lawsuit-analysis` を `.agent` 単一出力へ移行（`/family-tree` と同じ方針）。

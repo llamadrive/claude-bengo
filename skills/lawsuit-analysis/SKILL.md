@@ -175,6 +175,24 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill lawsuit-analysi
 - supporting_points には証拠IDを参照できる（例: "甲第1号証(ev1)により..."）。
 - importance は案件全体における相対的重要性（1-10）。
 - IDは `e{連番}`, `p{連番}`, `a{連番}` 形式。
+- `ninhi` を記載する主張には `ninhi_source` フィールドで答弁書・準備書面の原文（最大 80 文字）と出典（ファイル名 + ページ）を必ず添える:
+  ```json
+  {
+    "id": "a1", "title": "...", "ninhi": "認める",
+    "ninhi_source": {"file": "answer.pdf", "page": 3, "quote": "原告主張の 1 項は認める"}
+  }
+  ```
+
+### Step 3.3: 抽出結果の決定論的検証（必須）
+
+Step 3.5 のユーザー対話の前に、プログラム的に抽出の整合性を検証する。ハルシネーションした証拠ID・認否・人物参照を排除するためのガードレール:
+
+1. **証拠ID 参照の完全性:** `arguments[].supporting_points` 中に含まれる `ev\d+` 形式の文字列を全て抽出し、`evidence[].id` に実在するか確認する。実在しない ID があれば「証拠 `ev42` が evidence 配列に存在しない。該当 argument の supporting_points を見直してほしい。」とユーザーに提示して修正を求める。
+2. **認否の出典追跡:** `ninhi` が「認める」「否認」「一部認める」のいずれかになっている全 argument について、`ninhi_source` が付いているか確認する。欠落があれば「`arguments[a3].ninhi = "否認"` は出典未添付。答弁書のどこで否認されているか明示してほしい。」とユーザーに提示する。
+3. **人物参照の完全性:** `relationships[].source` / `.target` が `characters[].id` に実在するか確認する。欠落は修正を求める。
+4. **日付フォーマット:** `timeline[].date` がすべて `YYYY-MM-DD` または `"unknown"` であることを確認する。曖昧な日付は「unknown」に正規化する。
+
+**この検証で問題が見つかったら Step 3.5 に進まず、抽出を修正してから再度 Step 3.3 を通す。** ハルシネーションした `ninhi` が法廷戦略を誤らせるため、この検証は省略しない。
 
 ### Step 3.5: 解釈の確認（必須）
 

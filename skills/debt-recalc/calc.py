@@ -35,10 +35,15 @@
 
 - 取引の一部が不明な場合の推計計算（満額推定等）
 - 貸付残高が 100 万を跨ぐ利率遷移の細かい判例解釈（本器は残高基準で判定）
-- 2020/04/01 を跨ぐ事案での法定利率切替（本器は統一して年 5% を使用、
-  民法 704 条の「悪意の受益者」は従前実務で年 5%）
 - 一部弁済の充当順序の特約がある場合（本器は利息優先充当を使用）
 - 過払金の相殺（別口座間での充当）
+
+## 2020/04/01 改正後の法定利率（過払金利息）
+
+改正民法 404 条により、2020/04/01 以降に発生した過払金には年 3% を適用する。
+それ以前に発生し、最終取引日が 2020/04/01 以降の事案では、発生日〜2020/03/31
+までを年 5%、以降を年 3% で分割して累積する。本器は各過払金発生イベントごと
+に期間分割で計算する。
 """
 
 from __future__ import annotations
@@ -67,7 +72,48 @@ def _rate_for_principal(principal: int) -> Fraction:
 
 
 # 過払金に対する利息（民法 704 条・悪意の受益者）
-OVERPAYMENT_INTEREST_RATE = Fraction(5, 100)  # 年 5%
+#
+# 法定利率は改正民法 404 条で 2020/04/01 以降年 3%、それ以前は年 5%（商法 514 条
+# 旧商事法定利率。過払金は商行為性を巡って議論があるが、消費者金融相手の過払金
+# 返還請求では実務上 5% が使われてきた）。2020/04/01 を跨ぐ事案では期間ごとに
+# 分けて累積する必要があるため、日付をキーに利率を決定する。
+OVERPAYMENT_RATE_PRE_2020 = Fraction(5, 100)
+OVERPAYMENT_RATE_POST_2020 = Fraction(3, 100)
+OVERPAYMENT_RATE_CHANGE_DATE = _dt.date(2020, 4, 1)
+
+# 後方互換（旧シンボル。直近事案の既定として 5% を維持）
+OVERPAYMENT_INTEREST_RATE = OVERPAYMENT_RATE_PRE_2020
+
+
+def _accrue_overpayment_interest(event_date: _dt.date, final_date: _dt.date, amount: int) -> Fraction:
+    """過払金 1 件について、発生日〜最終日の利息を期間分割で累積する。
+
+    2020/04/01 境界を跨ぐ場合は前段（5%）と後段（3%）に分けて計算する。
+    """
+    if final_date <= event_date:
+        return Fraction(0)
+
+    total = Fraction(0)
+    cutoff = OVERPAYMENT_RATE_CHANGE_DATE
+
+    if final_date <= cutoff:
+        # 全期間 2020/04/01 より前 → 5%
+        days = (final_date - event_date).days
+        total = Fraction(amount) * OVERPAYMENT_RATE_PRE_2020 * Fraction(days, 365)
+    elif event_date >= cutoff:
+        # 全期間 2020/04/01 以降 → 3%
+        days = (final_date - event_date).days
+        total = Fraction(amount) * OVERPAYMENT_RATE_POST_2020 * Fraction(days, 365)
+    else:
+        # 境界跨ぎ: 前段 5%（event_date → cutoff - 1day）+ 後段 3%（cutoff → final_date）
+        # 複利ではなく単利で積み上げる（利息制限法実務の慣例）
+        pre_days = (cutoff - event_date).days
+        post_days = (final_date - cutoff).days
+        total = (
+            Fraction(amount) * OVERPAYMENT_RATE_PRE_2020 * Fraction(pre_days, 365)
+            + Fraction(amount) * OVERPAYMENT_RATE_POST_2020 * Fraction(post_days, 365)
+        )
+    return total
 
 
 # ---------------------------------------------------------------------------
@@ -195,17 +241,16 @@ def recalculate(payload: dict) -> dict:
         entry["accrued_interest_after"] = int(accrued_interest)
         ledger.append(entry)
 
-    # 過払金の利息計算（最終取引日時点まで、年 5%）
+    # 過払金の利息計算（最終取引日時点まで）
+    # 2020/04/01 境界で 5% → 3% に切替わる（改正民法 404 条）。個々の過払金発生日
+    # から最終日までの期間を境界で分割して累積する。
     final_date = transactions[-1]["date"]
     overpayment_principal = sum(e["amount"] for e in overpayment_events)
     overpayment_interest = Fraction(0)
     for e in overpayment_events:
-        days_until_final = (final_date - e["date"]).days
-        if days_until_final > 0:
-            interest = Fraction(e["amount"]) * OVERPAYMENT_INTEREST_RATE * Fraction(
-                days_until_final, 365
-            )
-            overpayment_interest += interest
+        overpayment_interest += _accrue_overpayment_interest(
+            e["date"], final_date, e["amount"]
+        )
 
     remaining_principal = int(principal)
     remaining_interest = int(accrued_interest)
@@ -219,6 +264,9 @@ def recalculate(payload: dict) -> dict:
             "remaining_debt_total": remaining_principal + remaining_interest,
             "total_interest_paid_under_risokuhou": int(total_paid_interest),
             "overpayment_principal": overpayment_principal,
+            "overpayment_interest": int(overpayment_interest),
+            # 後方互換: 旧キー overpayment_interest_5pct を残しつつ、利率は 5% 固定ではなく
+            # 2020/04/01 境界で 5%/3% が自動切替される点に注意
             "overpayment_interest_5pct": int(overpayment_interest),
             "overpayment_total": overpayment_principal + int(overpayment_interest),
         },
@@ -231,8 +279,8 @@ def recalculate(payload: dict) -> dict:
             "利息制限法 1 条の上限利率（20%/18%/15%）で再計算",
             "残高に応じて利率を自動判定（10 万/100 万の境界）",
             "弁済は未払利息優先充当",
-            "過払金には民法 704 条（悪意の受益者）に基づき年 5% の利息付加",
-            "2020/04 改正後の新規事案でも従前実務に従い過払金利息は年 5% を使用",
+            "過払金には民法 704 条（悪意の受益者）に基づき法定利率の利息付加",
+            "法定利率は 2020/04/01 境界で 5%（改正前）→ 3%（改正後、民法 404 条）に切替え、各事象発生日から最終日までを境界で分割累積",
             "実際の請求訴訟では、業者側の悪意の立証が必要",
         ],
     }
@@ -289,7 +337,7 @@ def _print_pretty(result: dict) -> None:
     if s["overpayment_principal"] > 0:
         print()
         print(f"  過払金元本            : {s['overpayment_principal']:>12,} 円")
-        print(f"  過払金利息（年5%）    : {s['overpayment_interest_5pct']:>12,} 円")
+        print(f"  過払金利息（年5%/3%） : {s['overpayment_interest']:>12,} 円")
         print(f"  ★ 過払金返還請求額   : {s['overpayment_total']:>12,} 円")
     print(f"\n  取引件数              : {len(result['ledger']):>12}")
     print()

@@ -68,9 +68,27 @@ RATE_HOLIDAY_NIGHT = Fraction(160, 100)       # 法定休日＋深夜
 # 遅延損害金の利率
 DELAY_INTEREST_RATE = Fraction(3, 100)  # 年 3%（改正民法 404 条）
 
-# 時効（賃金請求権）
-STATUTE_YEARS_POST_2020 = 3  # 2020/04 改正後
-STATUTE_YEARS_PRE_2020 = 2   # 改正前の旧法
+# 時効（賃金請求権）— 労基法 115 条
+#
+# 2020/04/01 改正で 2 年 → 3 年に延長された。境界は賃金の「支払期日」基準で、
+# 支払期日が 2020/04/01 以降の請求権は 3 年、それ以前は旧法の 2 年。
+# 混在ケースでは記録ごとに時効期間が異なるため、per-record で判定する。
+STATUTE_YEARS_POST_2020 = 3
+STATUTE_YEARS_PRE_2020 = 2
+STATUTE_CHANGE_DATE = _dt.date(2020, 4, 1)
+
+
+def _statute_years_for_payday(payday: _dt.date) -> int:
+    """支払期日に適用する時効年数を返す（2020/04/01 境界）。"""
+    return STATUTE_YEARS_POST_2020 if payday >= STATUTE_CHANGE_DATE else STATUTE_YEARS_PRE_2020
+
+
+def _subtract_years(d: _dt.date, years: int) -> _dt.date:
+    """日付から N 年引く（うるう年の 2/29 → 2/28 に落とす安全版）。"""
+    try:
+        return d.replace(year=d.year - years)
+    except ValueError:
+        return d.replace(year=d.year - years, day=28)
 
 
 # ---------------------------------------------------------------------------
@@ -168,22 +186,16 @@ def compute(payload: dict) -> dict:
 
     hourly_wage = _calc_hourly_wage(monthly_salary, monthly_hours)
 
-    # 時効判定: 基準日（今日または options.filing_date）から N 年前まで
+    # 時効判定（労基法 115 条）: 賃金支払期日から per-record で時効年数を決める。
+    # 支払期日 ≥ 2020/04/01 なら 3 年、それ以前は旧法の 2 年。
+    # options.statute_years が明示指定された場合は上書き（特殊事案用の escape hatch）。
     options = payload.get("options") or {}
-    statute_years = options.get(
-        "statute_years",
-        STATUTE_YEARS_POST_2020,
-    )
+    statute_override = options.get("statute_years")
     filing_date_str = options.get("filing_date")
     if filing_date_str:
         filing_date = _dt.date.fromisoformat(filing_date_str)
     else:
         filing_date = _dt.date.today()
-    statute_cutoff = _dt.date(
-        filing_date.year - statute_years,
-        filing_date.month,
-        1,
-    )
 
     per_month: List[dict] = []
     total_within_statute = Fraction(0)
@@ -193,6 +205,15 @@ def compute(payload: dict) -> dict:
         ym = rec["year_month"]
         year, month = [int(x) for x in ym.split("-")]
         ym_date = _dt.date(year, month, 1)
+
+        # per-record 時効: 支払期日（月末近似）から適用年数を決定
+        if statute_override is not None:
+            rec_statute_years = int(statute_override)
+        else:
+            # 実務上「支払期日」は通常その月の末日以降。境界判定では
+            # 月初日を payday proxy として使う（保守的に古い側に倒す）。
+            rec_statute_years = _statute_years_for_payday(ym_date)
+        rec_cutoff = _subtract_years(filing_date, rec_statute_years).replace(day=1)
 
         ot = Fraction(str(rec.get("legal_overtime_h", 0)))
         ot60 = Fraction(str(rec.get("overtime_over_60_h", 0)))
@@ -220,7 +241,7 @@ def compute(payload: dict) -> dict:
         }
         month_total = sum(amounts.values(), Fraction(0))
 
-        in_statute = ym_date >= statute_cutoff
+        in_statute = ym_date >= rec_cutoff
         if in_statute:
             total_within_statute += month_total
         else:
@@ -239,6 +260,7 @@ def compute(payload: dict) -> dict:
             },
             "amount": int(month_total),
             "within_statute": in_statute,
+            "statute_years_applied": rec_statute_years,
             "breakdown": {k: int(v) for k, v in amounts.items() if v > 0},
         })
 
@@ -258,13 +280,16 @@ def compute(payload: dict) -> dict:
                 continue
             delay += Fraction(m["amount"]) * DELAY_INTEREST_RATE * Fraction(days, 365)
 
+    # 記録ごとに適用した時効年数のユニーク値
+    statute_years_values = sorted({m["statute_years_applied"] for m in per_month})
+
     return {
         "summary": {
             "monthly_salary": monthly_salary,
             "monthly_scheduled_hours": float(monthly_hours),
             "hourly_wage": hourly_wage,
-            "statute_years_applied": statute_years,
-            "statute_cutoff": statute_cutoff.isoformat(),
+            "statute_years_applied": statute_years_values if len(statute_years_values) > 1 else (statute_years_values[0] if statute_years_values else STATUTE_YEARS_POST_2020),
+            "statute_override": statute_override,
             "filing_date": filing_date.isoformat(),
             "total_unpaid_within_statute": int(total_within_statute),
             "total_unpaid_outside_statute": int(total_outside_statute),
@@ -278,7 +303,7 @@ def compute(payload: dict) -> dict:
             "労働基準法 37 条に基づく割増賃金の計算",
             "割増率: 時間外 1.25 / 60h超 1.5 / 深夜 +0.25 / 休日 1.35",
             "基礎賃金: 月額 ÷ 1 ヶ月平均所定労働時間",
-            "時効: 2020/04 改正後 3 年（改正前事案は 2 年で options.statute_years=2）",
+            "時効（労基法 115 条）: 支払期日が 2020/04/01 以降は 3 年、それ以前は旧法の 2 年。記録ごとに自動判定（options.statute_years で明示上書き可）",
             "固定残業代・管理監督者例外・みなし労働時間等の特殊事情は未対応",
         ],
     }
@@ -329,7 +354,9 @@ def _print_pretty(result: dict) -> None:
     print(f"  月額賃金              : {s['monthly_salary']:>12,} 円")
     print(f"  1 ヶ月平均所定労働時間: {s['monthly_scheduled_hours']:>12.2f} 時間")
     print(f"  1 時間あたり賃金      : {s['hourly_wage']:>12,} 円/時")
-    print(f"  時効（年）            : {s['statute_years_applied']:>12} 年")
+    sy = s['statute_years_applied']
+    sy_str = f"{sy} 年" if isinstance(sy, int) else f"{'/'.join(str(x) for x in sy)} 年（境界跨ぎ）"
+    print(f"  時効（年）            : {sy_str:>12}")
     print(f"  時効起算              : {s['statute_cutoff']}")
     print()
     print(f"  時効内未払額          : {s['total_unpaid_within_statute']:>12,} 円")

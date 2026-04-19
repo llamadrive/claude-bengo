@@ -997,12 +997,12 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 
     entries: List[dict] = []
     with path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
+        for raw_line in f:
+            stripped = raw_line.rstrip("\n")
+            if not stripped.strip():
                 continue
             try:
-                rec = json.loads(line)
+                rec = json.loads(stripped)
             except json.JSONDecodeError:
                 continue  # tolerate partial/corrupt final lines
             if since is not None:
@@ -1015,6 +1015,12 @@ def cmd_ingest(args: argparse.Namespace) -> int:
                     pass
             if matter_id:
                 rec["matter_id"] = matter_id
+            # Phase C-1: compute this_hash BEFORE we mutate the record for
+            # transport. Cloud uses this to verify the chain (each entry's
+            # prev_hash must match the previous entry's this_hash).
+            # We hash the RAW line bytes so the value is independent of
+            # JSON re-serialization quirks (space-after-colon, key order).
+            rec["this_hash"] = hashlib.sha256(stripped.encode("utf-8")).hexdigest()
             entries.append(rec)
 
     if args.dry_run:

@@ -10,7 +10,7 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 0: workspace は自動解決される（v3.0.0〜）
+### Step 0: workspace の解決
 
 機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
 

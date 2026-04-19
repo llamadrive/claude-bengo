@@ -10,7 +10,7 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 0: workspace は自動解決される（v3.0.0〜）
+### Step 0: workspace の解決
 
 機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
 
@@ -92,7 +92,7 @@ version: 1.0.0
 
 確定したフィールド定義をYAML形式で `{matter_templates_dir}/{id}.yaml` に Write ツールで保存する（アクティブ matter のテンプレートディレクトリ内。Step 0 で matter.py info から解決した `templates_dir` を使用する）。`{matter_templates_dir}` は matter 作成時に自動生成されているはずだが、万一存在しない場合は作成する。
 
-**F-032 ID 検証（必須）:** テンプレート `{id}` は以下の正規表現を必ず満たすこと:
+**ID 検証（必須）:** テンプレート `{id}` は以下の正規表現を必ず満たすこと:
 
 ```
 ^[a-z0-9][-a-z0-9_]{0,63}$

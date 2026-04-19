@@ -28,7 +28,7 @@ Bash: python3 skills/law-search/search.py clear-cache
 
 特定の法令のみ削除する場合は `--law-id 129AC0000000089` を付ける。オフラインの自己診断は `python3 skills/law-search/search.py self-test` で実行する。
 
-旧版（v1.1.0 以前）では `tempfile.gettempdir()/claude-bengo/` を使用していた。共有 tmp 上の旧キャッシュは信頼しないため移行は行わない。旧ディレクトリが検出された場合、プロセスごとに 1 回だけ stderr にその旨を通知する。
+キャッシュは `~/.claude-bengo/cache/law-search/` 配下に配置する。共有 tmp 上のキャッシュは信頼しない。
 
 ## 重要: トークン制限への対応
 

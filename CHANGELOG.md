@@ -2,6 +2,29 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.1.4] - 2026-04-19
+
+SKILL.md clean-up — バージョン履歴ノイズを全削除。
+
+### Rationale
+
+SKILL.md は runtime で Claude が読むプロンプト spec。バージョン変更履歴は
+CHANGELOG.md に属す情報で、spec 文書には不要。以下のノイズが混入していた:
+
+- `### Step 0: workspace は自動解決される（v3.0.0〜）` のようなセクション見出し
+- `v3.1.2 〜:` `v2.10.0 以降、` `v2.12.0 以降、` `v2.0.0 では` 等のバージョン前置き
+- deep-review の内部 Finding ID（`F-013`, `F-031`, `F-032`, `F-038`, `F-039`）の残存
+- `旧 X は alias として受理されるが新規書込には非推奨` のような履歴注記
+- `agent-format v0.1.6 時点のスナップショット` のような凍結 version 参照
+
+これらは LLM の runtime 判断を混乱させる可能性があり、CHANGELOG を参照すれば
+済む情報。
+
+### Changed
+
+- 13 の SKILL.md / reference ファイルからバージョンノイズを削除（27 insertions / 27 deletions）
+- spec は常に最新の挙動のみを記述する方針に揃えた
+
 ## [3.1.3] - 2026-04-19
 
 `@agent-format/mcp@0.1.9` bump — jp-court plugin が MCP サーバに bundle された。

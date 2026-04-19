@@ -2,6 +2,34 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.1.3] - 2026-04-19
+
+`@agent-format/mcp@0.1.9` bump — jp-court plugin が MCP サーバに bundle された。
+Claude Desktop インライン描画でも web viewer と同じ Japanese 法律体裁
+（最後の住所・出生・死亡・（被相続人）ラベル、二重線配偶者エッジ、白パネル背景）
+が使えるようになった。
+
+### Changed
+
+- `.mcp.json` `@agent-format/mcp` 0.1.8 → **0.1.9**（依存に
+  `@agent-format/jp-court@^0.1.2` を追加）
+- `skills/family-tree/SKILL.md` ユーザー案内から「MCP 経由のインライン描画は
+  generic レイアウトにフォールバック」の caveat を削除。Claude Desktop と
+  web viewer は同一のレンダリングパイプラインになったため
+- README / RUNBOOK のバージョン表記を 0.1.8 → 0.1.9 に更新
+
+### Upstream
+
+knorq-ai/agent-format issue #2 の最終クロージング。maintainer が MCP に
+jpCourtPlugin を bundle するコミットを 0.1.9 で publish。弁護士の UX:
+
+- Claude Desktop 内のチャットで `.agent` を描画 → jp-court 体裁で表示
+- ブラウザ viewer で同じファイルを開く → jp-court 体裁で表示
+- どちらからでも PDF エクスポート可能
+
+Claude Desktop を完全に再起動（Cmd+Q → 起動）することで `npx -y` が 0.1.9 を
+フェッチして反映される。
+
 ## [3.1.2] - 2026-04-19
 
 v3.1.0/v3.1.1 のフォローアップ。拡張書式（事案整理）でも `variant:

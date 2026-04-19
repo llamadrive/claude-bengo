@@ -164,7 +164,7 @@ Claude Code 内で:
 
 - `@knorq/xlsx-mcp-server@2.0.0` — XLSX 読書
 - `@knorq/docx-mcp-server@2.0.0` — DOCX 読書・track changes
-- `@agent-format/mcp@0.1.8` — 家系図・訴訟分析を Claude Desktop 内にインライン描画
+- `@agent-format/mcp@0.1.9` — 家系図・訴訟分析を Claude Desktop 内にインライン描画
 
 バージョンはピン留めされており、更新は Claude Code 標準の `/plugin install claude-bengo@claude-bengo` 経由で行う（marketplace.json の `version` を見て最新版をキャッシュへ展開）。初回起動時は npx キャッシュがないため各 MCP の初回取得に 30 秒程度かかる（以降はキャッシュから即起動）。
 
@@ -242,7 +242,7 @@ export REQUESTS_CA_BUNDLE=/path/to/company-ca-bundle.pem  # Python 用
 npm install -g \
     @knorq/xlsx-mcp-server@2.0.0 \
     @knorq/docx-mcp-server@2.0.0 \
-    @agent-format/mcp@0.1.8
+    @agent-format/mcp@0.1.9
 ```
 
 MCP サーバは npm に `--provenance` 付きで公開されている（`npm publish --provenance`）。GitHub OIDC 経由でビルドソース（リポジトリとコミット SHA）を検証できる。
@@ -277,7 +277,7 @@ set -e
 npm install -g \
   @knorq/xlsx-mcp-server@2.0.0 \
   @knorq/docx-mcp-server@2.0.0 \
-  @agent-format/mcp@0.1.8
+  @agent-format/mcp@0.1.9
 # 運用方針: 監査ログの保持数制限（例: 30本）
 echo 'export CLAUDE_BENGO_AUDIT_KEEP=30' >> "$HOME/.zshrc"
 # 各端末でユーザー自身が Claude Code を起動し、初回 1 回だけ:
@@ -555,7 +555,7 @@ claude-bengo/
 |--------|-------------|------|---------|
 | xlsx-editor | `@knorq/xlsx-mcp-server@2.0.0` | XLSX 読書 | ✅ `.mcp.json` |
 | docx-editor | `@knorq/docx-mcp-server@2.0.0` | DOCX 読書・track changes | ✅ `.mcp.json` |
-| agent-format | `@agent-format/mcp@0.1.8` | 家系図・訴訟分析のインライン描画 | ✅ `.mcp.json` |
+| agent-format | `@agent-format/mcp@0.1.9` | 家系図・訴訟分析のインライン描画 | ✅ `.mcp.json` |
 
 ### テンプレートYAML仕様
 

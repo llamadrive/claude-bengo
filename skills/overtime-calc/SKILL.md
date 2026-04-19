@@ -30,7 +30,9 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 0: Matter 解決
+### Step 0: workspace は自動解決される（v3.0.0〜）
+
+機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
 
 ### Step 1: 基礎賃金の聴取
 
@@ -77,7 +79,7 @@ version: 1.0.0
 **計算実行前に監査ログに記録する（法律事務所のコンプライアンス要件）:**
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill overtime-calc --event calc_run --note "労働者: {name} / 使用者: {employer} / 月数: {N}"
+python3 skills/_lib/audit.py record --skill overtime-calc --event calc_run --note "労働者: {name} / 使用者: {employer} / 月数: {N}"
 ```
 
 続いて計算実行:
@@ -89,7 +91,7 @@ python3 skills/overtime-calc/calc.py calc --pretty --json '<payload>'
 結果提示後、主要数値を監査ログに記録:
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill overtime-calc --event calc_result --note "時効内未払額={total_within_statute}円 / 遅延損害金={delay_interest}円"
+python3 skills/_lib/audit.py record --skill overtime-calc --event calc_result --note "時効内未払額={total_within_statute}円 / 遅延損害金={delay_interest}円"
 ```
 
 入力 JSON 例:

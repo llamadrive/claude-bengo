@@ -10,9 +10,9 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 0: Matter 解決
+### Step 0: workspace は自動解決される（v3.0.0〜）
 
-`python3 skills/_lib/matter.py resolve` — 未設定なら中止。
+機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
 
 ### Step 1: 基礎財産情報の聴取
 
@@ -35,9 +35,9 @@ version: 1.0.0
 ### Step 4: 監査ログ記録 + 計算実行
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill iryubun-calc --event calc_run --note "請求者: {requesting_heir_id}"
+python3 skills/_lib/audit.py record --skill iryubun-calc --event calc_run --note "請求者: {requesting_heir_id}"
 python3 skills/iryubun-calc/calc.py calc --pretty --json '<payload>'
-python3 skills/_lib/audit.py record --matter {matter_id} --skill iryubun-calc --event calc_result --note "侵害額={iryubun_infringement}円"
+python3 skills/_lib/audit.py record --skill iryubun-calc --event calc_result --note "侵害額={iryubun_infringement}円"
 ```
 
 ### Step 5: 結果の提示

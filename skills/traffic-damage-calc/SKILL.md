@@ -26,22 +26,9 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 0: Matter の解決
+### Step 0: workspace は自動解決される（v3.0.0〜）
 
-処理開始前に、現在アクティブな matter を解決する:
-
-```bash
-python3 skills/_lib/matter.py resolve
-```
-
-- `source=none` の場合: **本スキルは機密情報を扱うため実行不可**。以下を案内:
-  ```
-  エラー: アクティブな matter が設定されていない。
-    /matter-list       — 登録済み matter を確認
-    /matter-switch <id> — 既存 matter に切替
-    /matter-create     — 新規 matter を作成
-  ```
-- 解決できた場合: matter を明記してユーザーに確認する。
+機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
 
 ### Step 1: 被害者情報の聴取
 
@@ -101,7 +88,7 @@ python3 skills/_lib/matter.py resolve
 **計算実行前に、監査ログにイベントを記録する（法律事務所のコンプライアンス要件）:**
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill traffic-damage-calc --event calc_run --note "被害者: {victim_name} / 等級: {disability_grade or 'なし'}"
+python3 skills/_lib/audit.py record --skill traffic-damage-calc --event calc_run --note "被害者: {victim_name} / 等級: {disability_grade or 'なし'}"
 ```
 
 続いて、収集した情報を JSON にまとめて `calc.py` を呼び出す:
@@ -113,7 +100,7 @@ python3 skills/traffic-damage-calc/calc.py calc --pretty --json '<heir-json>'
 計算結果（合計額）をユーザーに提示した後、結果の主要数値を監査ログに記録する:
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill traffic-damage-calc --event calc_result --note "grand_total={合計額} / 内訳: 慰謝料={hosp_consol}/逸失利益={future_loss}"
+python3 skills/_lib/audit.py record --skill traffic-damage-calc --event calc_result --note "grand_total={合計額} / 内訳: 慰謝料={hosp_consol}/逸失利益={future_loss}"
 ```
 
 入力 JSON 例:

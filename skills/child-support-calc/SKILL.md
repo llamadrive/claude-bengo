@@ -21,13 +21,9 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 0: Matter の解決
+### Step 0: workspace は自動解決される（v3.0.0〜）
 
-```bash
-python3 skills/_lib/matter.py resolve
-```
-
-`source=none` ならエラーで中止。解決できた場合のみ続行。
+機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
 
 ### Step 1: 計算種別の確認
 
@@ -63,7 +59,7 @@ python3 skills/_lib/matter.py resolve
 **計算実行前に監査ログに記録する（法律事務所のコンプライアンス要件）:**
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill child-support-calc --event calc_run --note "種別: {child_support or spousal_support} / 義務者: {name} / 子: {children_count}名"
+python3 skills/_lib/audit.py record --skill child-support-calc --event calc_run --note "種別: {child_support or spousal_support} / 義務者: {name} / 子: {children_count}名"
 ```
 
 続いて、収集した情報を JSON にまとめて `calc.py` を呼び出す:
@@ -75,7 +71,7 @@ python3 skills/child-support-calc/calc.py calc --pretty --json '<payload>'
 計算結果提示後、結果を監査ログに記録:
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill child-support-calc --event calc_result --note "月額={monthly_amount}円"
+python3 skills/_lib/audit.py record --skill child-support-calc --event calc_result --note "月額={monthly_amount}円"
 ```
 
 入力 JSON 例（養育費 子1人）:

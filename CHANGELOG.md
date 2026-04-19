@@ -2,6 +2,103 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.0.0] - 2026-04-19 — BREAKING CHANGE
+
+**matter ID 概念を廃止。フォルダ = 案件。**
+
+v2 の matter ベース設計（`~/.claude-bengo/matters/{id}/` + `/matter-create`
+→ `/matter-switch` → pointer file の 3 段階ジグザグ）は、弁護士が既に持って
+いる「案件ごとのフォルダ」と parallel な概念を強制するため、認知負荷が高く
+かつ「matter 未設定で拒否」の Brick wall を最初に見せる UX が pilot 離脱の
+主要因だった。
+
+v3.0.0 では **git の `.git/`** と同じ発想で、案件フォルダ内の `.claude-bengo/`
+に監査ログ・テンプレートを配置する。CWD（または親）の walk-up で解決。
+機密スキルを最初に使ったときに silently 自動作成する。事前登録は不要。
+
+### Breaking changes
+
+**削除されたコマンド:**
+- `/matter-create`
+- `/matter-switch`
+- `/matter-list`
+- `/matter-info`
+- `/template-install --matter` / `--import-from-cwd` 等の matter 系フラグ
+
+**新設コマンド:**
+- `/case-info` — 現在の案件フォルダ（workspace）の状態を表示
+- `/audit-config` — 監査ログ設定（記録先・HMAC・クラウド同期）
+
+**内部ライブラリ:**
+- `skills/_lib/matter.py` 削除
+- `skills/_lib/workspace.py` 新設（walk-up 解決・`.claude-bengo/` 初期化）
+- `skills/_lib/audit.py:_audit_path` は workspace 解決に移行
+- `skills/_lib/audit.py` の `--matter` フラグは DEPRECATED で無視される
+- `skills/_lib/template_lib.py:install_template` の `matter_id` 引数を削除
+
+**ディレクトリ配置:**
+- 旧: `~/.claude-bengo/matters/{id}/audit.jsonl` + `templates/`
+- 新: `<案件フォルダ>/.claude-bengo/audit.jsonl` + `metadata.json` + `templates/` + `config.json`
+- グローバル設定: `~/.claude-bengo/global.json`（cloud URL / WORM 等、事務所共通）
+
+**環境変数:**
+- 廃止: `CLAUDE_BENGO_ROOT`（旧 matters root 上書き）、`CLAUDE_BENGO_AUDIT_AUTO_MATTER`、`MATTER_ID`
+- 継続: `CLAUDE_BENGO_AUDIT_PATH`、`CLAUDE_BENGO_AUDIT_HMAC_KEY`、`CLAUDE_BENGO_AUDIT_ALLOW_UNLOCKED`、`CLAUDE_BENGO_AUDIT_ALLOW_EXTERNAL_PATH`、`CLAUDE_BENGO_AUDIT_KEEP`
+
+### New — /audit-config（監査ログ設定）
+
+```
+/audit-config            # 表示 + 変更メニュー
+/audit-config show       # 表示のみ
+/audit-config set log_filenames true
+/audit-config set audit_path /mnt/firm-audit/smith.jsonl
+/audit-config set cloud_url https://... --global   # 事務所共通設定
+```
+
+3 層の設定が使える:
+- case-level: 案件ごと（`<workspace>/.claude-bengo/config.json`）
+- global: 事務所共通（`~/.claude-bengo/global.json`）
+- env: CI・テスト用の override
+
+### New — /case-info
+
+現在の workspace の audit 件数・テンプレート・opened_at・設定を 1 画面で表示。
+`/case-info --verify` でハッシュチェーン検証も実行できる。
+
+### Rationale
+
+v2 までの matter モデルは「弁護士が事案ID という抽象を理解して、`/matter-create`
+でメタデータを登録して、pointer file を配置して、以降のスキルが暗黙に解決する」
+という 3 段階の間接参照だった。
+
+弁護士は既に `~/cases/smith-v-jones/` で案件を管理している。この構造を
+**そのまま使う**のが最もシンプルで認知負荷が低い。`.git/` の発想で
+`.claude-bengo/` をフォルダに置けば、walk-up で自動解決でき、案件切替は
+`cd` だけで済む。matter ID の抽象は不要。
+
+### Migration
+
+v2.x のデータは自動移行しない（pre-pilot につき production data なし）。
+必要なら手動コピー:
+
+```bash
+mkdir -p ~/cases/smith-v-jones/.claude-bengo
+cp -r ~/.claude-bengo/matters/smith-v-jones/* ~/cases/smith-v-jones/.claude-bengo/
+# metadata.yaml は metadata.json に変換（任意）
+```
+
+### Test coverage (v3.0.0)
+
+- workspace self-test: 12/12
+- audit self-test: 15/15（matter tests → workspace tests に置換）
+- matter self-test: 削除
+- 7 calculators: 128/128
+- template_lib: 31 bundled templates all valid
+- denylist: 11/11
+- law-search: 21/21
+- e2e: 36 scenarios passing（旧 matter-lifecycle 等 7 scenarios → workspace 1 scenario に統合）
+- verify.py: 40/40
+
 ## [2.16.0] - 2026-04-19
 
 弁護士の初回体験を完全に再設計。旧 `/quickstart` は「前提チェック → 3 シナリオ

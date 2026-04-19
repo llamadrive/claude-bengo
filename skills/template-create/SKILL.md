@@ -10,41 +10,9 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 0: Matter の解決
+### Step 0: workspace は自動解決される（v3.0.0〜）
 
-処理開始前に、現在アクティブな matter（事案）を解決する:
-
-```bash
-python3 skills/_lib/matter.py resolve
-```
-
-戻り値の JSON から `matter_id` と `source` を取得する。
-
-- `matter_id` が null（`source=none`）の場合: **テンプレートは事案に紐づいて保存されるため、本スキルは matter 設定なしでは実行できない**。以下のメッセージを表示して処理を中止する:
-
-  ```
-  エラー: アクティブな matter が設定されていない。
-  
-  以下のいずれかを実行してから再度試してほしい:
-    /matter-list         — 登録済み matter を確認
-    /matter-switch <id>  — 既存 matter に切替
-    /matter-create       — 新規 matter を作成
-    または --matter <id> フラグで明示指定
-  ```
-
-- `matter_id` が解決できた場合: 処理を続行する。ユーザーに**1 回だけ**アクティブ matter を確認する:
-
-  ```
-  matter '{matter_id}' で処理を続行する（解決元: {source}）。
-  ```
-
-続いて、テンプレート保存先ディレクトリを解決する:
-
-```bash
-python3 skills/_lib/matter.py info {matter_id}
-```
-
-戻り値 JSON の `templates_dir` フィールドを以降のステップで `{matter_templates_dir}` として参照する。
+機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
 
 ### Step 1: XLSXファイルの確認
 

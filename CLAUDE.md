@@ -5,10 +5,10 @@
 ユーザーがこのプラグインを初めて使用する場合（会話の最初のメッセージで法律関連の作業を依頼された場合、または「何ができる？」「使い方は？」と聞かれた場合）、以下の案内を日本語で表示する:
 
 ```
-claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v2.15.0
+claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v3.0.0
 
 まず試したい?  /quickstart と打つだけ。同梱サンプルで 60 秒で出力を見せる。
-気に入ったら自分の案件に進める。matter 作成も事前準備も一切不要。
+気に入ったら自分の案件に進める。事前登録は一切不要。
 
 覚えるコマンドは 3 つ:
   /quickstart  — 60 秒で試す（サンプルで品質を見る）
@@ -18,13 +18,14 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 あるいは自然言語で「離婚調停の準備をしたい」「戸籍から相続関係図を作って」
 「民法709条を見せて」のように話しかけるだけでも動く。
 
-■ 事案（matter）管理:
-  /matter-create   — 新規事案を登録（v1.x から移行する場合は --import-from-cwd）
-  /matter-list     — 登録済み事案の一覧 + アクティブ事案
-  /matter-switch   — アクティブ事案を切替
-  /matter-info     — 事案の詳細表示
+■ 案件ごとの作業（v3.0.0〜）:
+  **フォルダ = 案件**。`cd ~/cases/smith-v-jones` してから Claude Code を
+  起動すれば、そのフォルダが自動的に案件コンテキストとなる。機密スキルを
+  最初に使ったときに `.claude-bengo/` を自動作成し、以降はそこに監査ログ・
+  テンプレートを蓄積する。v2 までの `/matter-create` / `/matter-switch` /
+  matter ID 概念は廃止。
 
-■ 機密文書を扱うコマンド（アクティブ事案が必要）:
+■ 機密文書を扱うコマンド:
   /typo-check      — 法律文書（DOCX）の誤字脱字・表記揺れを校正する
   /family-tree     — 戸籍謄本PDFから相続関係説明図を生成する
   /template-install — 同梱書式（債権者一覧表・遺産目録・示談書等）をインストール
@@ -32,27 +33,29 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
   /template-fill   — 登録済みテンプレートにPDFからデータを自動入力する
   /lawsuit-analysis — 訴訟文書を分析しレポートを生成する
 
-■ 機密データ対応のコマンド（アクティブ事案が必要）:
+■ 計算コマンド:
   /traffic-damage-calc — 交通事故損害賠償を赤い本基準で決定論的に計算する
   /child-support-calc  — 養育費・婚姻費用を令和元年改定算定方式で計算する
   /debt-recalc         — 利息制限法で引き直し計算、残元本・過払金を算出する
   /overtime-calc       — 労基法37条の未払残業代を月別に計算する
   /iryubun-calc        — 遺留分侵害額を民法1042条以下に基づき計算する
   /property-division-calc — 離婚時の財産分与を民法768条に基づき計算する
+  /inheritance-calc    — 法定相続分を決定論的に計算する
 
-■ 事案設定不要なコマンド:
+■ その他:
   /law-search      — e-Gov法令APIから条文を検索・参照する（2,078法令対応）
-  /inheritance-calc — 法定相続分を決定論的に計算する
+  /audit-config    — 監査ログ設定（記録先・HMAC・クラウド同期）
+  /case-info       — 現在の案件フォルダの状態を表示
 
 ■ 初めて使う場合:
   /quickstart と打つだけ。同梱サンプルで家系図・校正・訴訟分析等の出力を
-  即座に見せるため、自分のファイルや事案セットアップは一切不要。気に入ったら
-  その後に /matter-create で自分の案件に進める（それまで matter の説明も概念も
-  学ぶ必要はない）。
+  即座に見せるため、自分のファイルや事前準備は一切不要。気に入ったら
+  自分のファイルを直接スキルに渡せばよい。
 
 ⚠ 本プラグインで処理される文書は Anthropic の Claude API を通じてクラウドで処理されます。
   クライアントの機密文書を処理する前に、所属事務所のAI利用ポリシーを確認してください。
-  監査ログは事案ごとに ~/.claude-bengo/matters/{id}/audit.jsonl に SHA-256 ハッシュチェーン付きで記録されます。
+  監査ログは案件フォルダごとに ./.claude-bengo/audit.jsonl へ SHA-256 ハッシュ
+  チェーン付きで記録されます。設定は /audit-config で変更可能。
 ```
 
 ## データプライバシー・守秘義務
@@ -87,8 +90,8 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 | 「財産目録に入力」「通帳データをテンプレートに」 | `/template-fill` |
 | 「書式を追加したい」「示談書のひな形が欲しい」 | `/template-install` |
 | 「何ができる？」「使い方は？」「はじめ方」 | `/help` または `/quickstart` |
-| 「事案を作りたい」「新しいクライアント」 | `/matter-create` |
-| 「事案を切替」「別の案件に」 | `/matter-switch` または `/matter-list` |
+| 「案件を別にしたい」「別のクライアント」 | `cd ~/cases/別案件` → Claude Code 起動（フォルダ = 案件） |
+| 「監査ログを見たい」「設定を変えたい」 | `/case-info` / `/audit-config` |
 
 **マッチしない場合** は `/help` のタスクメニューを表示してユーザーに選択させる。複数の機能が
 関与する場合（例: 「相続の準備」は family-tree と inheritance-calc 両方）、ユーザーに
@@ -143,18 +146,16 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 - 非対応フォーマット: 「このファイル形式には対応していない。対応形式: PDF, DOCX, XLSX, PNG, JPG」
 - ファイルを暗黙にスキップしない。処理できないファイルは必ずユーザーに報告する。
 
-## テンプレート（v2.0.0 〜）
+## テンプレート（v3.0.0 〜）
 
-テンプレートは**アクティブな事案（matter）**のディレクトリ `~/.claude-bengo/matters/{matter-id}/templates/` に `{id}.yaml` + `{id}.xlsx` のペアで保存される（v1.x の `{cwd}/templates/` ではない）。
+テンプレートは**現在の案件フォルダ（workspace）**の `./.claude-bengo/templates/` に `{id}.yaml` + `{id}.xlsx` のペアで保存される。
 
-- `/template-create` で新規登録（アクティブ事案のテンプレートディレクトリに保存される）
-- `/template-list` で一覧表示（アクティブ事案のテンプレートのみ列挙）
+- `/template-create` で新規登録（CWD の workspace に保存。未初期化なら silently 初期化）
+- `/template-list` で一覧表示（CWD の workspace のテンプレートのみ列挙）
 - `/template-fill` で選択・入力（出力は CWD に配置される）
 
-テンプレートは事案に紐づく。別の事案で同じテンプレートを使いたい場合は:
-- 同じテンプレートを新しい事案で再登録する、または
-- `~/.claude-bengo/matters/{A}/templates/` から `~/.claude-bengo/matters/{B}/templates/` に手動でコピーする
-
-v1.x で `{cwd}/templates/` を使用していた場合は `/matter-create --import-from-cwd` で新規事案に取り込む。
+テンプレートは案件フォルダに紐づく。別の案件で同じテンプレートを使いたい場合は:
+- 同じテンプレートを新しい案件フォルダで再登録する、または
+- `cp -r ~/cases/caseA/.claude-bengo/templates/ ~/cases/caseB/.claude-bengo/` で手動コピー
 
 フォーマット仕様はプラグインの `templates/_schema.yaml` を参照する。

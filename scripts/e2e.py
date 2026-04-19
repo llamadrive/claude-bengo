@@ -44,7 +44,7 @@ from typing import List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 PY = sys.executable
-MATTER = str(ROOT / "skills" / "_lib" / "matter.py")
+WORKSPACE = str(ROOT / "skills" / "_lib" / "workspace.py")
 AUDIT = str(ROOT / "skills" / "_lib" / "audit.py")
 COPY_FILE = str(ROOT / "skills" / "_lib" / "copy_file.py")
 
@@ -113,6 +113,93 @@ def section(title: str) -> None:
 # ---------------------------------------------------------------------------
 # シナリオ
 # ---------------------------------------------------------------------------
+
+
+def scenario_workspace_flow(c: Case, sandbox: Path) -> None:
+    """v3.0.0: workspace ベースの基本フロー検証。"""
+    section("1. workspace-based flow (v3.0.0)")
+
+    # Two separate case folders under sandbox
+    case_a = sandbox / "cases" / "smith-v-jones"
+    case_b = sandbox / "cases" / "tanaka-divorce"
+    case_a.mkdir(parents=True)
+    case_b.mkdir(parents=True)
+
+    env = {"CLAUDE_BENGO_SESSION_ID": "e2e-workspace"}
+
+    # 1. Unitialized CWD → resolve says not initialized
+    rc, out, _ = run([PY, WORKSPACE, "resolve"], env=env, cwd=case_a)
+    payload = json.loads(out)
+    if rc == 0 and payload.get("initialized") is False:
+        c.ok("1.1 uninitialized folder detected", f"root={payload['workspace_root']}")
+    else:
+        c.ng("1.1 uninitialized folder detected", out)
+
+    # 2. Record from case_a auto-initializes .claude-bengo/
+    rc, _, _ = run(
+        [PY, AUDIT, "record", "--skill", "e2e", "--event", "file_read", "--note", "a1"],
+        env=env, cwd=case_a,
+    )
+    audit_a = case_a / ".claude-bengo" / "audit.jsonl"
+    if rc == 0 and audit_a.exists() and audit_a.stat().st_size > 0:
+        c.ok("1.2 record auto-creates .claude-bengo/ in CWD", f"size={audit_a.stat().st_size}")
+    else:
+        c.ng("1.2 record auto-creates .claude-bengo/ in CWD", f"rc={rc}")
+
+    # 3. Record from case_b lands in case_b, NOT case_a
+    rc, _, _ = run(
+        [PY, AUDIT, "record", "--skill", "e2e", "--event", "file_read", "--note", "b1"],
+        env=env, cwd=case_b,
+    )
+    audit_b = case_b / ".claude-bengo" / "audit.jsonl"
+    if rc == 0 and audit_b.exists() and audit_a.read_text().count("b1") == 0:
+        c.ok("1.3 writes are isolated per case folder", "")
+    else:
+        c.ng("1.3 writes are isolated per case folder", f"")
+
+    # 4. Walk-up from nested dir finds parent workspace
+    nested = case_a / "evidence" / "photos"
+    nested.mkdir(parents=True)
+    before = audit_a.stat().st_size
+    rc, _, _ = run(
+        [PY, AUDIT, "record", "--skill", "e2e", "--event", "file_read", "--note", "nested"],
+        env=env, cwd=nested,
+    )
+    after = audit_a.stat().st_size
+    if rc == 0 and after > before:
+        c.ok("1.4 walk-up resolves parent workspace from nested dir", f"grew={after - before}")
+    else:
+        c.ng("1.4 walk-up resolves parent workspace from nested dir", f"rc={rc}")
+
+    # 5. verify returns chain OK
+    rc, out, _ = run([PY, AUDIT, "verify"], env=env, cwd=case_a)
+    if rc == 0 and "fail=0" in out:
+        c.ok("1.5 verify returns chain OK", "")
+    else:
+        c.ng("1.5 verify returns chain OK", out)
+
+    # 6. /case-info equivalent — `workspace info`
+    rc, out, _ = run([PY, WORKSPACE, "info"], env=env, cwd=case_a)
+    info = json.loads(out)
+    if rc == 0 and info.get("initialized") and info.get("audit", {}).get("lines", 0) >= 2:
+        c.ok("1.6 workspace info shows state", f"lines={info['audit']['lines']}")
+    else:
+        c.ng("1.6 workspace info shows state", out)
+
+    # 7. config.audit_enabled=false disables logging
+    cfg = case_a / ".claude-bengo" / "config.json"
+    cfg.write_text(json.dumps({"audit_enabled": False}), encoding="utf-8")
+    before = audit_a.stat().st_size
+    rc, _, _ = run(
+        [PY, AUDIT, "record", "--skill", "e2e", "--event", "file_read", "--note", "skip"],
+        env=env, cwd=case_a,
+    )
+    after = audit_a.stat().st_size
+    if rc == 0 and after == before:
+        c.ok("1.7 audit_enabled=false disables logging", "")
+    else:
+        c.ng("1.7 audit_enabled=false disables logging", f"grew={after - before}")
+    cfg.unlink()  # cleanup
 
 
 def scenario_matter_lifecycle(c: Case, sandbox: Path) -> None:
@@ -509,27 +596,30 @@ def scenario_template_install(c: Case, sandbox: Path) -> None:
     else:
         c.ng("10a.1b categories", f"missing={expected_cats - cats}")
 
-    # install requires matter — use existing 'smith-v-jones' from scenario 1
+    # v3.0.0: install resolves workspace from CWD. Use a case folder inside sandbox.
+    case_dir = sandbox / "cases" / "template-install-test"
+    case_dir.mkdir(parents=True, exist_ok=True)
+
     rc, out, err = run(
-        [PY, TEMPLATE_LIB, "install", "creditor-list", "--matter", "smith-v-jones"],
-        env=env,
+        [PY, TEMPLATE_LIB, "install", "creditor-list"],
+        env=env, cwd=case_dir,
     )
     if rc == 0 and "creditor-list.yaml" in out and "creditor-list.xlsx" in out:
-        c.ok("10a.2 install copies YAML + XLSX to matter dir")
+        c.ok("10a.2 install copies YAML + XLSX to workspace templates dir")
     else:
         c.ng("10a.2 install", f"rc={rc} out={out[:200]} err={err[:200]}")
 
     # verify files exist at the destination
-    dst_dir = sandbox / "matters" / "smith-v-jones" / "templates"
+    dst_dir = case_dir / ".claude-bengo" / "templates"
     if (dst_dir / "creditor-list.yaml").exists() and (dst_dir / "creditor-list.xlsx").exists():
-        c.ok("10a.3 installed files land in matter templates dir")
+        c.ok("10a.3 installed files land in workspace templates dir")
     else:
-        c.ng("10a.3 installed files", f"contents={list(dst_dir.iterdir())}")
+        c.ng("10a.3 installed files", f"contents={list(dst_dir.iterdir()) if dst_dir.exists() else 'missing'}")
 
     # re-install without --replace fails (exit 3)
     rc, _, err = run(
-        [PY, TEMPLATE_LIB, "install", "creditor-list", "--matter", "smith-v-jones"],
-        env=env,
+        [PY, TEMPLATE_LIB, "install", "creditor-list"],
+        env=env, cwd=case_dir,
     )
     if rc == 3 and "既に" in err:
         c.ok("10a.4 re-install without --replace refused", "exit 3")
@@ -538,37 +628,38 @@ def scenario_template_install(c: Case, sandbox: Path) -> None:
 
     # with --replace succeeds
     rc, out, _ = run(
-        [PY, TEMPLATE_LIB, "install", "creditor-list", "--matter", "smith-v-jones", "--replace"],
-        env=env,
+        [PY, TEMPLATE_LIB, "install", "creditor-list", "--replace"],
+        env=env, cwd=case_dir,
     )
     if rc == 0 and '"replaced": true' in out:
         c.ok("10a.5 --replace overwrites")
     else:
         c.ng("10a.5 --replace", f"rc={rc} out={out[:200]}")
 
-    # install to nonexistent matter → error
+    # v3.0.0: "ghost matter" 概念は廃止。--matter は deprecated で単に無視される。
+    # 代わりに nonexistent template ID のエラー経路をテスト。
     rc, _, err = run(
-        [PY, TEMPLATE_LIB, "install", "creditor-list", "--matter", "ghost-matter"],
-        env=env,
+        [PY, TEMPLATE_LIB, "install", "nonexistent-template"],
+        env=env, cwd=case_dir,
     )
-    if rc != 0 and "存在しない" in err:
-        c.ok("10a.6 install to ghost matter refused")
+    if rc != 0 and "見つからない" in err:
+        c.ok("10a.6 install nonexistent template refused")
     else:
-        c.ng("10a.6 ghost matter refusal", f"rc={rc} err={err[:200]}")
+        c.ng("10a.6 nonexistent template refusal", f"rc={rc} err={err[:200]}")
 
     # install a Phase-3 form (different category) to ensure broad coverage works
     rc, out, _ = run(
-        [PY, TEMPLATE_LIB, "install", "criminal-defense-appointment", "--matter", "smith-v-jones"],
-        env=env,
+        [PY, TEMPLATE_LIB, "install", "criminal-defense-appointment"],
+        env=env, cwd=case_dir,
     )
     if rc == 0 and "criminal-defense-appointment.yaml" in out:
-        c.ok("10a.7 Phase-3 form (刑事) installs to matter")
+        c.ok("10a.7 Phase-3 form (刑事) installs to workspace")
     else:
         c.ng("10a.7 Phase-3 install", f"rc={rc}")
 
     # list shows it after install
-    dst = sandbox / "matters" / "smith-v-jones" / "templates"
-    names = {p.name for p in dst.iterdir()}
+    dst = case_dir / ".claude-bengo" / "templates"
+    names = {p.name for p in dst.iterdir()} if dst.exists() else set()
     if {"criminal-defense-appointment.yaml", "criminal-defense-appointment.xlsx"}.issubset(names):
         c.ok("10a.8 installed Phase-3 form files exist")
     else:
@@ -821,15 +912,9 @@ def main() -> int:
 
     c = Case()
     try:
-        scenario_matter_lifecycle(c, sandbox)
-        scenario_resolver_precedence(c, sandbox)
-        scenario_symlink_ref_rejected(c, sandbox)
-        scenario_import_from_cwd(c, sandbox)
-        scenario_audit_flow(c, sandbox)
-        scenario_matter_isolation(c, sandbox)
-        scenario_no_matter_refusal(c, sandbox)
+        # v3.0.0: matter ベースのシナリオは workspace ベースに置換
+        scenario_workspace_flow(c, sandbox)
         scenario_copy_file(c, sandbox)
-        scenario_permissions(c, sandbox)
         scenario_template_install(c, sandbox)
         scenario_traffic_damage_calc(c, sandbox)
         scenario_child_support_calc(c, sandbox)

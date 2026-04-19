@@ -26,3 +26,6 @@ lawsuit_report_*.agent
 *_reviewed.docx
 *_filled.xlsx
 .claude-bengo-familytree.json
+
+# v3.0.0: workspace auto-created by running skills in repo root
+.claude-bengo/

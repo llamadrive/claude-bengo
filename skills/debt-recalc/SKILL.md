@@ -32,9 +32,9 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 0: Matter 解決（`python3 skills/_lib/matter.py resolve`）
+### Step 0: workspace は自動解決される（v3.0.0〜）
 
-`source=none` ならエラー。
+機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
 
 ### Step 1: 取引履歴の聴取
 
@@ -57,7 +57,7 @@ version: 1.0.0
 **計算実行前に監査ログに記録する（法律事務所のコンプライアンス要件。過払金額が高額になる可能性があるため必須）:**
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill debt-recalc --event calc_run --note "取引件数: {N} / 相手方: {creditor}"
+python3 skills/_lib/audit.py record --skill debt-recalc --event calc_run --note "取引件数: {N} / 相手方: {creditor}"
 ```
 
 続いて計算実行:
@@ -69,7 +69,7 @@ python3 skills/debt-recalc/calc.py calc --pretty --json '<payload>'
 結果提示後、主要数値を監査ログに記録:
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill debt-recalc --event calc_result --note "残元本={remaining_principal} 過払金={overpayment_principal} 過払金利息={overpayment_interest}"
+python3 skills/_lib/audit.py record --skill debt-recalc --event calc_result --note "残元本={remaining_principal} 過払金={overpayment_principal} 過払金利息={overpayment_interest}"
 ```
 
 入力 JSON 例:

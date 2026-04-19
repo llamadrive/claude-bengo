@@ -44,11 +44,11 @@ BUNDLED_ID_RE = re.compile(r"^[a-z0-9][-a-z0-9_]{0,63}$")
 
 
 # ---------------------------------------------------------------------------
-# matter.py の遅延ロード（aduit.py と同じ戦略）
+# workspace.py の遅延ロード（v3.0.0〜）
 # ---------------------------------------------------------------------------
 
 
-def _load_matter():
+def _load_workspace():
     import importlib
     here = str(Path(__file__).resolve().parent)
     added = False
@@ -56,7 +56,7 @@ def _load_matter():
         sys.path.insert(0, here)
         added = True
     try:
-        return importlib.import_module("matter")
+        return importlib.import_module("workspace")
     finally:
         if added:
             try:
@@ -273,23 +273,18 @@ def _verify_bundled_integrity(bundled_id: str) -> Optional[str]:
 
 def install_template(
     bundled_id: str,
-    matter_id: str,
     replace: bool = False,
     skip_integrity: bool = False,
 ) -> Dict[str, str]:
-    """同梱テンプレートを matter のテンプレートディレクトリへコピーする。
+    """同梱テンプレートを現在の workspace のテンプレートディレクトリへコピーする。
 
-    戻り値: {yaml_dst, xlsx_dst, matter_id, bundled_id, replaced, integrity_verified}
+    v3.0.0 で matter_id 引数を廃止。workspace 解決 (CWD walk-up) に統一した。
+    workspace が未初期化なら CWD に silently 作成する。
+
+    戻り値: {yaml_dst, xlsx_dst, workspace_root, bundled_id, replaced, integrity_verified}
     """
-    matter = _load_matter()
-
-    ok, reason = matter.validate_matter_id(matter_id)
-    if not ok:
-        raise ValueError(f"matter ID が無効: {reason}")
-    if not matter.matter_exists(matter_id):
-        raise FileNotFoundError(
-            f"matter '{matter_id}' が存在しない。/matter-create {matter_id} で先に作成してほしい。"
-        )
+    ws = _load_workspace()
+    ws.ensure_workspace()  # silently init if needed
 
     entry = find_template(bundled_id)
     if not entry:
@@ -310,14 +305,14 @@ def install_template(
     if not src_xlsx.exists():
         raise FileNotFoundError(f"{src_xlsx} が存在しない（レジストリと同梱ファイルの不整合）")
 
-    dst_dir = matter.matter_templates_dir(matter_id)
+    dst_dir = ws.templates_dir()
     dst_dir.mkdir(parents=True, exist_ok=True)
     dst_yaml = dst_dir / f"{bundled_id}.yaml"
     dst_xlsx = dst_dir / f"{bundled_id}.xlsx"
 
     if (dst_yaml.exists() or dst_xlsx.exists()) and not replace:
         raise FileExistsError(
-            f"matter '{matter_id}' に既に '{bundled_id}' が存在する。上書きには --replace を指定してほしい。"
+            f"現在の workspace に既に '{bundled_id}' が存在する。上書きには --replace を指定してほしい。"
         )
 
     shutil.copy2(src_yaml, dst_yaml, follow_symlinks=False)
@@ -325,7 +320,7 @@ def install_template(
 
     return {
         "bundled_id": bundled_id,
-        "matter_id": matter_id,
+        "workspace_root": str(ws.resolve_workspace()),
         "yaml_dst": str(dst_yaml),
         "xlsx_dst": str(dst_xlsx),
         "replaced": replace,
@@ -369,26 +364,13 @@ def _cmd_list(args: argparse.Namespace) -> int:
 
 
 def _cmd_install(args: argparse.Namespace) -> int:
-    matter = _load_matter()
-
-    # matter の解決
-    if args.matter:
-        r = matter.resolve(cli_flag=args.matter)
-    else:
-        r = matter.resolve()
-    mid = r.get("matter_id")
-    # ID 自体が解決できない（source=none の）場合は 2 で中止
-    if not mid:
-        msg = r.get("message") or "matter が未設定"
-        print(json.dumps({"error": msg}, ensure_ascii=False), file=sys.stderr)
-        return 2
+    # v3.0.0: workspace 解決（CWD walk-up）。--matter は deprecated で無視される。
     # ID は取得できたが存在しない場合は install_template 側で
     # 「matter が存在しない」エラーを出させる（exit 1）
 
     try:
         result = install_template(
             args.bundled_id,
-            mid,
             replace=args.replace,
             skip_integrity=getattr(args, "skip_integrity", False),
         )

@@ -29,3 +29,6 @@ lawsuit_report_*.agent
 
 # v3.0.0: workspace auto-created by running skills in repo root
 .claude-bengo/
+
+# Claude Code session state (per-developer editor data)
+.claude/

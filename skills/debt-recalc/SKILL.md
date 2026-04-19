@@ -32,6 +32,18 @@ version: 1.0.0
 
 ## ワークフロー
 
+### Step -1: 同意ゲート（v3.3.0-iter2〜 機密スキルに格上げ）
+
+本 skill は貸金業者の取引履歴 PDF 等の client 書類を扱う可能性があるため、
+事務所管理者の同意が必要:
+
+```bash
+python3 skills/_lib/consent.py check
+```
+
+exit 非 0 なら skill を中断して `/consent` を案内する（未設定なら admin-setup → grant、設定済みなら grant のみ）（詳細は
+`skills/template-fill/SKILL.md` の Step -1 と同じ）。
+
 ### Step 0: workspace の解決
 
 機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
@@ -91,6 +103,31 @@ python3 skills/_lib/audit.py record --skill debt-recalc --event calc_result --no
 - **残元本 = 0**: 完済 → 追加手続不要
 - **過払金発生**: 過払金返還請求の検討（時効: 取引終了から 10 年、最判平成 21 年）
 - **過払金 + 利息**: 業者の悪意が立証できれば年 5% の利息を付加して請求
+
+### Step 4.5: 必須出力フッター（v3.3.0-iter3〜 code-emitted 省略不可）
+
+**v3.3.0-iter3〜: footer は calc.py が stderr に JSON として emit する。**
+SKILL.md は fabricate しない — stderr の `calc_footer` をそのまま読んで表示する:
+
+```bash
+python3 skills/debt-recalc/calc.py --json '<input>' 2>/tmp/calc-footer.json
+cat /tmp/calc-footer.json   # 末尾行に {"calc_footer": {...}} が付く
+```
+
+結果の直後に以下を**そのまま**表示する:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠ 本計算は利息制限法 §1（上限利率）に基づく決定論的引き直し計算である。
+  弁護士法第72条に基づき、本ツールは法的助言を提供しない。
+  提出前に必ず弁護士自身が以下を検証してほしい:
+    • 取引履歴の完全性（業者からの開示請求で欠損が無いか）
+    • 取引の一連性（基本契約の同一性、中断期間の評価）
+    • 業者の悪意立証可能性（最判平成 16 年 2 月 20 日）
+    • 時効管理（最終取引から 10 年、最判平成 21 年 1 月 22 日）
+    • みなし弁済（貸金業法旧 43 条）の非該当性
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 ### Step 5: 注意事項の案内
 

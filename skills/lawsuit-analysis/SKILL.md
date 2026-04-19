@@ -31,6 +31,17 @@ version: 1.0.0
 
 ## ワークフロー
 
+### Step -1: 同意ゲート（必須、最優先、v3.3.0〜）
+
+Read ツールで訴訟文書を開く前にまず:
+
+```bash
+python3 skills/_lib/consent.py check
+```
+
+exit 非 0 なら skill を中断して `/consent` を案内する（未設定なら admin-setup → grant、設定済みなら grant のみ）（詳細は
+`skills/template-fill/SKILL.md` の Step -1 と同じ）。
+
 ### Step 0: workspace の解決
 
 機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。

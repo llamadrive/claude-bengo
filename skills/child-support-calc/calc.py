@@ -467,7 +467,30 @@ def _cmd_calc(args: argparse.Namespace) -> int:
         _print_pretty(result)
     else:
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    _emit_footer()
     return 0
+
+
+def _emit_footer() -> None:
+    """v3.3.0-iter3〜: §72 disclaimer を stderr に JSON で emit する。"""
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "_lib"))
+    try:
+        from calc_footer import emit_footer
+        emit_footer(
+            skill="child-support-calc",
+            statute="令和元年改定 標準算定方式・算定表",
+            caveats=[
+                "特別支出（私立学校費・医療費・習い事等）",
+                "親権者の就労状況・再婚・新扶養家族",
+                "非典型的な収入構造（自営・給与+事業）",
+                "過去の合意書・公正証書との整合性",
+                "算定表はあくまで「目安額」であり、家裁調停・審判で判断される",
+            ],
+        )
+    except ImportError:
+        pass
 
 
 def _print_pretty(result: dict) -> None:

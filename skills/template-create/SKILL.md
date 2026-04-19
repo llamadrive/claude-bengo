@@ -10,9 +10,101 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step 0: workspace の解決
+### Step -1: 同意ゲート（必須、最優先、v3.3.0〜）
 
-機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
+Read ツールや xlsx-editor を呼ぶ前にまず:
+
+```bash
+python3 skills/_lib/consent.py check
+```
+
+exit 非 0 なら skill を中断して `/consent` を案内する（未設定なら admin-setup → grant、設定済みなら grant のみ）（詳細は
+`skills/template-fill/SKILL.md` の Step -1 と同じ）。
+
+### Step 0: スコープの決定と workspace 解決
+
+テンプレートは **スコープ** を 2 種類持つ（v3.3.0〜）:
+
+- `case`（**既定**、安全側）— この案件フォルダ限定。`<workspace>/.claude-bengo/templates/` に保存。
+  他案件には影響しないため、試しに登録してみる・案件固有の派生版を作る、といった
+  用途に安全。firm 全体で使い回したくなったら後から `/template-promote` で昇格できる。
+- `global`                   — 事務所全体で使い回す書式。`~/.claude-bengo/templates/` に保存。
+  全案件から見えるため、**PII 混入ゼロが必須**（以下のガード参照）。
+
+**優先順**: 実行時は $ARGUMENTS の `--scope` フラグがあればそれを採用。なければ
+以下を 1 度だけ尋ねる:
+
+```
+このテンプレートの使い回しの範囲は？
+  1. この案件のみ（推奨・既定） — {cwd の basename} 限定で安全
+  2. 事務所全体                — 全案件で見えるようになる（クライアント情報の混入に注意）
+
+番号で回答（未回答は 1）:
+```
+
+スコープが決まったら保存先ディレクトリを解決する:
+
+```bash
+# global スコープ
+python3 skills/_lib/workspace.py templates   # global_templates_dir を読む
+# case スコープ
+python3 skills/_lib/workspace.py resolve     # workspace_root を読む
+```
+
+- `global` → 保存先 = `~/.claude-bengo/templates/`（workspace 初期化不要）
+- `case`   → 保存先 = `{workspace_root}/.claude-bengo/templates/`。walk-up で
+  見つからなければ CWD を silently 初期化する。
+
+**重要（case スコープの制限）:** CWD が `~/.claude-bengo/` 配下の場合、
+`ensure_workspace()` は `WorkspaceUnderGlobalError` を投げて拒否する。
+グローバルストアは予約領域であり、その下を案件フォルダ扱いすると監査ログや
+グローバルテンプレートが混線する。エラーが発生したらユーザーに「別のフォルダ
+に `cd` してから再実行してほしい」と案内する。
+
+**セキュリティ（global スコープ時の必須チェック）:** global 保存前に、対象 XLSX に
+クライアントの実データが残っていないかを決定論的に走査する:
+
+```bash
+python3 skills/_lib/pii_scan.py scan --xlsx "<source.xlsx>" --json
+```
+
+戻り値 JSON:
+```json
+{
+  "verdict": "clean" | "suspicious",
+  "count": 0,
+  "findings": [
+    {"category": "personal_name", "cell": "B3", "excerpt": "[シート:Sheet1] …甲野太郎様…", ...},
+    ...
+  ],
+  "by_category": {"personal_name": 2, "postal_code": 1}
+}
+```
+
+`verdict == "clean"` ならそのまま Step 1 へ進む。`"suspicious"` の場合は、
+**v3.3.0 以降 global 保存は自動的に拒否** される（ユーザー override 不可）。
+発見箇所を全件列挙したうえで、以下のいずれかを案内する:
+
+```
+⛔ global スコープでの保存は中止した。
+   このファイルに PII のような記述が {N} 件検出されたため:
+  - B3 [personal_name]: 「…甲野太郎様…」
+  - D7 [address_jp]: 「…東京都千代田区丸の内1丁目…」
+  - E9 [birthdate]: 「…生年月日: 昭和50年1月1日…」
+
+次のいずれかを選んでほしい:
+  1. この案件限定（case スコープ）で登録する — その案件フォルダでしか見えない
+  2. 中止する — 元 XLSX から上記を削除して再実行
+```
+
+注意: `pii_scan.py` は conservative（偽陽性寄り）で、検出がプレースホルダや
+記入例であることもある。しかし global は全案件に波及するため、**偽陽性側に
+倒して拒否を既定とする**。
+
+**開発者バックドア（ユーザーには案内しないこと、v3.3.0-iter2〜 強化）:**
+`CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL` 環境変数は admin lock が設定されている場合、
+値として現行 admin passphrase を要求する（PBKDF2 照合）。`=1` 単体では
+無効化できない。admin lock 未設定の CI 環境でのみ `=1` が従来通り通る。
 
 ### Step 1: XLSXファイルの確認
 
@@ -29,7 +121,47 @@ version: 1.0.0
 
 複数シートがある場合はユーザーにどのシートをテンプレート対象とするか確認する。
 
-### Step 3: フィールド候補の提案
+### Step 3: フィールド候補の特定
+
+検出方法は **2 つ** ある。$ARGUMENTS に `--sample <path>` が含まれているか、
+あるいはユーザーが「記入済みの例がある」と申告した場合は **A（サンプル差分モード、推奨）**、
+それ以外は **B（LLM 近傍推論モード、従来）** を使う。
+
+#### A. サンプル差分モード（推奨）— `--sample` 指定または申告あり
+
+空テンプレ (`blank.xlsx`) と 1 件完全記入済みのサンプル (`sample.xlsx`) を
+決定論的に突き合わせ、field を抽出する。section 見出し・小計行・2 列ラベルに強い。
+
+```bash
+python3 skills/_lib/template_detect.py diff \
+    --blank "<blank.xlsx>" \
+    --sample "<sample.xlsx>" \
+    [--sheet "<シート名>"]
+```
+
+戻り値 JSON の `fields` 配列にそのまま提案候補が入っている:
+
+```json
+{
+  "fields": [
+    {"id": "field_1", "label": "事件番号:", "type": "text", "required": true,
+     "position": {"row": 3, "column": 2}, "example_value": "令和5年(ワ)第100号"},
+    {"id": "table_1", "label": "債権者一覧表", "type": "table", "required": true,
+     "range": {"headerRow": 5, "dataStartRow": 6, "startColumn": 1, "endRow": 8, "endColumn": 3},
+     "columns": [{"id": "col_1", "label": "№", "type": "number"}, ...]}
+  ],
+  "warnings": []
+}
+```
+
+これをそのまま Step 4 のテーブルに流し込み、ユーザーには「検出を確認して
+ほしい」と 1 発で提示する。LLM の勘よりも精度が高いため、フィールド個別の
+type 推論や position の手直しは最小限で済む。
+
+ユーザーが sample を持っていない場合は「過去に同じ書式で作成した XLSX があれば
+それを使えばよい。なければ B モードに切り替える」と案内する。
+
+#### B. LLM 近傍推論モード（従来）
 
 セルデータを分析し、入力フィールド候補を特定する。以下のパターンを探す:
 
@@ -67,7 +199,9 @@ version: 1.0.0
 ユーザーと対話しながら以下を確定する:
 
 1. **フィールドの採否**: 候補を承認/却下/追加
-2. **フィールドID**: 英数字のスネークケースID（例: `plaintiff_name`, `accident_date`）
+2. **フィールドID**: 英数字のスネークケースID（例: `plaintiff_name`, `accident_date`）。
+   判断に困ったら label をローマ字化した `field_N` 形式で自動生成してよい（ID は
+   内部キー、label が表示・マッピングの主軸のため）。
 3. **フィールドラベル**: 日本語表示名
 4. **フィールドタイプ**: `text` | `number` | `date` | `textarea` | `select` | `table`
 5. **必須/任意**: `required: true/false`
@@ -78,6 +212,37 @@ version: 1.0.0
      - `dataStartRow`: 最初のデータ行番号（**ヘッダ行ではなく、その下の行**）
 7. **テーブルの場合**: 各列の定義 `columns: [{ id, label, type }]`
 8. **選択の場合**: 選択肢 `options: [...]`
+9. **マッピング補助（任意、推奨）**: `/template-fill` が PDF からこのフィールドに
+   入れる値を正しく拾うためのヒント。label だけで曖昧な場合は必ず聞く:
+   - `description`: 1-2 文で「何を入れるフィールドか」を書く（例:「債務者の戸籍上の
+     氏名。相手方弁護士の氏名ではない」）
+   - `synonyms`: ソース文書で使われそうな別名（例: `["借主", "お名前", "契約者名"]`）
+   - `example_value`: 記入例（例: `"甲野太郎"` / `"1,000,000"` / `"令和5年3月1日"`）
+
+   label が明確（例: 「事件番号」）ならスキップしてよい。曖昧（例: 「氏名」「金額」
+   「日付」）の場合はユーザーに「これはどの場面の氏名か」などを 1 回だけ確認し、
+   その回答を description に転写する。
+
+### Step 4.5: センチネル書込による位置検証（推奨）
+
+Step 4 で確定したフィールドのセル位置が本当に正しいかを視覚的に確認するため、
+blank XLSX のコピーに **センチネル値**（`<<氏名>>` `<<金額>>` 等）を書き込んで
+ユーザーに見てもらう:
+
+1. blank XLSX を一時パス `<blank>.preview.xlsx` にコピー
+2. 各単一セルフィールドの `position` に `mcp__xlsx-editor__write_cell` で
+   `<<{label}>>` を書き込む（label が空なら `<<{id}>>`）
+3. テーブルフィールドは `dataStartRow` の 1 行目にだけ各列のセンチネルを書き込む
+4. ユーザーに「`<blank>.preview.xlsx` を開いて、各 `<<...>>` が想定どおりの
+   セルに入っているか確認してほしい」と案内
+5. ズレがあればユーザーに該当フィールドの番号を指示してもらい、position を
+   修正してから再書込 → 再確認
+
+**スキップ条件:** Step 3 で A（サンプル差分モード）を使った場合は検出が
+決定論的なので、ユーザーが「差分モードの結果を信用してスキップ」と明示すれば
+省略してよい。B モード（LLM 近傍推論）の場合は必ず通す。
+
+一時プレビューファイルは Step 7 完了後に削除する。
 
 ### Step 5: メタデータの確認
 
@@ -90,7 +255,39 @@ version: 1.0.0
 
 ### Step 6: YAML保存
 
-確定したフィールド定義をYAML形式で `{matter_templates_dir}/{id}.yaml` に Write ツールで保存する（アクティブ matter のテンプレートディレクトリ内。Step 0 で matter.py info から解決した `templates_dir` を使用する）。`{matter_templates_dir}` は matter 作成時に自動生成されているはずだが、万一存在しない場合は作成する。
+確定したフィールド定義を YAML 形式の文字列として組み立てる（まだ書き込まない）。
+Step 7 で XLSX と一緒に保存する。
+
+### Step 6.5: 統合保存（code-level PII guard 経由、v3.3.0-iter1〜）
+
+**Write + copy_file.py で直接保存してはならない。** `template_lib.py save-user`
+を呼ぶことで、global スコープ時に PII 混入を **code レベルで** ブロックする:
+
+```bash
+# YAML を一時ファイルに書いてから
+# /tmp/template-{id}.yaml に組み立て結果を Write
+
+python3 skills/_lib/template_lib.py save-user \
+  --source "<original xlsx>" \
+  --id "<template_id>" \
+  --scope "<case|global>" \
+  --yaml-file /tmp/template-{id}.yaml \
+  [--replace]
+```
+
+戻り値 JSON の `code: "pii_found"` が返った場合（exit 4）は以下を行う:
+
+- `findings` 配列をユーザーに全件表示
+- global 保存をあきらめるか、XLSX から PII を削除して再実行するかを選んでもらう
+- 「このまま global に保存したい」と言われても **進めてはならない**（code が弾く）
+- スコープを case に切り替えれば保存される（`--scope case`）
+
+他の exit コード:
+- exit 1 = ID 不正 / source 不在
+- exit 3 = 既存衝突（`--replace` を検討）
+- exit 4 = PII 検出（上記）
+
+Step 7 は本コマンドで置換されるため不要。
 
 **ID 検証（必須）:** テンプレート `{id}` は以下の正規表現を必ず満たすこと:
 
@@ -102,27 +299,23 @@ version: 1.0.0
 - 以降は小文字英数字・ハイフン・アンダースコアのみ
 - 合計 64 文字以内
 
-`.`、`/`、`\`、空白、大文字、非 ASCII は**禁止**。これは `{matter_templates_dir}/{id}.yaml` を生成するときに `..` や絶対パスで事案ディレクトリの外に書き出す path-traversal を防ぐためである。ユーザーが提案する ID が規則に合わない場合は、該当箇所を示して「英小文字・数字・ハイフン・アンダースコアのみで再提案してほしい」と返す。
+`.`、`/`、`\`、空白、大文字、非 ASCII は**禁止**。これは `{dest_dir}/{id}.yaml` を生成するときに `..` や絶対パスで保存先ディレクトリの外に書き出す path-traversal を防ぐためである。ユーザーが提案する ID が規則に合わない場合は、該当箇所を示して「英小文字・数字・ハイフン・アンダースコアのみで再提案してほしい」と返す。
 
 YAML形式はプラグインの `templates/_schema.yaml` に準拠する。
 
-### Step 7: XLSXコピー
+### Step 7: （廃止: Step 6.5 に統合済み）
 
-元のXLSXファイルを `{matter_templates_dir}/{id}.xlsx` にコピーする。`cp` コマンドは Windows で動作しないため、クロスプラットフォームの Python ヘルパーを使う:
-
-```bash
-python3 skills/_lib/copy_file.py --src "<source.xlsx>" --dst "{matter_templates_dir}/{id}.xlsx"
-```
-
-元ファイルは変更しない。
+v3.3.0-iter1 以降は `template_lib.py save-user` が YAML 書込と XLSX コピーを
+一括で行う。個別の Write / copy_file.py は呼び出さない（PII code-gate を迂回
+させないため）。
 
 ### Step 8: 完了サマリー
 
 以下を表示する:
-- 対象 matter の ID
-- テンプレート名とID
+- スコープ（`事務所全体` / `この案件のみ`）
+- テンプレート名と ID
 - 登録フィールド数（タイプ別内訳）
-- 保存先パス（YAML + XLSX。matter ディレクトリ配下）
+- 保存先パス（YAML + XLSX）
 - `/template-fill` での使用方法
 
 ## セル位置の変換
@@ -136,8 +329,8 @@ XLSXのセルアドレス（A1, B3 等）をYAMLの行列番号に変換する:
 
 - XLSX以外のファイル: 対応フォーマットを案内する。
 - 空のシート: 「テンプレートとして使用するセルがありません」と報告する。
-- 既存IDとの重複（現在の matter 内で既に同 ID のテンプレートがある）: 上書きするか別IDにするかユーザーに確認する。
-- matter のテンプレートディレクトリが存在しない場合: 作成する。
+- 既存 ID との重複（同スコープに同 ID のテンプレートが既にある）: 上書きするか別 ID にするかをユーザーに確認する。スコープをまたいで同 ID を作ることは禁じないが、`/template-fill` では case が global を shadow するため、意図しているか確認を促す。
+- 保存先ディレクトリが存在しない場合: 作成する。
 
 ## 次の一手（ユーザーに提案する）
 

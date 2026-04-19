@@ -753,7 +753,29 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.pretty:
         print("", file=sys.stderr)
         print(_format_pretty(result), file=sys.stderr)
+    _emit_footer()
     return 0
+
+
+def _emit_footer() -> None:
+    """v3.3.0-iter3〜: §72 disclaimer を stderr に JSON で emit する。"""
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "_lib"))
+    try:
+        from calc_footer import emit_footer
+        emit_footer(
+            skill="inheritance-calc",
+            statute="民法 §900〜§904（法定相続分）",
+            caveats=[
+                "入力した家族関係（相続放棄・欠格・廃除の有無を含む）",
+                "代襲相続・再代襲の適用要件",
+                "特別受益・寄与分（民法 §903・§904-2）の加算/減算",
+                "遺言・遺産分割協議・調停による修正の有無",
+            ],
+        )
+    except ImportError:
+        pass
 
 
 if __name__ == "__main__":

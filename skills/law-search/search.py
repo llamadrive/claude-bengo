@@ -471,6 +471,45 @@ def http_get(url: str) -> bytes:
 # ------------------------------------------------------------------------------
 
 
+def _emit_footer_metadata(
+    *,
+    law_id: str,
+    article: str,
+    cache_status: str,  # "api-fresh" | "cached-YYYY-MM-DD"
+) -> None:
+    """v3.3.0-iter3〜: 取得メタデータを構造化 JSON として stderr に出す。
+
+    法改正直後の反映遅延や引用時点の管理は court-facing 利用で必須。
+    SKILL.md の prompt だけに依存すると LLM が省略する恐れがあるため、
+    **search.py 側で必ず emit** する。SKILL.md は stderr の `law_footer`
+    キーをそのままユーザーへ転記するだけでよい（要約・省略禁止）。
+    """
+    import datetime as _dt
+    retrieved_at = _dt.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
+    footer = {
+        "law_footer": {
+            "source": "e-Gov 法令 API (https://laws.e-gov.go.jp/)",
+            "retrieved_at": retrieved_at,
+            "law_id": law_id,
+            "article": article,
+            "cache_status": cache_status,
+            "warning": "法改正直後は API 反映に時差があることがある。提出書面で引用する際は e-Gov 原本と突合し、最新改正日・施行日を確認してほしい。",
+        }
+    }
+    sys.stderr.write(json.dumps(footer, ensure_ascii=False) + "\n")
+
+
+def _cache_status_from_mtime(cache_path: Path) -> str:
+    """キャッシュファイルの mtime から `cached-YYYY-MM-DD` を作る。"""
+    import datetime as _dt
+    try:
+        mtime = cache_path.stat().st_mtime
+        d = _dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+        return f"cached-{d}"
+    except OSError:
+        return "cached-unknown"
+
+
 def cmd_fetch_article(args: argparse.Namespace) -> int:
     """単一条文を取得する。キャッシュがあれば完全性検証のうえ再利用する。"""
     try:
@@ -489,6 +528,11 @@ def cmd_fetch_article(args: argparse.Namespace) -> int:
     cached_text = read_cache_if_valid(cache)
     if cached_text is not None:
         sys.stdout.write(cached_text)
+        _emit_footer_metadata(
+            law_id=law_id,
+            article=article,
+            cache_status=_cache_status_from_mtime(cache),
+        )
         return EXIT_OK
 
     try:
@@ -502,6 +546,7 @@ def cmd_fetch_article(args: argparse.Namespace) -> int:
     write_cache_best_effort(cache, text, url)
 
     sys.stdout.write(text)
+    _emit_footer_metadata(law_id=law_id, article=article, cache_status="api-fresh")
     return EXIT_OK
 
 

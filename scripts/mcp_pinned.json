@@ -1,0 +1,11 @@
+{
+  "@agent-format/mcp": {
+    "0.1.9": "sha512-iymTb4sF7GyT2zIn2F7evtZF9KLzuQ//x4tdmctqDjjifbG/JXJRlWUkL7u8lkkJIqf7wWXkwlkNOuo622j7kg=="
+  },
+  "@knorq/docx-mcp-server": {
+    "2.0.0": "sha512-k5P46b85IztWbDwvnPKlqRXu6UDKgXp0m/soOD5ivD/SnMRQh9ZGpWm7jNpq0OXLy/tPdE+cjKksLo+Qa3b8dg=="
+  },
+  "@knorq/xlsx-mcp-server": {
+    "2.0.0": "sha512-jp1l2JdWOJqDfTqqt+iUoDaMy8Q0ngl3+jyhqQ5FqFMdzo/851z6EMhBq9ujsmBx0ozh15rv7CYtvQT5KI0YHQ=="
+  }
+}

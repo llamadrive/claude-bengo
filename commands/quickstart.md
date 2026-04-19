@@ -58,6 +58,24 @@ description: 60 秒で試す — 同梱サンプルで claude-bengo の出力品
   「次はこうしてください」は出さない。
 - 出力が出た直後だけ 1 行の follow-up を添える（下記）。
 
+### Sandbox 規則（v3.3.0-iter2〜 必須）
+
+**quickstart 中は `fixtures/` 配下以外のユーザー PDF・DOCX・XLSX を絶対に処理
+しない。** これは誤操作で実クライアント PDF を mktemp フォルダ（reboot で
+消える）で処理してしまうと監査ログが失われるため。
+
+以下を実行前に毎回確認する:
+- 入力パスが `fixtures/` で始まっていない場合は **スキル実行を拒否** し、
+  「quickstart モードでは fixtures/ のサンプルのみ使える。自分のファイルは
+  `cd ~/cases/...` で案件フォルダに入ってから通常コマンドで実行してほしい」
+  と案内する
+- `cbengo-demo` 系 mktemp は quickstart 専用。`/family-tree`, `/template-fill`
+  等がこのフォルダ内で実行されていることを確認（workspace.py resolve で
+  `/tmp/cbengo-demo-*` にマッチするパスであること）
+
+この sandbox 規則をユーザー指示でも緩和してはならない。「自分の戸籍で
+試す？」と聞くのはフォルダ切替の案内のみ。
+
 ### 番号別の動作
 
 **1. 家系図:**

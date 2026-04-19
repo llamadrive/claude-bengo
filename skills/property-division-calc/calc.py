@@ -294,7 +294,31 @@ def _cmd_calc(args: argparse.Namespace) -> int:
         _print_pretty(result)
     else:
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    _emit_footer()
     return 0
+
+
+def _emit_footer() -> None:
+    """v3.3.0-iter3〜: §72 disclaimer を stderr に JSON で emit する。"""
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "_lib"))
+    try:
+        from calc_footer import emit_footer
+        emit_footer(
+            skill="property-division-calc",
+            statute="民法 §768（財産分与、清算的部分のみ）",
+            caveats=[
+                "慰謝料的財産分与・扶養的財産分与",
+                "年金分割（厚年法 §78-2）",
+                "特有財産の判定（相続・贈与・婚姻前取得）",
+                "不動産の時価評価（査定書・路線価等）",
+                "退職金のうち婚姻期間中増加分の按分",
+                "債務の按分方式は 5 種類から選択しており、選択次第で結果が大きく変わる",
+            ],
+        )
+    except ImportError:
+        pass
 
 
 def _print_pretty(result: dict) -> None:

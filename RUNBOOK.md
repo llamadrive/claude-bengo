@@ -29,7 +29,7 @@ Claude Code を起動し、**Claude Code 内で** 以下 2 行を実行する（
 /plugin install claude-bengo@claude-bengo
 ```
 
-**想定結果:** 各コマンドが「Added marketplace...」「Installed claude-bengo v2.14.0」等を返す。その後 Claude Code を再起動。
+**想定結果:** 各コマンドが「Added marketplace...」「Installed claude-bengo v3.3.0」等を返す（バージョンは `.claude-plugin/plugin.json` が単一情報源）。その後 Claude Code を再起動。
 
 **失敗時の診断:**
 - `already exists` → 前回の試行が残っている。`/plugin marketplace remove claude-bengo` で削除してから再試行
@@ -145,7 +145,7 @@ cd ~/cases/smoke-test && claude
 # [sh] cd ~/cases/smoke-test 前提
 ls -la .claude-bengo/
 cat .claude-bengo/audit.jsonl | head -5
-python3 ~/.claude/plugins/cache/claude-bengo/claude-bengo/3.0.0/skills/_lib/audit.py verify
+python3 ~/.claude/plugins/cache/claude-bengo/claude-bengo/{VERSION}/skills/_lib/audit.py verify
 ```
 
 **想定結果:**
@@ -174,7 +174,7 @@ log.write_text(tampered)
 print('tampered:', log)
 "
 
-python3 ~/.claude/plugins/cache/claude-bengo/claude-bengo/3.0.0/skills/_lib/audit.py verify
+python3 ~/.claude/plugins/cache/claude-bengo/claude-bengo/{VERSION}/skills/_lib/audit.py verify
 ```
 
 **想定結果:** `FAIL line X: prev_hash mismatch` と表示され exit 1。

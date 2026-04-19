@@ -1,6 +1,6 @@
 ---
 description: 裁判所書類テンプレートに資料データを自動入力
-allowed-tools: Read, Write, Glob, Bash(python3 skills/_lib/copy_file.py:*), Bash(python3 skills/_lib/audit.py:*), Bash(python3 skills/_lib/workspace.py:*), mcp__xlsx-editor__*
+allowed-tools: Read, Write, Glob, Bash(python3 skills/_lib/copy_file.py:*), Bash(python3 skills/_lib/audit.py:*), Bash(python3 skills/_lib/workspace.py:*), Bash(python3 skills/_lib/fill_gate.py:*), Bash(python3 skills/_lib/consent.py:*), mcp__xlsx-editor__*
 ---
 
 登録済みXLSXテンプレートに、PDFや画像から抽出したデータを自動入力する。

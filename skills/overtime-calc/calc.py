@@ -375,7 +375,30 @@ def _cmd_calc(args: argparse.Namespace) -> int:
         _print_pretty(result)
     else:
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    _emit_footer()
     return 0
+
+
+def _emit_footer() -> None:
+    """v3.3.0-iter3〜: §72 disclaimer を stderr に JSON で emit する。"""
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "_lib"))
+    try:
+        from calc_footer import emit_footer
+        emit_footer(
+            skill="overtime-calc",
+            statute="労基法 §37（時間外・休日労働の割増賃金）",
+            caveats=[
+                "固定残業代（みなし残業代）の控除要件（労使協定の有無・明示性）",
+                "管理監督者該当性（労基法 §41 二号）",
+                "裁量労働制・事業場外みなし労働時間制の適用",
+                "除外手当（家族・通勤・住宅）の判定",
+                "時効起算点（労基法 §115、令和2年改正の 3 年 → 5 年）の反映",
+            ],
+        )
+    except ImportError:
+        pass
 
 
 def _print_pretty(result: dict) -> None:

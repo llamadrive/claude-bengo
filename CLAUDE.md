@@ -5,7 +5,7 @@
 ユーザーがこのプラグインを初めて使用する場合（会話の最初のメッセージで法律関連の作業を依頼された場合、または「何ができる？」「使い方は？」と聞かれた場合）、以下の案内を日本語で表示する:
 
 ```
-claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v3.0.0
+claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v3.3.0
 
 まず試したい?  /quickstart と打つだけ。同梱サンプルで 60 秒で出力を見せる。
 気に入ったら自分の案件に進める。事前登録は一切不要。
@@ -121,13 +121,13 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 
 ## 出力命名規則
 
-- テンプレート入力結果: `{元テンプレート名}_filled.xlsx`
+- テンプレート入力結果: `{workspace_root}/outputs/{template_id}_filled_{YYYYMMDD_HHMMSS}.xlsx`（v3.2.0〜、毎回新規ファイル・衝突時は `_2` `_3` … を自動付与）
 - 校正結果: `{元ファイル名}_reviewed.docx`
 - 家族関係図: `family_tree_{YYYY-MM-DD}.agent`（canonical、MCP Apps でインライン描画・web viewer で自動起動閲覧・PDF化）
 - 訴訟分析レポート: `lawsuit_report_{YYYY-MM-DD}.agent`（同上、6 section: metrics / report / timeline / table×3）
 
-出力先はユーザーに確認する。指定がなければ入力ファイルと同じディレクトリに出力する。
-同名ファイルが既に存在する場合は上書きするかユーザーに確認する。
+テンプレート入力結果以外は、出力先をユーザーに確認する。指定がなければ入力ファイルと
+同じディレクトリに出力する。同名ファイルが既に存在する場合は上書きするかユーザーに確認する。
 
 ## 日本語法律文書の基本原則
 
@@ -146,16 +146,23 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 - 非対応フォーマット: 「このファイル形式には対応していない。対応形式: PDF, DOCX, XLSX, PNG, JPG」
 - ファイルを暗黙にスキップしない。処理できないファイルは必ずユーザーに報告する。
 
-## テンプレート（v3.0.0 〜）
+## テンプレート（v3.3.0 〜）
 
-テンプレートは**現在の案件フォルダ（workspace）**の `./.claude-bengo/templates/` に `{id}.yaml` + `{id}.xlsx` のペアで保存される。
+テンプレートは 2 つのスコープで保存される:
 
-- `/template-create` で新規登録（CWD の workspace に保存。未初期化なら silently 初期化）
-- `/template-list` で一覧表示（CWD の workspace のテンプレートのみ列挙）
-- `/template-fill` で選択・入力（出力は CWD に配置される）
+- **案件スコープ**（**既定**、安全側）: `{workspace_root}/.claude-bengo/templates/{id}.yaml` + `{id}.xlsx`。
+  その案件限定で、他案件に波及しない。試し登録・案件固有の派生版に安全。
+- **事務所グローバル**: `~/.claude-bengo/templates/{id}.yaml` + `{id}.xlsx`。
+  全案件で見える firm-wide 書式。**PII 混入ゼロが必須**（`pii_scan.py` でハードブロック）。
 
-テンプレートは案件フォルダに紐づく。別の案件で同じテンプレートを使いたい場合は:
-- 同じテンプレートを新しい案件フォルダで再登録する、または
-- `cp -r ~/cases/caseA/.claude-bengo/templates/ ~/cases/caseB/.claude-bengo/` で手動コピー
+`/template-fill` は `python3 skills/_lib/workspace.py resolve-template <id>` で
+**case → global の順**に自動解決する（同 ID は case が shadow）。
+
+- `/template-create` で新規登録（既定: case。`--scope global` で firm 全体）
+- `/template-install` で同梱書式をインストール（既定: case）
+- `/template-promote` で case → global に昇格（PII 検出時は拒否）
+- `/template-demote` で global → case にコピー（案件限定カスタマイズ）
+- `/template-list` で両スコープを一覧
+- `/template-fill` で選択・入力（出力は `{workspace_root}/outputs/` 直下、タイムスタンプ秒単位）
 
 フォーマット仕様はプラグインの `templates/_schema.yaml` を参照する。

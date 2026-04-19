@@ -117,6 +117,26 @@ VALID_EVENTS = {
     "calc_result",   # 計算結果（金額等の主要数値）
 }
 
+# v3.3.0-iter1〜: 機密スキル（client 由来の文書やデータに触れる可能性があるもの）は
+# audit 記録時に同意状態を確認する。ここが防御層 2 番目。SKILL.md の Step -1
+# （consent.py check）を忘れても、最初の audit record でここに引っかかり止まる。
+#
+# v3.3.0-iter2〜: debt-recalc / iryubun-calc を追加。
+# - debt-recalc: 貸金業者取引履歴 PDF をユーザーが渡す可能性
+# - iryubun-calc: 遺産評価書・取引残高証明 等の client 書類を渡す可能性
+# 純粋な数値入力型の overtime/child-support/inheritance/property-division/
+# traffic-damage は対象外（ユーザー自身が数字を入力するため）。
+CONFIDENTIAL_SKILLS = {
+    "template-fill",
+    "template-create",
+    "template-promote",
+    "family-tree",
+    "typo-check",
+    "lawsuit-analysis",
+    "debt-recalc",
+    "iryubun-calc",
+}
+
 # `/dev/null` 相当として扱うパス。`os.devnull` は POSIX では `/dev/null`、
 # Windows では `nul` を返すため、プラットフォーム差を吸収する。
 SENTINEL_PATHS = {os.devnull, "NUL", "nul", "/dev/null"}
@@ -307,19 +327,28 @@ _LAST_MONOTONIC_NS: Optional[int] = None
 
 
 def _hmac_key() -> Optional[bytes]:
-    """HMAC 署名用の秘密鍵を取得する。
+    """HMAC 署名用の秘密鍵を取得する（v3.3.0〜 既定で有効）。
 
-    `CLAUDE_BENGO_AUDIT_HMAC_KEY` が設定されていれば、そのバイト列（hex/base64
-    いずれでもよく UTF-8 で取り込む）を鍵として返す。未設定なら None。
+    優先順:
+      1. `CLAUDE_BENGO_AUDIT_HMAC_KEY` 環境変数（テスト・明示オーバーライド）
+      2. `~/.claude-bengo/global.json` の `audit_hmac_key_hex`
+         （初回 `ensure_workspace()` で `secrets.token_hex(32)` により自動生成）
 
-    現実装は **opt-in HMAC**。SHA-256 のみの chain は tamper-*evident*（改竄の
-    痕跡は検出できるが、全行再計算で偽造される）だが、HMAC を併記すれば鍵が
-    漏れない限り偽造不能になる。鍵は事務所の秘密金庫等で物理保管することを
-    推奨する（README §監査ログ参照）。"""
+    **v3.3.0 以降、HMAC は既定で常に on。** これにより監査ログは tamper-proof
+    （鍵が漏れない限り偽造不能）になる。以前は opt-in だったが、tier-2/3 firm
+    で鍵セットアップは期待できないため既定を反転した。
+    """
     k = os.environ.get("CLAUDE_BENGO_AUDIT_HMAC_KEY")
-    if not k:
-        return None
-    return k.encode("utf-8")
+    if k:
+        return k.encode("utf-8")
+    try:
+        ws = _load_workspace_module()
+        key = ws.get_audit_hmac_key()
+        if key:
+            return key.encode("utf-8")
+    except Exception:
+        pass
+    return None
 
 
 def _compute_hmac(data: bytes, key: bytes) -> str:
@@ -771,6 +800,39 @@ def _build_record(
     return rec
 
 
+def _check_consent_for_confidential(skill: str) -> Optional[str]:
+    """機密スキルの audit 記録前に同意確認。通れば None、ダメなら reason 文字列。"""
+    if skill not in CONFIDENTIAL_SKILLS:
+        return None
+    if os.environ.get("CLAUDE_BENGO_ALLOW_NO_CONSENT") == "1":
+        # 開発用バックドア（自動テスト用）。ユーザーには案内しない
+        return None
+    try:
+        # consent.py を遅延 import して循環を避ける
+        import importlib
+        here = str(Path(__file__).resolve().parent)
+        added = False
+        if here not in sys.path:
+            sys.path.insert(0, here)
+            added = True
+        try:
+            consent = importlib.import_module("consent")
+        finally:
+            if added:
+                try:
+                    sys.path.remove(here)
+                except ValueError:
+                    pass
+    except ImportError:
+        return "consent_module_unavailable"
+    status = consent.consent_status()
+    if status.get("granted"):
+        return None
+    # 未同意
+    reason = status.get("reason", "unknown")
+    return f"consent_not_granted ({reason})"
+
+
 def cmd_record(args: argparse.Namespace) -> int:
     if args.event not in VALID_EVENTS:
         print(
@@ -782,22 +844,83 @@ def cmd_record(args: argparse.Namespace) -> int:
         )
         return 1
 
+    # v3.3.0-iter1〜: 機密スキルの audit 記録前に同意ゲートを検証する。
+    # SKILL.md の Step -1 をスキップした skill も、最初の file_read を記録
+    # しようとした時点でここに引っかかり止まる。
+    consent_err = _check_consent_for_confidential(args.skill)
+    if consent_err:
+        print(
+            json.dumps(
+                {
+                    "error": f"{args.skill} は機密スキルだが同意が未取得: {consent_err}",
+                    "code": "consent_required",
+                    "hint": "`/consent` で事務所管理者パスフレーズの設定 + 同意記録を完了してから再実行してほしい。",
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
+        )
+        return 5
+
     # v3.0.0: workspace resolution (matter_id deprecated, ignored if passed).
-    # `config.audit_enabled=false` で完全無効化可能。
+    # v3.3.0: 監査無効化は **本番では禁じる**。`config.audit_enabled=false` を
+    # 尊重するのは `CLAUDE_BENGO_ALLOW_DISABLE_AUDIT=1` が環境変数に設定されて
+    # いる時のみ（テスト・デバッグ用途）。それ以外では警告を出して強制的に
+    # 記録を続行する。これにより事務所運用中の「とりあえず audit off」ができない。
     ws_mod = _load_workspace_module()
     cfg = ws_mod.load_config()
-    if str(cfg.get("audit_enabled", "true")).lower() in ("false", "0", "no"):
+    disabled_by_cfg = str(cfg.get("audit_enabled", "true")).lower() in ("false", "0", "no")
+    allow_disable = os.environ.get("CLAUDE_BENGO_ALLOW_DISABLE_AUDIT") == "1"
+    if disabled_by_cfg:
+        if allow_disable:
+            print(
+                json.dumps(
+                    {"info": "audit disabled by config.audit_enabled=false (ALLOW_DISABLE_AUDIT=1)"},
+                    ensure_ascii=False,
+                )
+            )
+            return 0
+        # 本番では尊重しない。stderr に警告を出して続行する。
         print(
-            json.dumps({"info": "audit disabled by config.audit_enabled=false"}, ensure_ascii=False)
+            json.dumps(
+                {
+                    "warning": "audit_enabled=false は本番では尊重しない。"
+                    "テスト環境では CLAUDE_BENGO_ALLOW_DISABLE_AUDIT=1 を併設してほしい。"
+                    "このイベントは通常どおり記録を続行する。"
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
         )
-        return 0
 
     path = _audit_path()
 
-    # センチネル（/dev/null 相当）の場合は短絡して成功扱いで戻る。
+    # センチネル（/dev/null 相当）の本番扱い（v3.3.0-iter1〜）:
+    # 以前は無条件に短絡して成功扱いだった。これは
+    # `CLAUDE_BENGO_AUDIT_PATH=/dev/null` による audit 完全バイパスを許し、
+    # 弁護士事務所の compliance 観点で重大な穴だった。
+    # 現在は `CLAUDE_BENGO_ALLOW_DISABLE_AUDIT=1` が併設されている場合のみ
+    # sentinel を尊重する（テスト・デバッグ専用）。本番ではワークスペース既定
+    # パスに差し戻す。
     if _is_sentinel(path):
-        print(json.dumps({"info": f"audit disabled (path={path})"}, ensure_ascii=False))
-        return 0
+        if allow_disable:
+            print(json.dumps({"info": f"audit disabled (path={path})"}, ensure_ascii=False))
+            return 0
+        # 警告を出して既定パスにフォールバック
+        print(
+            json.dumps(
+                {
+                    "warning": f"CLAUDE_BENGO_AUDIT_PATH={path} は本番では無視する。"
+                    "既定の workspace 内パスに記録を続行する。テスト用途であれば "
+                    "CLAUDE_BENGO_ALLOW_DISABLE_AUDIT=1 を併設してほしい。"
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
+        )
+        # 環境変数を一時的に剥がして既定に差し戻す（同一プロセス内のこのコマンドのみ）
+        os.environ.pop("CLAUDE_BENGO_AUDIT_PATH", None)
+        path = _audit_path()
 
     # workspace 未初期化ならこの時点で silently 作る（既に CWD が workspace
     # でなければ walk-up で見つからない → CWD に新規作成）
@@ -1788,27 +1911,147 @@ def _self_test() -> int:
             f"rc={proc.returncode}",
         )
 
-        # 14. audit_enabled=false で無効化
+        # 14. audit_enabled=false は本番では尊重されない（v3.3.0〜）
+        # ALLOW_DISABLE_AUDIT=1 を併設した場合のみ無効化される
         cfg_path = workspace_root_a / ".claude-bengo" / "config.json"
         cfg_path.write_text(json.dumps({"audit_enabled": False}), encoding="utf-8")
-        before = alpha_ws_audit.stat().st_size
-        rc = subprocess.call(
+
+        # (a) 既定動作: 無効化無視、記録は継続
+        before_a = alpha_ws_audit.stat().st_size
+        rc_a = subprocess.call(
             [
                 sys.executable, SELF_PATH, "record",
-                "--skill", "selftest", "--event", "file_read", "--note", "should-skip",
+                "--skill", "selftest", "--event", "file_read", "--note", "should-still-log",
             ],
             env=env_w,
             cwd=str(workspace_root_a),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        after = alpha_ws_audit.stat().st_size
+        after_a = alpha_ws_audit.stat().st_size
         add(
-            "14. audit_enabled=false disables logging",
-            rc == 0 and after == before,
-            f"grew={after - before}",
+            "14a. audit_enabled=false ignored in production (record continues)",
+            rc_a == 0 and after_a > before_a,
+            f"grew={after_a - before_a}",
+        )
+
+        # (b) ALLOW_DISABLE_AUDIT=1 の時だけ無効化される（テスト用）
+        env_disable = dict(env_w, CLAUDE_BENGO_ALLOW_DISABLE_AUDIT="1")
+        before_b = alpha_ws_audit.stat().st_size
+        rc_b = subprocess.call(
+            [
+                sys.executable, SELF_PATH, "record",
+                "--skill", "selftest", "--event", "file_read", "--note", "should-skip",
+            ],
+            env=env_disable,
+            cwd=str(workspace_root_a),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        after_b = alpha_ws_audit.stat().st_size
+        add(
+            "14b. ALLOW_DISABLE_AUDIT=1 honors audit_enabled=false",
+            rc_b == 0 and after_b == before_b,
+            f"grew={after_b - before_b}",
         )
         cfg_path.unlink()  # clean up for subsequent tests
+
+        # 15. sentinel /dev/null is NOT honored in production (v3.3.0-iter1)
+        # CLAUDE_BENGO_AUDIT_PATH=/dev/null without ALLOW_DISABLE_AUDIT should
+        # fall back to workspace default and still record.
+        env_sent_prod = dict(env_w, CLAUDE_BENGO_AUDIT_PATH="/dev/null")
+        before_s = alpha_ws_audit.stat().st_size
+        rc_s = subprocess.call(
+            [
+                sys.executable, SELF_PATH, "record",
+                "--skill", "selftest", "--event", "file_read", "--note", "sentinel-prod",
+            ],
+            env=env_sent_prod,
+            cwd=str(workspace_root_a),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        after_s = alpha_ws_audit.stat().st_size
+        add(
+            "15. sentinel /dev/null IGNORED in production (record continues)",
+            rc_s == 0 and after_s > before_s,
+            f"grew={after_s - before_s}",
+        )
+
+        # 16. sentinel IS honored when ALLOW_DISABLE_AUDIT=1 (test mode)
+        env_sent_test = dict(env_w, CLAUDE_BENGO_AUDIT_PATH="/dev/null", CLAUDE_BENGO_ALLOW_DISABLE_AUDIT="1")
+        before_t = alpha_ws_audit.stat().st_size
+        rc_t = subprocess.call(
+            [
+                sys.executable, SELF_PATH, "record",
+                "--skill", "selftest", "--event", "file_read", "--note", "sentinel-test",
+            ],
+            env=env_sent_test,
+            cwd=str(workspace_root_a),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        after_t = alpha_ws_audit.stat().st_size
+        add(
+            "16. sentinel /dev/null honored when ALLOW_DISABLE_AUDIT=1",
+            rc_t == 0 and after_t == before_t,
+            f"grew={after_t - before_t}",
+        )
+
+        # 17. confidential skill audit record is blocked without consent (v3.3.0-iter1)
+        # env_w has CLAUDE_BENGO_ROOT pointing to a tempdir without global.json consent
+        proc = subprocess.run(
+            [
+                sys.executable, SELF_PATH, "record",
+                "--skill", "template-fill", "--event", "file_read",
+                "--file", "test.pdf",
+            ],
+            env=env_w,
+            cwd=str(workspace_root_a),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        add(
+            "17. confidential skill without consent → exit 5",
+            proc.returncode == 5 and b"consent_required" in proc.stderr,
+            f"rc={proc.returncode}, stderr_has_flag={b'consent_required' in proc.stderr}",
+        )
+
+        # 18. bypass env lets confidential skill log without consent (for testing)
+        env_bypass = dict(env_w, CLAUDE_BENGO_ALLOW_NO_CONSENT="1")
+        proc2 = subprocess.run(
+            [
+                sys.executable, SELF_PATH, "record",
+                "--skill", "template-fill", "--event", "file_read",
+                "--file", "test.pdf",
+            ],
+            env=env_bypass,
+            cwd=str(workspace_root_a),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        add(
+            "18. ALLOW_NO_CONSENT=1 bypass works for tests",
+            proc2.returncode == 0,
+            f"rc={proc2.returncode}",
+        )
+
+        # 19. non-confidential skill (e.g., inheritance-calc) is NOT gated
+        proc3 = subprocess.run(
+            [
+                sys.executable, SELF_PATH, "record",
+                "--skill", "inheritance-calc", "--event", "calc_run",
+            ],
+            env=env_w,
+            cwd=str(workspace_root_a),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        add(
+            "19. calc skill audit continues without consent (correct)",
+            proc3.returncode == 0,
+            f"rc={proc3.returncode}",
+        )
 
 
     finally:

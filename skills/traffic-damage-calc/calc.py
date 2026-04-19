@@ -712,7 +712,31 @@ def _cmd_calc(args: argparse.Namespace) -> int:
         _print_pretty(result)
     else:
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    _emit_footer()
     return 0
+
+
+def _emit_footer() -> None:
+    """v3.3.0-iter3〜: §72 disclaimer を stderr に JSON で emit する。"""
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "_lib"))
+    try:
+        from calc_footer import emit_footer
+        emit_footer(
+            skill="traffic-damage-calc",
+            statute="赤い本 2024 年版（民事交通訴訟における損害賠償額算定基準）",
+            caveats=[
+                "損益相殺（社保給付・労災給付・自賠責既払等）",
+                "物損（車両損害・代車・評価損）",
+                "過失相殺の具体適用（判タ38号の類型判定）",
+                "任意保険会社基準・自賠責基準との差額調整",
+                "将来介護費・将来治療費の係数選択",
+                "本計算は supported estimate であり、保険会社提示額・和解額・判決額とは乖離する可能性が高い",
+            ],
+        )
+    except ImportError:
+        pass
 
 
 def _print_pretty(result: dict) -> None:

@@ -345,7 +345,30 @@ def _cmd_calc(args: argparse.Namespace) -> int:
         _print_pretty(result)
     else:
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    _emit_footer()
     return 0
+
+
+def _emit_footer() -> None:
+    """v3.3.0-iter3〜: §72 disclaimer を stderr に JSON で emit する。"""
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "_lib"))
+    try:
+        from calc_footer import emit_footer
+        emit_footer(
+            skill="debt-recalc",
+            statute="利息制限法 §1（上限利率）",
+            caveats=[
+                "取引履歴の完全性（業者からの開示請求で欠損が無いか）",
+                "取引の一連性（基本契約の同一性、中断期間の評価）",
+                "業者の悪意立証可能性（最判平成 16 年 2 月 20 日）",
+                "時効管理（最終取引から 10 年、最判平成 21 年 1 月 22 日）",
+                "みなし弁済（貸金業法旧 43 条）の非該当性",
+            ],
+        )
+    except ImportError:
+        pass
 
 
 def _print_pretty(result: dict) -> None:

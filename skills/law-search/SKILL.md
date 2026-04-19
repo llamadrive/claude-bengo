@@ -189,6 +189,37 @@ Bash: python3 skills/law-search/search.py fetch-article --law-id 129AC0000000089
 - `references/egov-api-guide.md` のマッピングから部分一致で候補を提示する
 - 例: "保護" → 個人情報保護法、消費者契約法、労働者災害補償保険法、...
 
+### Step 3.5: 出力フッター（必須、v3.3.0-iter3〜 code-emitted）
+
+`search.py fetch-article` は stdout に XML を書くのと同時に、**stderr に
+`{"law_footer": {...}}` の JSON を emit する**（v3.3.0-iter3〜 search.py 側で
+強制）。これにより prompt だけに依存せずメタデータが必ず用意される。
+
+SKILL はこの stderr JSON をそのまま読み、条文表示の直後に以下の体裁で
+**要約・省略せずに** ユーザーへ転記する:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+出典: {law_footer.source}
+参照日: {law_footer.retrieved_at}
+法令 ID: {law_footer.law_id} / 条文: {law_footer.article}
+キャッシュ: {law_footer.cache_status}
+
+⚠ {law_footer.warning}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+`retrieved_at` はキャッシュ再利用時も「本セッションで参照した時刻」として
+記録される（court filing で引用する際、どの時点の法令を参照したかの証跡）。
+
+Bash 呼び出しで stderr を捕まえる例:
+
+```bash
+STDOUT=$(python3 skills/law-search/search.py fetch-article \
+  --law-id 129AC0000000089 --article 709 2>/tmp/law-meta.json)
+# /tmp/law-meta.json に law_footer JSON が書かれる（最終行）
+```
+
 ### Step 4: 他コマンドとの連携
 
 取得した条文は会話コンテキストに残る。以下のコマンドで活用可能:

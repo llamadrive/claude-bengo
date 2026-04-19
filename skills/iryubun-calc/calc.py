@@ -291,7 +291,29 @@ def _cmd_calc(args: argparse.Namespace) -> int:
         _print_pretty(result)
     else:
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    _emit_footer()
     return 0
+
+
+def _emit_footer() -> None:
+    """v3.3.0-iter3〜: §72 disclaimer を stderr に JSON で emit する。"""
+    import sys as _sys
+    from pathlib import Path as _P
+    _sys.path.insert(0, str(_P(__file__).resolve().parent.parent / "_lib"))
+    try:
+        from calc_footer import emit_footer
+        emit_footer(
+            skill="iryubun-calc",
+            statute="民法 §1042 以下（遺留分侵害額請求）",
+            caveats=[
+                "基礎財産評価（不動産・株式・生前贈与の時価判断）",
+                "1年以内贈与・特別受益の算入範囲（民法 §1044）",
+                "時効（民法 §1048 — 1年/10年）の起算点",
+                "相続人の範囲と個別的遺留分率",
+            ],
+        )
+    except ImportError:
+        pass
 
 
 def _print_pretty(result: dict) -> None:

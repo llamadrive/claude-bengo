@@ -90,6 +90,29 @@ GLOBAL_CONFIG_FILE = GLOBAL_ROOT / "global.json"
 # ---------------------------------------------------------------------------
 
 
+def _is_under(path: Path, ancestor: Path) -> bool:
+    """`path` が `ancestor` 配下（または `ancestor` 自身）かを返す。両方 resolve 済み前提。"""
+    try:
+        path.relative_to(ancestor)
+        return True
+    except ValueError:
+        return False
+
+
+def _global_root_resolved() -> Path:
+    return GLOBAL_ROOT.resolve() if GLOBAL_ROOT.exists() else GLOBAL_ROOT.absolute()
+
+
+class WorkspaceUnderGlobalError(RuntimeError):
+    """CWD が `~/.claude-bengo/` 配下にある場合に投げる。
+
+    グローバルストアは予約領域のため、その下を案件フォルダとして初期化すると
+    `~/.claude-bengo/templates/.claude-bengo/` のようなネストが発生し、全案件の
+    監査ログが混ざる・グローバルテンプレートが誤って上書きされる等の重大な
+    混乱を招く。呼出側は `cd` してから再実行するよう案内すべき。
+    """
+
+
 def find_workspace_root(start: Optional[Path] = None) -> Optional[Path]:
     """CWD（または `start`）から親ディレクトリを辿り、`.claude-bengo/` を
     含む最初のディレクトリを返す。見つからなければ None。
@@ -98,17 +121,19 @@ def find_workspace_root(start: Optional[Path] = None) -> Optional[Path]:
     という名前だった場合は親を優先する（混乱を避ける）。
 
     重要: `~/.claude-bengo/` はグローバル設定用ディレクトリとして予約されている
-    ため、`$HOME` を workspace root として検出しない。そうしないと弁護士の
-    ホーム直下で機密スキルを実行するたびに「ホーム全体が案件フォルダ」扱い
-    になり、全クライアントの監査ログが一つに混ざってしまう。
+    ため、`$HOME` または `~/.claude-bengo/` 配下を workspace root として検出しない。
+    そうしないと弁護士のホーム直下で機密スキルを実行するたびに「ホーム全体が
+    案件フォルダ」扱いになり、全クライアントの監査ログが一つに混ざってしまう。
     """
-    global_root_resolved = GLOBAL_ROOT.resolve() if GLOBAL_ROOT.exists() else GLOBAL_ROOT.absolute()
+    global_root = _global_root_resolved()
     p = (start or Path.cwd()).resolve()
     while True:
         candidate = p / WORKSPACE_DIRNAME
-        # GLOBAL_ROOT（~/.claude-bengo/）が walk-up にヒットしても workspace 扱い
-        # しない。`$HOME` を case folder にしないための守護。
-        if candidate.is_dir() and candidate != global_root_resolved:
+        # GLOBAL_ROOT 自身およびその配下のディレクトリは workspace として扱わない。
+        if _is_under(p, global_root):
+            # これ以上の walk-up は意味がない（global_root の親は $HOME で、これも予約領域）
+            return None
+        if candidate.is_dir() and candidate != global_root:
             return p
         parent = p.parent
         if parent == p:
@@ -140,8 +165,184 @@ def audit_path(start: Optional[Path] = None) -> Path:
 
 
 def templates_dir(start: Optional[Path] = None) -> Path:
-    """テンプレートディレクトリ。"""
+    """案件スコープのテンプレートディレクトリ（`<workspace>/.claude-bengo/templates/`）。"""
     return workspace_dir(start) / TEMPLATES_SUBDIR
+
+
+def global_templates_dir() -> Path:
+    """事務所グローバルのテンプレートディレクトリ（`~/.claude-bengo/templates/`）。
+
+    全案件で共有する firm-wide 書式（債権者一覧表・示談書・遺産目録等）を置く。
+    `/template-create --scope global` および `/template-install` のデフォルト保存先。
+    """
+    return GLOBAL_ROOT / TEMPLATES_SUBDIR
+
+
+def ensure_global_templates_dir() -> Path:
+    """グローバルテンプレートディレクトリを 0o700 で冪等に作成して返す。"""
+    d = global_templates_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    _chmod_owner_only(GLOBAL_ROOT)
+    _chmod_owner_only(d)
+    return d
+
+
+def outputs_dir(start: Optional[Path] = None) -> Path:
+    """成果物の出力ディレクトリ（`<workspace>/outputs/`）。
+
+    template-fill 等のフィルド済 XLSX はここに置く。workspace 直下（`.claude-bengo/`
+    と同階層）なのでエクスプローラ/Finder で lawyer が即座に見つけられる。
+    """
+    return resolve_workspace(start) / "outputs"
+
+
+def ensure_outputs_dir(start: Optional[Path] = None) -> Path:
+    d = outputs_dir(start)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+# ---------------------------------------------------------------------------
+# 監査 HMAC 鍵（v3.3.0〜、既定で on）
+# ---------------------------------------------------------------------------
+
+
+AUDIT_HMAC_KEY_FIELD = "audit_hmac_key_hex"
+
+
+def ensure_audit_hmac_key() -> str:
+    """グローバル設定に HMAC 鍵があれば返し、無ければ生成して保存する。
+
+    鍵は `secrets.token_hex(32)`（256 bit）で生成し、`~/.claude-bengo/global.json`
+    に保存される。ファイルは 0600（ユーザーのみ）で書かれる。これにより
+    audit.py が tamper-proof HMAC を**既定で有効** にできる。
+
+    既存鍵がある場合はそれをそのまま返す（ローテーション運用は現状未対応）。
+    """
+    import secrets as _secrets
+    cfg = load_global_config()
+    key = cfg.get(AUDIT_HMAC_KEY_FIELD)
+    if isinstance(key, str) and len(key) >= 32:
+        return key
+    key = _secrets.token_hex(32)
+    cfg[AUDIT_HMAC_KEY_FIELD] = key
+    save_global_config(cfg)
+    return key
+
+
+def get_audit_hmac_key() -> Optional[str]:
+    """保存済みの HMAC 鍵を返す（無ければ None。生成はしない）。"""
+    cfg = load_global_config()
+    key = cfg.get(AUDIT_HMAC_KEY_FIELD)
+    if isinstance(key, str) and len(key) >= 32:
+        return key
+    return None
+
+
+def allocate_output_path(
+    template_id: str,
+    start: Optional[Path] = None,
+    *,
+    suffix: str = "_filled",
+    ext: str = ".xlsx",
+    now: Optional[_dt.datetime] = None,
+) -> Path:
+    """衝突しない成果物パスを 1 つ確保して返す。
+
+    ベース: `{outputs_dir}/{template_id}{suffix}_{YYYYMMDD_HHMMSS}{ext}`
+    既存と衝突した場合は `_2` `_3` ... を付与する（同じ秒内に複数回呼んでも上書きしない）。
+
+    呼出側はこの CLI（または関数）で一度パスを確定したら、その後の copy_file は
+    `--overwrite` なしでも衝突しない。
+    """
+    d = ensure_outputs_dir(start)
+    t = now or _dt.datetime.now()
+    ts = t.strftime("%Y%m%d_%H%M%S")
+    base = f"{template_id}{suffix}_{ts}"
+    cand = d / f"{base}{ext}"
+    n = 2
+    while cand.exists():
+        cand = d / f"{base}_{n}{ext}"
+        n += 1
+        if n > 999:  # 暴走防止
+            raise RuntimeError(f"出力パス確保で 999 回衝突（何か異常）: {base}")
+    return cand
+
+
+def resolve_template(template_id: str, start: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """`{id}.yaml` + `{id}.xlsx` を case → global の順で探索する。
+
+    precedence: case-local が同 ID の global を shadow する（案件専用の
+    カスタマイズ版を置ける）。見つからなければ None。
+
+    戻り値: {id, scope, yaml_path, xlsx_path} or None
+    """
+    if not template_id:
+        return None
+    for scope, tdir in (
+        ("case", templates_dir(start)),
+        ("global", global_templates_dir()),
+    ):
+        yaml_p = tdir / f"{template_id}.yaml"
+        xlsx_p = tdir / f"{template_id}.xlsx"
+        if yaml_p.exists() and xlsx_p.exists():
+            return {
+                "id": template_id,
+                "scope": scope,
+                "yaml_path": str(yaml_p),
+                "xlsx_path": str(xlsx_p),
+                "templates_dir": str(tdir),
+            }
+    return None
+
+
+def list_all_templates(start: Optional[Path] = None) -> Dict[str, List[Dict[str, Any]]]:
+    """case + global の全テンプレートを列挙する。
+
+    戻り値: {"case": [{id, yaml_path, xlsx_path, broken, missing, shadowed_global}, ...],
+             "global": [...]}
+
+    - 整合なエントリ: yaml と xlsx 両方存在 → `broken: False`
+    - 破損エントリ: yaml または xlsx のいずれか欠落 → `broken: True`
+      `missing` に欠落しているファイルの種別（"yaml" または "xlsx"）が入る。
+      `resolve_template()` はスキップするが、**/template-list は必ず警告付きで
+      表示する**（半端な状態を silently 隠さないため）。
+    """
+    def _scan(tdir: Path) -> List[Dict[str, Any]]:
+        if not tdir.exists():
+            return []
+        # yaml, xlsx の stem を集める（_schema.yaml は除外）
+        yaml_stems = {p.stem for p in tdir.glob("*.yaml") if p.name != "_schema.yaml"}
+        xlsx_stems = {p.stem for p in tdir.glob("*.xlsx")}
+        all_stems = sorted(yaml_stems | xlsx_stems)
+        out: List[Dict[str, Any]] = []
+        for stem in all_stems:
+            y = tdir / f"{stem}.yaml"
+            x = tdir / f"{stem}.xlsx"
+            y_exists = y.exists()
+            x_exists = x.exists()
+            entry: Dict[str, Any] = {
+                "id": stem,
+                "yaml_path": str(y) if y_exists else None,
+                "xlsx_path": str(x) if x_exists else None,
+                "broken": not (y_exists and x_exists),
+            }
+            if not y_exists:
+                entry["missing"] = "yaml"
+            elif not x_exists:
+                entry["missing"] = "xlsx"
+            out.append(entry)
+        return out
+
+    case_items = _scan(templates_dir(start))
+    global_items = _scan(global_templates_dir())
+    case_ids = {e["id"] for e in case_items}
+    global_ids = {e["id"] for e in global_items}
+    for e in case_items:
+        e["shadowed_global"] = e["id"] in global_ids
+    for e in global_items:
+        e["shadowed"] = e["id"] in case_ids
+    return {"case": case_items, "global": global_items}
 
 
 def metadata_path(start: Optional[Path] = None) -> Path:
@@ -177,14 +378,31 @@ def ensure_workspace(
     既に `.claude-bengo/` が存在すれば何もしない。新規作成時は metadata.json に
     `opened_at` と（指定されていれば）`title` を書く。title 未指定時は CWD の
     basename を既定にする。
+
+    **ガード:** `~/.claude-bengo/` 配下（および `~/.claude-bengo/` 自身）では
+    初期化を拒否する。グローバルストアは予約領域であり、その下を案件扱いすると
+    グローバルテンプレートや global.json を巻き込んだ混線が起こる。
     """
     root = (start or Path.cwd()).resolve()
+    global_root = _global_root_resolved()
+    if _is_under(root, global_root):
+        raise WorkspaceUnderGlobalError(
+            f"`~/.claude-bengo/` 配下 ({root}) では案件フォルダを初期化できない。"
+            "グローバルストアは予約領域のため。別のディレクトリに cd して再実行してほしい。"
+        )
     wd = root / WORKSPACE_DIRNAME
     is_new = not wd.exists()
     wd.mkdir(parents=True, exist_ok=True)
     _chmod_owner_only(wd)
     (wd / TEMPLATES_SUBDIR).mkdir(exist_ok=True)
     _chmod_owner_only(wd / TEMPLATES_SUBDIR)
+
+    # v3.3.0〜: グローバル HMAC 鍵を初回に生成しておく（audit が既定で tamper-proof）
+    try:
+        ensure_audit_hmac_key()
+    except OSError:
+        # 書けなくても workspace 初期化自体は続ける（audit は後で警告）
+        pass
 
     meta_file = wd / METADATA_FILENAME
     if is_new or not meta_file.exists():
@@ -294,10 +512,19 @@ def audit_stats(start: Optional[Path] = None) -> Dict[str, int]:
 
 
 def templates_list(start: Optional[Path] = None) -> List[str]:
+    """案件スコープのみのテンプレート ID 一覧（後方互換）。"""
     tdir = templates_dir(start)
     if not tdir.exists():
         return []
-    return sorted(p.stem for p in tdir.glob("*.yaml"))
+    return sorted(p.stem for p in tdir.glob("*.yaml") if p.name != "_schema.yaml")
+
+
+def global_templates_list() -> List[str]:
+    """グローバルスコープのテンプレート ID 一覧。"""
+    d = global_templates_dir()
+    if not d.exists():
+        return []
+    return sorted(p.stem for p in d.glob("*.yaml") if p.name != "_schema.yaml")
 
 
 # ---------------------------------------------------------------------------
@@ -365,6 +592,57 @@ def _cmd_info(args: argparse.Namespace) -> int:
         "templates": templates_list(start),
     }
     print(json.dumps(info, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _cmd_templates(args: argparse.Namespace) -> int:
+    """case + global の両スコープのテンプレートを JSON で返す。"""
+    start = Path(args.cwd).expanduser() if args.cwd else None
+    listing = list_all_templates(start)
+    out = {
+        "workspace_root": str(resolve_workspace(start)),
+        "case_templates_dir": str(templates_dir(start)),
+        "global_templates_dir": str(global_templates_dir()),
+        "case": listing["case"],
+        "global": listing["global"],
+    }
+    print(json.dumps(out, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _cmd_resolve_template(args: argparse.Namespace) -> int:
+    """特定 ID のテンプレートを case → global の順で解決する。"""
+    start = Path(args.cwd).expanduser() if args.cwd else None
+    found = resolve_template(args.id, start)
+    if not found:
+        print(json.dumps({"error": f"テンプレート '{args.id}' が見つからない", "id": args.id}, ensure_ascii=False), file=sys.stderr)
+        return 1
+    print(json.dumps(found, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _cmd_outputs(args: argparse.Namespace) -> int:
+    """成果物出力ディレクトリを作成してパスを返す。"""
+    start = Path(args.cwd).expanduser() if args.cwd else None
+    d = ensure_outputs_dir(start)
+    print(json.dumps({"outputs_dir": str(d)}, ensure_ascii=False))
+    return 0
+
+
+def _cmd_allocate_output(args: argparse.Namespace) -> int:
+    """テンプレート成果物の衝突しない出力パスを確保する。"""
+    start = Path(args.cwd).expanduser() if args.cwd else None
+    try:
+        path = allocate_output_path(
+            args.id,
+            start,
+            suffix=args.suffix,
+            ext=args.ext,
+        )
+    except RuntimeError as e:
+        print(json.dumps({"error": str(e)}, ensure_ascii=False), file=sys.stderr)
+        return 1
+    print(json.dumps({"path": str(path), "filename": path.name}, ensure_ascii=False))
     return 0
 
 
@@ -540,6 +818,73 @@ def _self_test() -> int:
             or find_workspace_root(Path.home()) != Path.home(),
         )
 
+        # 11b. allocate_output_path: 同じ秒内の 2 回呼び出しで衝突しない
+        fixed_ts = _dt.datetime(2026, 4, 19, 22, 0, 0)
+        p1 = allocate_output_path("demo", root, now=fixed_ts)
+        p1.write_bytes(b"dummy")
+        p2 = allocate_output_path("demo", root, now=fixed_ts)
+        check(
+            "11b. allocate_output_path avoids collision in same second",
+            p1 != p2 and not p2.exists(),
+            f"p1={p1.name} p2={p2.name}",
+        )
+        check(
+            "11c. collision suffix uses _2",
+            p2.name.endswith("_2.xlsx"),
+            f"p2={p2.name}",
+        )
+
+        # 11d. list_all_templates surfaces yaml-only (broken) entries
+        tdir = root / WORKSPACE_DIRNAME / TEMPLATES_SUBDIR
+        tdir.mkdir(parents=True, exist_ok=True)
+        (tdir / "good.yaml").write_text("id: good\nfields: []\n", encoding="utf-8")
+        (tdir / "good.xlsx").write_bytes(b"x")
+        (tdir / "half.yaml").write_text("id: half\nfields: []\n", encoding="utf-8")
+        # half.xlsx intentionally missing
+        listing = list_all_templates(root)
+        case_ids = {e["id"]: e for e in listing["case"]}
+        check(
+            "11d. broken yaml-only entry listed",
+            "half" in case_ids and case_ids["half"]["broken"] is True,
+            f"case_ids={list(case_ids)}",
+        )
+        check(
+            "11e. broken entry reports missing=xlsx",
+            case_ids.get("half", {}).get("missing") == "xlsx",
+        )
+        check(
+            "11f. good entry not broken",
+            case_ids.get("good", {}).get("broken") is False,
+        )
+
+        # 11g. ensure_workspace refuses to init under GLOBAL_ROOT
+        # monkey-patch GLOBAL_ROOT to a tempdir-based path so the test runs hermetically
+        import sys as _sys
+        mod = _sys.modules[__name__]
+        orig_gr = mod.GLOBAL_ROOT
+        fake_gr = (Path(td) / "fake-home" / ".claude-bengo")
+        fake_gr.mkdir(parents=True, exist_ok=True)
+        mod.GLOBAL_ROOT = fake_gr
+        try:
+            under_global = fake_gr / "templates"
+            under_global.mkdir(exist_ok=True)
+            raised = False
+            try:
+                ensure_workspace(under_global)
+            except WorkspaceUnderGlobalError:
+                raised = True
+            check(
+                "11g. ensure_workspace refuses init under GLOBAL_ROOT",
+                raised,
+            )
+            # find_workspace_root from under GLOBAL_ROOT returns None
+            check(
+                "11h. find_workspace_root returns None under GLOBAL_ROOT",
+                find_workspace_root(under_global) is None,
+            )
+        finally:
+            mod.GLOBAL_ROOT = orig_gr
+
         # 12. From a subdir of $HOME with no nested workspace, also None.
         # (We can only verify this if the user actually has no case folders
         # above `tempfile.gettempdir()` in their tree. On macOS
@@ -572,6 +917,29 @@ def main() -> int:
     p_info = sub.add_parser("info", help="Show workspace summary")
     p_info.add_argument("--cwd", help="Path to inspect")
     p_info.set_defaults(func=_cmd_info)
+
+    p_tpl = sub.add_parser("templates", help="List templates in case + global scope as JSON")
+    p_tpl.add_argument("--cwd", help="Path (default CWD)")
+    p_tpl.set_defaults(func=_cmd_templates)
+
+    p_rt = sub.add_parser("resolve-template", help="Resolve a template by id (case-first, then global)")
+    p_rt.add_argument("id")
+    p_rt.add_argument("--cwd", help="Path (default CWD)")
+    p_rt.set_defaults(func=_cmd_resolve_template)
+
+    p_out = sub.add_parser("outputs", help="Ensure and print the outputs directory path")
+    p_out.add_argument("--cwd", help="Path (default CWD)")
+    p_out.set_defaults(func=_cmd_outputs)
+
+    p_alloc = sub.add_parser(
+        "allocate-output",
+        help="Allocate a collision-free output path for a filled template",
+    )
+    p_alloc.add_argument("id", help="Template id")
+    p_alloc.add_argument("--cwd", help="Path (default CWD)")
+    p_alloc.add_argument("--suffix", default="_filled")
+    p_alloc.add_argument("--ext", default=".xlsx")
+    p_alloc.set_defaults(func=_cmd_allocate_output)
 
     p_cfg = sub.add_parser("config", help="Get/set configuration keys")
     cfg_sub = p_cfg.add_subparsers(dest="subcommand", required=True)

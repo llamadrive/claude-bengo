@@ -10,6 +10,17 @@ version: 1.0.0
 
 ## ワークフロー
 
+### Step -1: 同意ゲート（v3.3.0-iter2〜 機密スキルに格上げ）
+
+本 skill は遺産評価書・残高証明書等の client 書類を扱う可能性があるため、
+事務所管理者の同意が必要:
+
+```bash
+python3 skills/_lib/consent.py check
+```
+
+exit 非 0 なら skill を中断して `/consent` を案内する（未設定なら admin-setup → grant、設定済みなら grant のみ）。
+
 ### Step 0: workspace の解決
 
 機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
@@ -43,6 +54,30 @@ python3 skills/_lib/audit.py record --skill iryubun-calc --event calc_result --n
 ### Step 5: 結果の提示
 
 基礎財産・総体的遺留分（1/2 or 1/3）・個別的遺留分・請求者既受領分・侵害額の内訳を提示する。
+
+### Step 5.5: 必須出力フッター（v3.3.0-iter3〜 code-emitted 省略不可）
+
+**v3.3.0-iter3〜: footer は calc.py が stderr に JSON として emit する。**
+SKILL.md は fabricate しない — stderr の `calc_footer` をそのまま読んで表示する:
+
+```bash
+python3 skills/iryubun-calc/calc.py --json '<input>' 2>/tmp/calc-footer.json
+cat /tmp/calc-footer.json   # 末尾行に {"calc_footer": {...}} が付く
+```
+
+結果の直後に以下を**そのまま**表示する:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠ 本計算は民法 §1042 以下（遺留分侵害額請求）に基づく決定論的補助計算である。
+  弁護士法第72条に基づき、本ツールは法的助言を提供しない。
+  提出前に必ず弁護士自身が以下を検算してほしい:
+    • 基礎財産評価（不動産・株式・生前贈与の時価判断）
+    • 1年以内贈与・特別受益の算入範囲（民法 §1044）
+    • 時効（民法 §1048 — 1年/10年）の起算点
+    • 相続人の範囲と個別的遺留分率
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 ### Step 6: 時効の確認
 

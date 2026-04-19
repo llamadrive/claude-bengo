@@ -7,14 +7,26 @@ allowed-tools: Read, Bash(python3 skills/_lib/template_lib.py:*), Bash(python3 s
 
 $ARGUMENTS の指定方法:
 - 引数なし: 利用可能な同梱テンプレートを一覧表示する
-- テンプレート ID: `/template-install creditor-list` — 指定テンプレートをインストール
+- テンプレート ID: `/template-install creditor-list` — 指定テンプレートをインストール（既定: **この案件のみ**）
+- `--scope global` 付き: `/template-install creditor-list --scope global` — 事務所全体（firm-wide）にインストール
 - `--replace` 付き: `/template-install creditor-list --replace` — 既存を上書き
+
+## スコープの考え方（v3.3.0〜）
+
+既定は **case スコープ**（この案件フォルダのみ）。senior lawyer が無意識に
+firm-wide 配置して他案件と混線させる事故を避けるため、明示的に `--scope global`
+が指定されない限り global には置かない。
+
+firm 全体で使い回したい同梱書式（債権者一覧表・示談書等）は、
+`/template-install creditor-list --scope global` で 1 度だけ global 配置する。
+判断に迷ったら case に入れておき、後で `/template-promote` で昇格してよい。
 
 ## ワークフロー
 
-### Step 0: workspace の確認
+### Step 0: スコープの確認
 
-`template_lib.py install` が内部で `workspace.ensure_workspace()` を呼ぶため、CWD に `.claude-bengo/` がなければ自動作成する。意図しないフォルダでの初期化を避けるため、実行前に「このフォルダ（{cwd}）を案件フォルダとして使用する。よいか？」と 1 回確認する。
+デフォルトは `global`（事務所全体）。`--scope case` が指定されていれば case 側に入れる。
+どちらのスコープでもインストール先ディレクトリは自動作成される（workspace 未初期化でも可）。
 
 ### Step 1: 引数の解析
 
@@ -32,7 +44,7 @@ python3 skills/_lib/template_lib.py list
 ### Step 3: インストール
 
 ```bash
-python3 skills/_lib/template_lib.py install <bundled-id>
+python3 skills/_lib/template_lib.py install <bundled-id> [--scope global|case]
 ```
 
 戻り値 JSON の `yaml_dst` と `xlsx_dst` にコピーされる。`--replace` なしで既存と衝突した場合はエラー（exit 3）。上書きしたい場合はユーザーに確認し、承諾されれば `--replace` 付きで再実行する。
@@ -45,21 +57,33 @@ python3 skills/_lib/audit.py record --skill template-install --event file_write 
 
 ### Step 4: 完了案内
 
-インストール成功時、ユーザーに以下を案内する:
+インストール成功時、ユーザーに以下を案内する（scope に応じて文言を変える）:
 
+**scope=global の場合:**
 ```
-テンプレート '{title}' をこの案件フォルダにインストールした。
+テンプレート '{title}' を事務所グローバルにインストールした（全案件で使える）。
   YAML: {yaml_dst}
   XLSX: {xlsx_dst}
 
 使い方:
-  /template-list       — 現在の案件フォルダのテンプレート一覧
+  /template-list       — テンプレート一覧（事務所 + この案件）
+  /template-fill       — ソース文書からこのテンプレートにデータを入力
+```
+
+**scope=case の場合:**
+```
+テンプレート '{title}' をこの案件フォルダにインストールした（この案件限定）。
+  YAML: {yaml_dst}
+  XLSX: {xlsx_dst}
+
+使い方:
+  /template-list       — テンプレート一覧（事務所 + この案件）
   /template-fill       — ソース文書からこのテンプレートにデータを入力
 ```
 
 ## 利用可能な同梱テンプレート（v2.3.0 現在）
 
-**23 種類 × 9 カテゴリ** を同梱。日常的な SMB 法律事務所の業務を広くカバー。
+**31 種類 × 9 カテゴリ** を同梱（`templates/_bundled/` の実ディレクトリ数を信頼できる単一情報源とする）。日常的な SMB 法律事務所の業務を広くカバー。
 
 | ID | カテゴリ | タイトル |
 |---|---|---|

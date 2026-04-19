@@ -24,18 +24,18 @@ python3 skills/_lib/workspace.py config show
 workspace がまだ初期化されていない場合は CWD を workspace として silently
 初期化してから表示する。
 
-### 表示内容
+### 表示内容（v3.3.0〜）
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   監査ログ設定 — ~/cases/smith-v-jones
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  記録:            有効
+  記録:            有効（本番では無効化不可）
   記録先:          ./.claude-bengo/audit.jsonl (デフォルト)
   ファイル名記録:  無効（SHA-256 ハッシュのみ）
   フルパス記録:    無効
-  HMAC 署名:       無効（鍵未設定）
+  HMAC 署名:       有効（鍵は ~/.claude-bengo/global.json に自動生成済み）
   クラウド同期:    無効
 
   累計記録件数:    127
@@ -46,10 +46,12 @@ workspace がまだ初期化されていない場合は CWD を workspace とし
   何を変更する?
     1. 記録先を変更（他フォルダ・事務所共有ボリューム・S3 直書き等）
     2. ファイル名記録を有効化（平文ファイル名を記録）
-    3. HMAC 署名を有効化（改竄不可能化、鍵は事務所金庫保管）
+    3. HMAC 鍵をバックアップ（~/.claude-bengo/global.json → 事務所金庫）
     4. クラウド同期を有効化（claude-bengo-cloud へ送信）
-    5. 完全に無効化（非推奨）
     0. 表示のみ、何もしない
+
+  ※ 監査の完全無効化は本番運用では禁じられている。テスト用途のみ、
+    CLAUDE_BENGO_ALLOW_DISABLE_AUDIT=1 を環境変数に設定して実行する。
 ```
 
 ### 変更フロー
@@ -64,11 +66,15 @@ workspace がまだ初期化されていない場合は CWD を workspace とし
 - 明示的に yes → `workspace.py config set log_filenames true`
 - フルパスも欲しい場合は追加で `log_full_path true` を提示
 
-**3. HMAC 署名:**
-- 鍵生成方法を提示: `openssl rand -hex 32` で 64 文字 hex を作り、事務所金庫で
-  保管するよう案内
-- 環境変数 `CLAUDE_BENGO_AUDIT_HMAC_KEY` に設定する手順を表示
-- **鍵は rotate しない**（過去のログが検証不能になる）と強く注記
+**3. HMAC 鍵のバックアップ:**
+- v3.3.0 以降、HMAC 鍵は初回 `ensure_workspace()` で自動生成されるため、
+  以後ユーザー側の生成操作は不要。既定で on
+- 鍵の保存先: `~/.claude-bengo/global.json` の `audit_hmac_key_hex`（0600）
+- **重要:** この鍵が失われると過去ログの整合性検証が不能になる。事務所金庫で
+  バックアップ（印刷・USB・パスワードマネージャ等）することを推奨
+- 表示コマンド: `python3 -c 'import json,pathlib;
+    print(json.loads(pathlib.Path.home().joinpath(".claude-bengo/global.json").read_text())["audit_hmac_key_hex"])'`
+- **鍵は rotate しない**（過去のログが検証不能になる）
 
 **4. クラウド同期:**
 - `--global` スコープで設定することを推奨（事務所全体の cloud URL なので）
@@ -76,10 +82,11 @@ workspace がまだ初期化されていない場合は CWD を workspace とし
 - `workspace.py config set cloud_token <token> --global` も設定
 - 手動 ingest コマンドの例を表示
 
-**5. 完全無効化:**
-- 警告: 弁護士会対応の監査証跡がなくなる旨を明示
-- 2 段階確認
-- `workspace.py config set audit_enabled false`
+**5. 完全無効化（v3.3.0〜 本番では不可）:**
+- 本番運用では `audit_enabled=false` を設定しても尊重されない（record 継続）
+- テスト環境で一時的に無効化したい場合は環境変数
+  `CLAUDE_BENGO_ALLOW_DISABLE_AUDIT=1` を併設する必要がある
+- この挙動変更は弁護士法 §23 対応の監査証跡を「うっかり切る」事故を防ぐため
 
 ### グローバル vs case-level の使い分け
 

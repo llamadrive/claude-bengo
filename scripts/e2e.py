@@ -186,19 +186,35 @@ def scenario_workspace_flow(c: Case, sandbox: Path) -> None:
     else:
         c.ng("1.6 workspace info shows state", out)
 
-    # 7. config.audit_enabled=false disables logging
+    # 7. config.audit_enabled=false is IGNORED in production (v3.3.0-iter1)
+    # Honored only when CLAUDE_BENGO_ALLOW_DISABLE_AUDIT=1 is set.
     cfg = case_a / ".claude-bengo" / "config.json"
     cfg.write_text(json.dumps({"audit_enabled": False}), encoding="utf-8")
+
+    # 7a. production: disable is ignored, recording continues
     before = audit_a.stat().st_size
     rc, _, _ = run(
-        [PY, AUDIT, "record", "--skill", "e2e", "--event", "file_read", "--note", "skip"],
+        [PY, AUDIT, "record", "--skill", "e2e", "--event", "file_read", "--note", "should-still-log"],
         env=env, cwd=case_a,
     )
     after = audit_a.stat().st_size
-    if rc == 0 and after == before:
-        c.ok("1.7 audit_enabled=false disables logging", "")
+    if rc == 0 and after > before:
+        c.ok("1.7a audit_enabled=false ignored in prod (record continues)", "")
     else:
-        c.ng("1.7 audit_enabled=false disables logging", f"grew={after - before}")
+        c.ng("1.7a audit_enabled=false ignored in prod", f"grew={after - before}")
+
+    # 7b. test mode: ALLOW_DISABLE_AUDIT=1 honors disable
+    env_disable = {**env, "CLAUDE_BENGO_ALLOW_DISABLE_AUDIT": "1"}
+    before2 = audit_a.stat().st_size
+    rc2, _, _ = run(
+        [PY, AUDIT, "record", "--skill", "e2e", "--event", "file_read", "--note", "skip"],
+        env=env_disable, cwd=case_a,
+    )
+    after2 = audit_a.stat().st_size
+    if rc2 == 0 and after2 == before2:
+        c.ok("1.7b ALLOW_DISABLE_AUDIT=1 honors audit_enabled=false", "")
+    else:
+        c.ng("1.7b ALLOW_DISABLE_AUDIT=1 honors audit_enabled=false", f"grew={after2 - before2}")
     cfg.unlink()  # cleanup
 
 
@@ -631,7 +647,9 @@ def scenario_template_install(c: Case, sandbox: Path) -> None:
         [PY, TEMPLATE_LIB, "install", "creditor-list", "--replace"],
         env=env, cwd=case_dir,
     )
-    if rc == 0 and '"replaced": true' in out:
+    # v3.3.0-iter1: install_template returns "replaced" as string ("True"/"False"),
+    # not bool, because Dict[str, str] typing. Accept both for backward compat.
+    if rc == 0 and ('"replaced": "True"' in out or '"replaced": true' in out):
         c.ok("10a.5 --replace overwrites")
     else:
         c.ng("10a.5 --replace", f"rc={rc} out={out[:200]}")

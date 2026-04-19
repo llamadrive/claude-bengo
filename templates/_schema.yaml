@@ -23,6 +23,19 @@ fields:              # 入力フィールドのリスト
     type: string     # フィールドタイプ: text | number | date | textarea | select | table
     required: boolean # 必須フィールドか（true / false）
 
+    # --- マッピング補助（任意、推奨。v3.2.0〜） ---
+    #
+    # description と synonyms は、/template-fill がソース PDF から値を抽出する際に
+    # フィールドの意味を LLM へ伝えるためのヒント。label だけでは曖昧な場合に
+    # 抽出精度が向上する（例: 「氏名」だけでは原告/被告/債権者/債務者のどれか
+    # 分からない → description に「債務者の戸籍上の氏名」と書く）。
+    description: string   # 1-2 文の詳細説明（任意）
+    synonyms: [string, ...] # ソース文書で使われそうな別名・類義語（任意）
+                            # 例: ["債務者氏名", "借主", "お名前", "契約者名"]
+    example_value: string  # 記入例（任意。text/number/date のみ）
+                           # 例: "甲野太郎" / "1,000,000" / "令和5年3月1日"
+    # --- /マッピング補助 ---
+
     # --- 単一セルフィールド（type が table 以外の場合） ---
     position:          # セル位置（1-indexed）
       row: number      # 行番号（1から開始）
@@ -39,7 +52,9 @@ fields:              # 入力フィールドのリスト
       - id: string     # 列ID（英数字スネークケース）
         label: string  # 列名（日本語）
         type: string   # 列のデータ型: text | number | date
-        description: string # 列の説明（任意）
+        description: string   # 列の説明（任意）
+        synonyms: [string, ...] # ソース文書での別名（任意、v3.2.0〜）
+        example_value: string   # 記入例（任意、v3.2.0〜）
 
     # --- 選択フィールド（type が select の場合） ---
     options:           # 選択肢のリスト

@@ -10,7 +10,7 @@
     },
     "agent-format": {
       "command": "npx",
-      "args": ["-y", "@agent-format/mcp@0.1.7"]
+      "args": ["-y", "@agent-format/mcp@0.1.8"]
     }
   }
 }

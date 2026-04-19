@@ -2,6 +2,55 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.1.0] - 2026-04-19
+
+拡張家系図サポート。agent-format 側の SPEC § 4 改定に追従する minor release。
+尊属込みの多世代家系図（事案整理・兄弟姉妹相続・代襲・相続放棄後次順位移行）
+が初めて実用になった。
+
+### Added / Changed — Extended family-tree support
+
+- `.mcp.json`: `@agent-format/mcp` 0.1.7 → **0.1.8**（renderer 0.1.5 を同梱）
+- `skills/family-tree/SKILL.md` の .agent schema を `type: "inheritance-diagram"` →
+  `"family-graph"` に変更（旧 type は upstream で alias 継続）
+- Step 2.5 の「標準 / 拡張」選択を**データ選択**として再定義
+  - 標準書式（裁判所・法務局提出用）: persons に 被相続人・配偶者・子孫のみ含める。
+    `variant: "jp-court"` で Japanese 法定体裁（二重線・PDF ボタン等）を指定
+  - 拡張書式（事案整理）: persons に戸籍抽出された全員を含める。variant 省略
+  - 「書式の違い = データの違い」に整理。renderer 側のフラグではない
+- `references/koseki-extraction-guide.md` の「尊属込み家系図は今後追加予定」
+  表記を撤廃。SPEC § 4 の normative rule（renderer は data.persons の全員を
+  描画しなければならない、フィルタリング禁止）を反映
+
+### Rationale
+
+v3.0.x までは renderer が 被相続人 + 配偶者 + 子孫 のみを描画し、
+祖父母・兄弟姉妹・甥姪が .agent 内にあっても可視化されなかった。裁判所提出用
+としては正しい挙動だが、以下のケースで実用上困っていた:
+
+- 兄弟姉妹相続（民法 889）: 被相続人に子孫なし・尊属死亡 → 兄弟姉妹が相続人。
+  可視化には両親の上向き枝が必要
+- 代襲・再代襲（民法 887(2) / 889(2)）: 孫・曾孫への相続で上向き系統が scaffolding
+- 相続放棄後の次順位移行: 先順位全員が放棄 → 2 順位（尊属）→ 3 順位（兄弟姉妹）
+- 事案整理: 抜け落ち相続人の洗い出しに全家系の俯瞰が必要
+
+agent-format issue #2 （本プロジェクトで起票）で SPEC 改定が承認され、
+上流の renderer 0.1.5 / MCP 0.1.8 がフィルタリング廃止版として ship された。
+本リリースはその migration。
+
+### Upstream links
+
+- [knorq-ai/agent-format#2](https://github.com/knorq-ai/agent-format/issues/2) — original request
+- `@agent-format/renderer@0.1.5` / `@agent-format/jp-court@0.1.0` / `@agent-format/mcp@0.1.8`
+- SPEC § 4: 「A conforming renderer MUST render every item in `data` as authored...」
+
+### Migration notes
+
+既存の `.agent` ファイル（`type: "inheritance-diagram"`）は upstream の alias
+継続により引き続き動作する。新規 write からは `"family-graph"` を使う。
+既に事案整理用の拡張家系図が必要だった lawyer は、本リリース後の `/family-tree`
+実行で Step 2.5 (b) を選ぶと全員可視化される。
+
 ## [3.0.2] - 2026-04-19
 
 外部 adversarial code review で検出された v3.0.0 リファクタリングの取り残し

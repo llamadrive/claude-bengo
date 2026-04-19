@@ -241,15 +241,35 @@ def recalculate(payload: dict) -> dict:
         entry["accrued_interest_after"] = int(accrued_interest)
         ledger.append(entry)
 
-    # 過払金の利息計算（最終取引日時点まで）
+    # 過払金の利息計算（最終取引日 or options.filing_date まで）
     # 2020/04/01 境界で 5% → 3% に切替わる（改正民法 404 条）。個々の過払金発生日
-    # から最終日までの期間を境界で分割して累積する。
-    final_date = transactions[-1]["date"]
+    # から終点までの期間を境界で分割して累積する。
+    #
+    # F-024: 訴訟請求時の元本・利息を計算する場合、最終取引日ではなく「訴状提出日
+    # （filing_date）」まで利息を累積するのが実務。本計算器では options.filing_date
+    # が与えられていればそれを終点とする。未指定時は最終取引日（後方互換）。
+    options = payload.get("options") or {}
+    filing_date_str = options.get("filing_date")
+    if filing_date_str:
+        try:
+            terminal_date = _dt.date.fromisoformat(filing_date_str)
+        except ValueError:
+            raise ValueError(
+                f"options.filing_date は YYYY-MM-DD 形式（受信: {filing_date_str!r}）"
+            )
+        if terminal_date < transactions[-1]["date"]:
+            raise ValueError(
+                "options.filing_date は最終取引日以降である必要がある "
+                f"(filing={terminal_date}, last_tx={transactions[-1]['date']})"
+            )
+    else:
+        terminal_date = transactions[-1]["date"]
+    final_date = terminal_date  # 以降のレポート用
     overpayment_principal = sum(e["amount"] for e in overpayment_events)
     overpayment_interest = Fraction(0)
     for e in overpayment_events:
         overpayment_interest += _accrue_overpayment_interest(
-            e["date"], final_date, e["amount"]
+            e["date"], terminal_date, e["amount"]
         )
 
     remaining_principal = int(principal)
@@ -259,6 +279,8 @@ def recalculate(payload: dict) -> dict:
     result = {
         "summary": {
             "final_date": final_date.isoformat(),
+            "interest_terminal_date": terminal_date.isoformat(),
+            "filing_date_used": bool(filing_date_str),
             "remaining_principal": remaining_principal,
             "remaining_accrued_interest": remaining_interest,
             "remaining_debt_total": remaining_principal + remaining_interest,

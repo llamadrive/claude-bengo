@@ -85,7 +85,7 @@ class Workbook:
         col: int,
         value: Union[str, int, float, None],
         bold: bool = False,
-    ) -> None:
+    ) -> None:  # noqa: D401
         """1 セルに値を書き込む。None は空セル扱い（書かない）。
 
         バリデーション:
@@ -116,6 +116,23 @@ class Workbook:
         """1 行分を連続して書き込む。"""
         for i, v in enumerate(values):
             self.write_cell(row, start_col + i, v, bold=bold)
+
+    def write_date(self, row: int, col: int, date) -> None:
+        """日付を Excel 認識の serial として書き込む（F-036）。
+
+        Excel の日付はシリアル値（1900-01-01 を 1 とする日数）として格納する。
+        ただしこの writer は最小限の XLSX 実装で numFmt を持たないため、現時点
+        では書式付き日付セルを正しく生成できない。本メソッドは将来の適切な
+        date-cell 実装までのプレースホルダで、暫定的に ISO 8601 文字列として
+        書き込む。`日付` 列をテキストで書き込むと Excel 側のソート・フィルタが
+        文字列順になる点に注意（Step 7 の注記を参照）。
+        """
+        import datetime as _dt
+        if isinstance(date, (_dt.date, _dt.datetime)):
+            s = date.isoformat()
+        else:
+            s = str(date)
+        self.write_cell(row, col, s)
 
     def merge(self, r1: int, c1: int, r2: int, c2: int) -> None:
         """(r1,c1) から (r2,c2) を結合セルにする。"""

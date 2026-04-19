@@ -163,6 +163,19 @@ def _validate(payload: dict) -> None:
             if not isinstance(v, (int, float)) or v < 0:
                 raise ValueError(f"monthly_records[{i}].{key} は 0 以上の数値")
 
+        # F-025: legal_overtime_h と overtime_over_60_h は disjoint でなければ
+        # ならない。ユーザーが total_overtime を legal_overtime_h に入れて
+        # さらに over_60 を重複設定する double-count バグを防ぐ。
+        lot = r.get("legal_overtime_h", 0) or 0
+        ot60 = r.get("overtime_over_60_h", 0) or 0
+        if ot60 > 0 and lot > 60:
+            raise ValueError(
+                f"monthly_records[{i}]: legal_overtime_h ({lot}) は月 60 時間以下の"
+                f"時間外のみを指すため、overtime_over_60_h ({ot60}) と併用するときは "
+                "60 以下である必要がある。合計 70 時間なら legal_overtime_h=60, "
+                "overtime_over_60_h=10 と分割指定してほしい。"
+            )
+
 
 # ---------------------------------------------------------------------------
 # メイン計算
@@ -268,13 +281,30 @@ def compute(payload: dict) -> dict:
     delay = Fraction(0)
     delay_detail = {}
     if options.get("include_delay_interest"):
-        delay_detail = {"rate": "年 3%", "note": "各月賃金発生日から起算、計算基準日までの利息を概算"}
+        # F-029: payday_day_of_month を options で指定可（既定 28）。翌月 25 日
+        # など事務所ごとに異なる支払期日を反映できる。
+        payday_dom = int(options.get("payday_day_of_month", 28))
+        if not (1 <= payday_dom <= 31):
+            raise ValueError(
+                f"options.payday_day_of_month は 1-31（受信: {payday_dom}）"
+            )
+        delay_detail = {
+            "rate": "年 3%",
+            "payday_day_of_month": payday_dom,
+            "note": f"各月 {payday_dom} 日を支払期日とみなして、filing_date までの利息を概算",
+        }
         for m in per_month:
             if not m["within_statute"]:
                 continue
             year, month = [int(x) for x in m["year_month"].split("-")]
-            # 賃金支払日を月末と想定（実務は翌月 25 日等が多いが概算）
-            wage_date = _dt.date(year, month, 28)
+            # その月に該当日がなければ月末日に丸める
+            try:
+                wage_date = _dt.date(year, month, payday_dom)
+            except ValueError:
+                if month == 12:
+                    wage_date = _dt.date(year + 1, 1, 1) - _dt.timedelta(days=1)
+                else:
+                    wage_date = _dt.date(year, month + 1, 1) - _dt.timedelta(days=1)
             days = (filing_date - wage_date).days
             if days <= 0:
                 continue

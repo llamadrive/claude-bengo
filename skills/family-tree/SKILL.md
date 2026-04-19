@@ -276,6 +276,16 @@ agent-format 側で section 形状が変わった場合（例: v0.2 で新フィ
 
 Write ツールで `family_tree_{YYYY-MM-DD}.agent` として作業ディレクトリに出力する。
 
+**AI 生成ドラフト警告（必須、全出力に含める）:** `.agent` の `memory.observations`
+の最初に以下のエントリを必ず挿入する（renderer が最上位にバナー表示するため）:
+
+```json
+{
+  "id": "obs-ai-draft",
+  "text": "⚠ AI が戸籍から抽出したドラフトです。裁判所・法務局提出前に、弁護士が戸籍原本と照合して検証してください（Step 3.5 の source_ref は `.agent` には含まれません）。"
+}
+```
+
 **schema の正式仕様:** https://github.com/knorq-ai/agent-format/blob/main/schemas/agent.schema.json
 **実例参照:** https://github.com/knorq-ai/agent-format/blob/main/examples/inheritance-jp-3gen.agent
 

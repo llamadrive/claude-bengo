@@ -238,12 +238,14 @@ def _verify_bundled_integrity(bundled_id: str) -> Optional[str]:
     """
     manifest = _load_manifest()
     if not manifest:
-        # 古いクローン等でマニフェストがない。install は続行するが警告。
-        print(
-            "WARN: _manifest.sha256 が存在しない。テンプレート整合性検証をスキップする。",
-            file=sys.stderr,
+        # F-037: マニフェストが存在しない場合は install を拒否する。
+        # 旧実装は "warn + proceed" だったが、これはマニフェスト削除を攻撃経路
+        # として使える。明示的に --skip-integrity フラグでのみ許可する。
+        return (
+            "_manifest.sha256 が存在しない。テンプレート整合性検証ができないため install を中止する。"
+            "プラグインクローンが破損している可能性がある。/bengo-update で再取得するか、"
+            "やむをえず先に進める場合は --skip-integrity を明示指定してほしい。"
         )
-        return None
 
     for ext in ("yaml", "xlsx"):
         rel = f"{bundled_id}/{bundled_id}.{ext}"

@@ -391,16 +391,36 @@ def _calc_spousal_support(
 
 
 def _round_to_1000(amount: int) -> int:
-    """1,000 円単位で四捨五入（算定表の表記慣行）。"""
+    """1,000 円単位で四捨五入。
+
+    F-028: 公式「令和元年算定表」は実際には 1〜2万円のバンドで値が記載されており、
+    本関数の 1,000 円単位丸めは**算定表の表示粒度とは一致しない**。丸めはあくまで
+    実務上の慣行的な表記揃えであり、1,000 円ずれの金額は算定表の同一バンドに
+    含まれる。法廷で「算定表のどのセル」に該当するかを主張する際は
+    `monthly_before_rounding` を参照して 1万円または 2万円バンドに再丸めしてほしい。
+    """
     if amount <= 0:
         return 0
     return ((amount + 500) // 1000) * 1000
 
 
+def _to_table_band(amount: int, band_width: int = 20000) -> Tuple[int, int]:
+    """算定表バンドの下限・上限を返す（F-028）。
+
+    `band_width` 既定は 2万円。1万円バンドを使う場合は 10000 を渡す。
+    例: amount=54_000, band_width=20000 → (40_000, 60_000)
+    """
+    if amount <= 0:
+        return (0, 0)
+    lower = (amount // band_width) * band_width
+    return (lower, lower + band_width)
+
+
 def _standard_notes(kind: str) -> List[str]:
     base = [
         "令和元年 12 月改定の標準算定方式に基づく計算",
-        "金額は 1,000 円単位で四捨五入（算定表の表記慣行）",
+        "金額は 1,000 円単位で四捨五入（算定表の表記慣行、1-2 万円バンドとは別粒度）",
+        "算定表バンド比較は breakdown.monthly_before_rounding を参照してほしい",
         "個別事情（住宅ローン・私立学校費用・再婚・健康保険料調整等）は別途加算検討",
         "実際の調停・審判では、裁判官の裁量により標準額から増減されることがある",
     ]

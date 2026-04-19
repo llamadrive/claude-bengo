@@ -177,9 +177,38 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill typo-check --ev
 
 denylist ヒット時の挙動: 一括承認を要求されても「この修正は法的意味が重い用語であるため個別承認が必要である」と説明し、該当修正のみ個別に確認を取る。他の軽微な修正（送り仮名、句読点、全半角統一）は通常通り一括承認で処理してよい。
 
+**プログラム的 denylist 検査（F-031、必須）:**
+
+各修正について、自動承認判定の前に決定論的な denylist チェックを通す:
+
+```bash
+python3 skills/_lib/denylist.py check \
+    --original "<修正前テキスト>" \
+    --suggested "<修正後テキスト>" \
+    --format json
+```
+
+exit 0 → 自動承認可能、exit 1 → denylist ヒット（個別承認必須）。LLM の自己判定に依存せず、`denylist.py` が独立して金額・日付・条番号・接続詞階層・主体呼称・効果規定の変更を検出する。ユーザーが「全部承認して」と言っても、denylist.py が 1 を返す修正は必ず個別確認する。
+
 ### Step 6: 修正適用
 
 承認された修正を `mcp__docx-editor__edit_paragraph` で適用する。複数の修正がある場合は `mcp__docx-editor__edit_paragraphs`（複数形）で一括適用してパフォーマンスを向上させる。
+
+**修正適用後、修正履歴（track changes）が実際に記録されたかを verify する（F-039）:**
+
+docx-editor MCP の一部環境では `settings.xml` 内に `<w:trackChanges/>` が
+無効化されている・あるいは破損して edit が silent に track なしで適用される
+バグが観測されている。修正後に任意の 1 パラグラフについて XML 検査を行う:
+
+```
+mcp__docx-editor__read_document → 最初に編集した段落の raw XML に
+<w:ins>, <w:del> のいずれかが存在することを確認。
+```
+
+存在しなければユーザーに「修正が Word 修正履歴として記録されていない可能性が
+ある。`settings.xml` で `<w:trackChanges/>` が有効か確認し、再処理が必要か
+判断してほしい。」と警告して終了する。承認前の文書を誤って最終版と扱う事故
+を防ぐため、省略不可。
 
 **修正適用後、監査ログに書込イベントを記録する（アクティブ matter 宛）:**
 

@@ -124,6 +124,18 @@ python3 skills/_lib/matter.py info {matter_id}
 
 確定したフィールド定義をYAML形式で `{matter_templates_dir}/{id}.yaml` に Write ツールで保存する（アクティブ matter のテンプレートディレクトリ内。Step 0 で matter.py info から解決した `templates_dir` を使用する）。`{matter_templates_dir}` は matter 作成時に自動生成されているはずだが、万一存在しない場合は作成する。
 
+**F-032 ID 検証（必須）:** テンプレート `{id}` は以下の正規表現を必ず満たすこと:
+
+```
+^[a-z0-9][-a-z0-9_]{0,63}$
+```
+
+- 先頭は小文字英数字
+- 以降は小文字英数字・ハイフン・アンダースコアのみ
+- 合計 64 文字以内
+
+`.`、`/`、`\`、空白、大文字、非 ASCII は**禁止**。これは `{matter_templates_dir}/{id}.yaml` を生成するときに `..` や絶対パスで事案ディレクトリの外に書き出す path-traversal を防ぐためである。ユーザーが提案する ID が規則に合わない場合は、該当箇所を示して「英小文字・数字・ハイフン・アンダースコアのみで再提案してほしい」と返す。
+
 YAML形式はプラグインの `templates/_schema.yaml` に準拠する。
 
 ### Step 7: XLSXコピー

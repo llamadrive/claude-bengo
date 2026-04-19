@@ -105,6 +105,11 @@ RESERVED_IDS = {
     "matters",  # 親ディレクトリ名との衝突防止
     "lock",
     "tmp",
+    # Windows 予約デバイス名（小文字固定）— MATTER_ID_RE は lowercase 前提なので
+    # 大文字バリアントは入力段階で既に拒否される。
+    "con", "prn", "aux", "nul",
+    "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+    "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
 }
 
 

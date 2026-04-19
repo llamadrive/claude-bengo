@@ -117,6 +117,20 @@ def compute(payload: dict) -> dict:
     debts = payload.get("shared_debts", [])
     ratio = _parse_ratio(payload)
 
+    # F-030: 債務負担モード（既定は資産保有比率に応じた proportional 按分）
+    # 実務では当事者合意で個別に決めることが多いため、mode を選択肢で提供する:
+    #   "proportional" (既定) — 各当事者の共有資産保有量に比例して按分
+    #   "equal"       — 50:50 で等分
+    #   "husband_only" — 夫が全額負担
+    #   "wife_only"   — 妻が全額負担
+    #   "ratio"       — contribution_ratio と同比率で按分
+    debt_mode = (payload.get("options") or {}).get("joint_debt_mode", "proportional")
+    valid_modes = {"proportional", "equal", "husband_only", "wife_only", "ratio"}
+    if debt_mode not in valid_modes:
+        raise ValueError(
+            f"joint_debt_mode は {sorted(valid_modes)} のいずれか（受信: {debt_mode!r}）"
+        )
+
     shared_assets: List[dict] = []
     special_assets: List[dict] = []
     husband_shared_total = Fraction(0)
@@ -175,18 +189,31 @@ def compute(payload: dict) -> dict:
     wife_should_get = net_shared * ratio["wife"]
 
     # 名義 joint は 50:50 で按分（分与前の暫定帰属）
-    # 債務は各人の資産保有比率に応じて案分し、実効的な現有額に反映する。
-    # 例: 夫 4000万 + 債務 1000万 → 夫の実効現有 = 3000万（ただし債務の
-    # 最終的な負担者は合意で決定する）
     husband_raw = husband_shared_total + joint_shared_total / 2
     wife_raw = wife_shared_total + joint_shared_total / 2
-    if total_shared_assets > 0:
-        scale = net_shared / total_shared_assets
-        husband_current = husband_raw * scale
-        wife_current = wife_raw * scale
-    else:
-        husband_current = Fraction(0)
-        wife_current = Fraction(0)
+
+    # F-030: 債務負担 mode による実効現有額の計算
+    if debt_mode == "proportional":
+        # 既定: 資産保有比率に応じて按分。
+        if total_shared_assets > 0:
+            scale = net_shared / total_shared_assets
+            husband_current = husband_raw * scale
+            wife_current = wife_raw * scale
+        else:
+            husband_current = Fraction(0)
+            wife_current = Fraction(0)
+    elif debt_mode == "equal":
+        husband_current = husband_raw - total_debts / 2
+        wife_current = wife_raw - total_debts / 2
+    elif debt_mode == "husband_only":
+        husband_current = husband_raw - total_debts
+        wife_current = wife_raw
+    elif debt_mode == "wife_only":
+        husband_current = husband_raw
+        wife_current = wife_raw - total_debts
+    else:  # ratio
+        husband_current = husband_raw - total_debts * ratio["husband"]
+        wife_current = wife_raw - total_debts * ratio["wife"]
 
     # 清算金: 取得すべき額 - 現有額 = 不足分
     # 正 → 相手から受取、負 → 相手へ支払
@@ -218,10 +245,12 @@ def compute(payload: dict) -> dict:
         },
         "shared_assets": shared_assets,
         "special_assets": special_assets,
+        "joint_debt_mode": debt_mode,
         "notes": [
             "民法 768 条に基づく財産分与計算（清算的部分のみ）",
             "特有財産（婚姻前財産・相続/贈与財産）は分与対象外（民法 762 条 1 項）",
             "既定貢献度は 50:50。医師・経営者等で差を認める場合は contribution_ratio を指定",
+            f"共有債務の負担モード: {debt_mode}。民法 761・762 条は共有債務の配分を定めず、当事者合意で決めるのが実務。options.joint_debt_mode で選択可能（proportional/equal/husband_only/wife_only/ratio）",
             "不動産の評価額は時価（査定書・路線価）を用いる",
             "年金分割は別途計算（厚生年金保険法 78 条の 2）",
             "慰謝料的・扶養的財産分与は本計算器の対象外",

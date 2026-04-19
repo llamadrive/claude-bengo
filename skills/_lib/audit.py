@@ -154,11 +154,17 @@ DEFAULT_MAX_BYTES = 50 * 1024 * 1024
 def _is_sentinel(p: Path) -> bool:
     """センチネルパス（/dev/null 相当）か判定する。
 
-    Windows で `Path("/dev/null")` が `\\dev\\null` に正規化される件に対応して、
-    スラッシュを正規化したうえで比較する。
+    Windows の `NUL` デバイスと POSIX の `/dev/null` を安全に判定する。
+    endswith の ad-hoc マッチ（例: `/home/user/my-nul` が誤マッチ）を避け、
+    exact path 比較のみ行う。
     """
-    s = str(p).replace("\\", "/").lower()
-    return s in {"/dev/null", "dev/null", "nul"} or s.endswith("/nul") or s.endswith("/dev/null")
+    s = str(p).replace("\\", "/")
+    # exact match set（case sensitive for POSIX path, case insensitive for NUL）
+    if s in {"/dev/null", "dev/null"}:
+        return True
+    if s.lower() in {"nul", "/nul", "./nul"}:
+        return True
+    return False
 
 
 def _audit_path(matter_id: Optional[str] = None) -> Path:
@@ -288,7 +294,12 @@ def _ensure_parent(p: Path) -> None:
 
 
 def _get_session_id() -> str:
-    """セッション ID を取得する。環境変数優先、なければファイルキャッシュ。"""
+    """セッション ID を取得する。環境変数優先、なければファイルキャッシュ。
+
+    F-020: mtime 未来方向（rsync 等で持ち込まれた変な値）もキャッシュ無効と
+    判定する。並行プロセスが同時に初期化しても、O_EXCL で先頭書込を優先し、
+    他は読み戻すことで ID 分裂を防ぐ。
+    """
     env_id = os.environ.get("CLAUDE_BENGO_SESSION_ID")
     if env_id:
         return env_id
@@ -297,13 +308,32 @@ def _get_session_id() -> str:
         SESSION_ID_FILE.parent.mkdir(parents=True, exist_ok=True)
         if SESSION_ID_FILE.exists():
             mtime = SESSION_ID_FILE.stat().st_mtime
-            if time.time() - mtime < SESSION_TTL_SECONDS:
+            now = time.time()
+            age = now - mtime
+            # 0 ≤ age < TTL のときのみ有効。負（未来 mtime）も invalid。
+            if 0 <= age < SESSION_TTL_SECONDS:
                 cached = SESSION_ID_FILE.read_text(encoding="utf-8").strip()
                 if cached:
                     return cached
-        # 新規生成
+        # 新規生成（O_EXCL で race window を閉じる）
         sid = secrets.token_hex(16)
-        SESSION_ID_FILE.write_text(sid, encoding="utf-8")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        try:
+            fd = os.open(str(SESSION_ID_FILE), flags, 0o600)
+            try:
+                os.write(fd, sid.encode("utf-8"))
+            finally:
+                os.close(fd)
+        except FileExistsError:
+            # 別プロセスが先に作成した — 読み戻す
+            try:
+                cached = SESSION_ID_FILE.read_text(encoding="utf-8").strip()
+                if cached:
+                    return cached
+            except OSError:
+                pass
+            # 読み戻しも失敗 → メモリ内 ID を返す（監査は止めない）
+            return sid
         try:
             os.chmod(SESSION_ID_FILE, 0o600)
         except (OSError, NotImplementedError):
@@ -318,6 +348,38 @@ def _iso_now() -> str:
     """ローカルタイムゾーン付きの ISO 8601 タイムスタンプを返す。"""
     now = _dt.datetime.now().astimezone()
     return now.isoformat(timespec="milliseconds")
+
+
+def _monotonic_ns() -> int:
+    """プロセス起動からの単調増加ナノ秒。時計改竄・NTP 巻戻しに強い順序証拠として
+    各レコードに埋め込む（民事訴訟法 231 条の電磁的記録の改竄証拠対応）。"""
+    return time.monotonic_ns()
+
+
+# 直前に書いたレコードの monotonic_ns を記憶し、非単調なジャンプを検知する
+_LAST_MONOTONIC_NS: Optional[int] = None
+
+
+def _hmac_key() -> Optional[bytes]:
+    """HMAC 署名用の秘密鍵を取得する。
+
+    `CLAUDE_BENGO_AUDIT_HMAC_KEY` が設定されていれば、そのバイト列（hex/base64
+    いずれでもよく UTF-8 で取り込む）を鍵として返す。未設定なら None。
+
+    現実装は **opt-in HMAC**。SHA-256 のみの chain は tamper-*evident*（改竄の
+    痕跡は検出できるが、全行再計算で偽造される）だが、HMAC を併記すれば鍵が
+    漏れない限り偽造不能になる。鍵は事務所の秘密金庫等で物理保管することを
+    推奨する（README §監査ログ参照）。"""
+    k = os.environ.get("CLAUDE_BENGO_AUDIT_HMAC_KEY")
+    if not k:
+        return None
+    return k.encode("utf-8")
+
+
+def _compute_hmac(data: bytes, key: bytes) -> str:
+    """HMAC-SHA256 を hex で返す。"""
+    import hmac as _hmac
+    return _hmac.new(key, data, hashlib.sha256).hexdigest()
 
 
 def _sha256_file(path: Path, max_bytes: int = 100 * 1024 * 1024) -> Optional[str]:
@@ -353,8 +415,9 @@ def _sha256_bytes(data: bytes) -> str:
 def _read_last_line_bytes(path: Path, tail_size: int = 8192) -> Optional[bytes]:
     """ログの末尾行のバイト列を返す。空ファイルなら None。
 
-    ファイル末尾から最大 `tail_size` バイトを読み、改行で分割する。
-    各レコードは 1 KB 程度なので 8 KB あれば十分。
+    ファイル末尾から `tail_size` バイトずつ読み進め、末尾行全体が必ず含まれる
+    まで拡張する。行が tail_size を超えている場合でも正しく返す（note に長文
+    を積んだ場合の corner case 対応、F-019）。
     """
     try:
         size = path.stat().st_size
@@ -362,21 +425,25 @@ def _read_last_line_bytes(path: Path, tail_size: int = 8192) -> Optional[bytes]:
         return None
     if size == 0:
         return None
-    read = min(size, tail_size)
+    # 末尾行の境界（直前の改行）を見つかるまで読み範囲を拡張
+    window = tail_size
     with path.open("rb") as f:
-        f.seek(size - read)
-        chunk = f.read(read)
-    # 末尾の余分な改行を除去
-    chunk = chunk.rstrip(b"\n")
-    if not chunk:
-        return None
-    # 最後の改行以降がファイル末尾行
-    nl = chunk.rfind(b"\n")
-    if nl < 0:
-        # 読み出した範囲に改行がない場合は、それがそのまま1行目の一部
-        # （tail_size を超える先頭だけの単一行は監査用途では事実上発生しない）
-        return chunk
-    return chunk[nl + 1 :]
+        while True:
+            read = min(size, window)
+            f.seek(size - read)
+            chunk = f.read(read)
+            chunk_stripped = chunk.rstrip(b"\n")
+            if not chunk_stripped:
+                return None
+            nl = chunk_stripped.rfind(b"\n")
+            if nl >= 0:
+                return chunk_stripped[nl + 1:]
+            # 読み範囲に改行が見つからない:
+            # - ファイル全体を読み切った → それが 1 行目
+            # - まだファイル冒頭に到達していない → window を倍にして再読込
+            if read >= size:
+                return chunk_stripped
+            window *= 2
 
 
 def _compute_prev_hash(path: Path) -> str:
@@ -714,9 +781,27 @@ def _build_record(
     """フィールド順序を固定した record dict を返す（JSON 決定性のため）。
 
     `rotated_from` は rotation イベント専用。通常の記録時は省略する。
+
+    F-018/F-019: `monotonic_ns` を全レコードに付与する（時計改竄耐性）。
+    前回書いた値より小さい値を観測したら `clock_anomaly` イベントを note に
+    書き残す（レコード自体は破棄しない — 監査証跡として残す）。
+    opt-in HMAC (`CLAUDE_BENGO_AUDIT_HMAC_KEY`) が設定されていれば hmac フィールドを付加。
     """
+    global _LAST_MONOTONIC_NS
+    mono_ns = _monotonic_ns()
+    clock_note_suffix = ""
+    if _LAST_MONOTONIC_NS is not None and mono_ns < _LAST_MONOTONIC_NS:
+        # 単調減少 = プロセス再起動しない限りありえない。ただし fork 等で
+        # 複数プロセスが独立に monotonic 計時する場合は観測される。
+        # ここでは警告として note に追記する（プロセス境界で reset される想定）。
+        clock_note_suffix = (
+            f" [clock_anomaly: monotonic_ns {mono_ns} < previous {_LAST_MONOTONIC_NS}]"
+        )
+    _LAST_MONOTONIC_NS = mono_ns
+
     rec: dict = {
         "ts": _iso_now(),
+        "monotonic_ns": mono_ns,
         "session_id": _get_session_id(),
         "skill": skill,
         "event": event,
@@ -725,11 +810,18 @@ def _build_record(
         "bytes": bytes_,
         "sha256": sha256,
         "api_calls": api_calls,
-        "note": note,
+        "note": (note or "") + clock_note_suffix,
         "prev_hash": prev_hash,
     }
     if rotated_from is not None:
         rec["rotated_from"] = rotated_from
+
+    # opt-in HMAC: 鍵があれば hmac フィールドを最後に付加。
+    # 検証側は hmac を除いた dict を再 serialize して一致確認する。
+    key = _hmac_key()
+    if key:
+        line_without_hmac = json.dumps(rec, ensure_ascii=False)
+        rec["hmac"] = _compute_hmac(line_without_hmac.encode("utf-8"), key)
     return rec
 
 
@@ -780,8 +872,48 @@ def cmd_record(args: argparse.Namespace) -> int:
 
         # `--log-filename` が指定された場合のみ、平文ファイル名を記録する。
         # `--full-path` は `--log-filename` とセットの場合のみ有効。
-        if args.log_filename:
-            filename_plain = str(p) if args.full_path else base
+        # F-022: matter metadata に `log_filenames: false` があれば --log-filename
+        # を拒否する（matter 単位のプライバシー policy）。既定は false（守秘モード）。
+        # `--full-path` は特に依頼者識別のリスクが高いため matter 固有に
+        # `log_full_path: true` が必要。
+        want_log_fn = bool(args.log_filename)
+        want_full_path = bool(args.full_path)
+        if want_log_fn and matter_id:
+            m_mod = _load_matter_module()
+            md = m_mod._read_metadata(matter_id)
+            policy_log = str(md.get("log_filenames", "false")).lower() in ("true", "1", "yes")
+            policy_full = str(md.get("log_full_path", "false")).lower() in ("true", "1", "yes")
+            if not policy_log:
+                print(
+                    json.dumps(
+                        {
+                            "error": (
+                                f"matter '{matter_id}' の metadata に `log_filenames: true` が設定されていない。"
+                                "平文ファイル名のログ記録は依頼者識別リスクがあるため、matter-create 時に明示同意を得た"
+                                "事案でのみ許可される。metadata.yaml に `log_filenames: true` を設定してから再試行してほしい。"
+                            )
+                        },
+                        ensure_ascii=False,
+                    ),
+                    file=sys.stderr,
+                )
+                return 2
+            if want_full_path and not policy_full:
+                print(
+                    json.dumps(
+                        {
+                            "error": (
+                                f"matter '{matter_id}' の metadata に `log_full_path: true` が設定されていない。"
+                                "フルパス記録は依頼者ディレクトリ名・端末上の配置を暴露するため、追加同意が必要。"
+                            )
+                        },
+                        ensure_ascii=False,
+                    ),
+                    file=sys.stderr,
+                )
+                return 2
+        if want_log_fn:
+            filename_plain = str(p) if want_full_path else base
         else:
             filename_plain = ""
 

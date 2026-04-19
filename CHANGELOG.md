@@ -2,6 +2,82 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.14.0] - 2026-04-19
+
+Deep-review の残り 🟡 23 件 + 主要 🟢 NIT を一掃。v2.13.0 は pilot-blocker
+除去、v2.14.0 は**生産運用で効くエッジケース**の強化。
+
+### Changed — Audit hardening (9 items)
+
+- `audit.py:_read_last_line_bytes` — 8KB 超の行を扱えるよう tail window を
+  動的拡張（note に長文を積んだ場合の安全網）
+- `audit.py:_is_sentinel` — `endswith("/nul")` の ad-hoc 誤マッチを排除。
+  exact path 比較のみ行う
+- `audit.py:_get_session_id` — O_EXCL create で並行プロセスでの race を閉じる。
+  mtime 未来方向も invalid と判定（clock skew 対策）
+- `audit.py:_iso_now` + `_monotonic_ns` — 全レコードに `monotonic_ns` を付与。
+  非単調な遡行があれば note に `[clock_anomaly]` を埋める
+- `audit.py:_hmac_key` + `_build_record` — opt-in HMAC (`CLAUDE_BENGO_AUDIT_HMAC_KEY`)。
+  設定されていれば record に `hmac` フィールドを追加し、鍵が漏れない限り
+  改竄不可能に。SHA-256 のみの tamper-*evident* から tamper-*resistant* へ
+- `audit.py:cmd_record` — matter metadata の `log_filenames` / `log_full_path`
+  policy を参照。matter ごとにファイル名ログの許可を制御
+- `matter.py:RESERVED_IDS` — Windows 予約デバイス名（`con`, `prn`, `aux`,
+  `nul`, `com1-9`, `lpt1-9`）を追加
+
+### Changed — Calculator edge cases (6 items)
+
+- `debt-recalc` — `options.filing_date` で過払金利息を訴状提出日まで累積可能に
+  （旧: 最終取引日固定）。最終取引から数年後の訴訟では、過払金利息を過少に
+  見積もる問題を解消
+- `overtime-calc` — `legal_overtime_h` と `overtime_over_60_h` の mutual
+  exclusion バリデーション追加。double-count バグを防ぐ
+- `overtime-calc` — `options.payday_day_of_month` で支払期日を指定可能に
+  （旧: 28 日固定）
+- `iryubun-calc` — docstring に `positive_estate` と `specific_bequests` の
+  集計規約を明示（undocumented modeling choice の可視化）
+- `child-support-calc` — `_round_to_1000` コメント改訂。算定表バンド（1-2万円）
+  との粒度差を注記。`_to_table_band` helper を追加
+- `property-division-calc` — `options.joint_debt_mode` で債務負担モードを
+  選択可能に（proportional/equal/husband_only/wife_only/ratio）
+
+### Changed — LLM workflow hallucination guards (8 items)
+
+- `skills/_lib/denylist.py` 新設 — typo-check の denylist を programmatic に
+  判定。金額/日付/条番号/接続詞階層/主体呼称/効果規定の変更を LLM 自己判定に
+  依存せず検出。11 cases self-test
+- `typo-check/SKILL.md` — 自動承認判定の前に `denylist.py check` を必ず通す
+  手順を明記
+- `template-create/SKILL.md` — テンプレート ID の正規表現制約
+  `^[a-z0-9][-a-z0-9_]{0,63}$` を強制し、path-traversal を防ぐ
+- `family-tree/open_viewer.py` — Chrome Sync / Firefox Sync が URL fragment を
+  アカウントにアップロードするリスクを起動前に警告
+- `law-search/search.py` — `law-id-list.tsv` 鮮度チェック（180 日で警告、
+  365 日で fetch-article 拒否）。`CLAUDE_BENGO_ALLOW_STALE_LAW_LIST=1` で上書き可
+- `xlsx_writer.py` — `write_date()` helper 追加（現状 ISO 8601 テキスト、
+  将来的に numFmt 付き date cell へ拡張）
+- `template_lib.py` — `_manifest.sha256` 不在時の install を既定で拒否
+  （旧: warn + proceed）。`--skip-integrity` で opt-in
+- `lawsuit-analysis/SKILL.md` — トークン見積もり上方修正（2,000/page →
+  4,000-6,000/page）。cost preflight が早期発火するように
+- `typo-check/SKILL.md` — 修正適用後の track-changes 実効性検証ステップ追加
+
+### Changed — NIT polish
+
+- `family-tree/SKILL.md` / `lawsuit-analysis/SKILL.md` — `.agent` の
+  `memory.observations[0]` に「AI 生成ドラフト」警告を必須化
+- `commands/verify.md` — wildcard MCP 権限を read-only 特定ツールに narrow 化
+- `law-search/search.py:USER_AGENT` — `plugin.json` から dynamic 取得
+
+### Migration notes
+
+- 監査ログに書き込むときに matter scope で `--log-filename` を使う運用は、
+  matter の `metadata.yaml` に `log_filenames: true` が必要。未設定なら exit 2
+- `/template-install` で `_manifest.sha256` が失われた古いクローンは install が
+  失敗する。`/bengo-update` で再取得するか `--skip-integrity` を明示指定
+- `law-id-list.tsv` が 365 日以上古いクローンは law-search が失敗する。
+  `CLAUDE_BENGO_ALLOW_STALE_LAW_LIST=1` で強制続行可能
+
 ## [2.13.0] - 2026-04-19
 
 パイロット前 deep-review の 13 件の 🔴 MUST FIX と doc drift 一掃。計算器の統

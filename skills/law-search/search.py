@@ -42,7 +42,21 @@ from typing import Optional, Tuple
 # 定数
 # ------------------------------------------------------------------------------
 
-USER_AGENT = "claude-bengo/1.0 (+https://github.com/llamadrive/claude-bengo)"
+# NIT: バージョンは plugin.json から動的に読み込む。ハードコード回避。
+def _plugin_version() -> str:
+    try:
+        plugin_root = Path(__file__).resolve().parent.parent.parent
+        manifest = plugin_root / ".claude-plugin" / "plugin.json"
+        if manifest.exists():
+            import json as _json
+            data = _json.loads(manifest.read_text(encoding="utf-8"))
+            return data.get("version", "unknown")
+    except Exception:
+        pass
+    return "unknown"
+
+
+USER_AGENT = f"claude-bengo/{_plugin_version()} (+https://github.com/llamadrive/claude-bengo)"
 REQUEST_TIMEOUT = 30  # 秒
 CACHE_TTL_SECONDS = 24 * 60 * 60  # 24 時間
 LEGACY_CACHE_SUBDIR = "claude-bengo"  # 旧キャッシュ（共有 tmp 下）— 参照しない
@@ -56,6 +70,62 @@ SIDECAR_SUFFIX = ".sha256"
 
 LAW_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{1,20}$")
 ARTICLE_NUM_PATTERN = re.compile(r"^[0-9]+(_[0-9]+)*$")
+
+# F-033: law-id-list.tsv freshness check
+LAW_ID_LIST_PATH = Path(__file__).resolve().parent / "references" / "law-id-list.tsv"
+LAW_ID_LIST_STALE_DAYS = 180
+LAW_ID_LIST_REFUSE_DAYS = 365
+_LAW_ID_LIST_WARNED = False
+
+
+def _check_law_id_list_freshness() -> Optional[Tuple[int, str]]:
+    """`law-id-list.tsv` の生成日付を読み、古ければ (age_days, ISO date) を返す。
+
+    `# Generated: YYYY-MM-DD` 先頭行を探す。見つからなければ None。
+    """
+    if not LAW_ID_LIST_PATH.exists():
+        return None
+    try:
+        import datetime as _dt
+        with LAW_ID_LIST_PATH.open("r", encoding="utf-8") as f:
+            for line in f:
+                m = re.match(r"^#\s*Generated:\s*(\d{4}-\d{2}-\d{2})", line.strip())
+                if m:
+                    gen_date = _dt.date.fromisoformat(m.group(1))
+                    age = (_dt.date.today() - gen_date).days
+                    return (age, m.group(1))
+                # ヘッダー行を数行超えたら打ち切り
+                if not line.startswith("#"):
+                    break
+    except (OSError, ValueError):
+        return None
+    return None
+
+
+def _warn_if_stale() -> None:
+    """起動時（fetch-article 等の前）に stale 判定して stderr 警告する。"""
+    global _LAW_ID_LIST_WARNED
+    if _LAW_ID_LIST_WARNED:
+        return
+    info = _check_law_id_list_freshness()
+    if info is None:
+        return
+    age, gen_date = info
+    if age >= LAW_ID_LIST_REFUSE_DAYS:
+        _LAW_ID_LIST_WARNED = True
+        raise SystemExit(
+            f"ERROR: law-id-list.tsv が {age} 日経過（{gen_date} 生成）。"
+            f"{LAW_ID_LIST_REFUSE_DAYS} 日を超えると法令 ID がリネーム／削除されている"
+            "可能性が高く、誤った条文引用のリスクがある。`CLAUDE_BENGO_ALLOW_STALE_LAW_LIST=1` で"
+            "強制続行できるが、最新 e-Gov API で law-id-list.tsv を再生成することを強く推奨する。"
+        )
+    if age >= LAW_ID_LIST_STALE_DAYS:
+        _LAW_ID_LIST_WARNED = True
+        print(
+            f"WARN: law-id-list.tsv は {age} 日経過（{gen_date} 生成）。最新法令との乖離可能性あり。"
+            "定期的な再生成を推奨する。",
+            file=sys.stderr,
+        )
 
 EGOV_ARTICLE_URL = "https://laws.e-gov.go.jp/api/1/articles;lawId={law_id};article={article};"
 EGOV_LAWDATA_URL = "https://laws.e-gov.go.jp/api/1/lawdata/{law_id}"
@@ -750,6 +820,17 @@ def main(argv: Optional[list] = None) -> int:
     """メイン関数。"""
     parser = build_parser()
     args = parser.parse_args(argv)
+    # F-033: fetch/search を実行する前に TSV の鮮度をチェック。self-test や
+    # clear-cache は skip する。CLAUDE_BENGO_ALLOW_STALE_LAW_LIST=1 で強制続行可能。
+    cmd = getattr(args, "command", None) or getattr(args, "func", None).__name__ if hasattr(args, "func") else None
+    try:
+        if os.environ.get("CLAUDE_BENGO_ALLOW_STALE_LAW_LIST") != "1":
+            if cmd in (None,) or (hasattr(args, "func") and args.func.__name__ in ("_cmd_fetch_article", "_cmd_search_keyword")):
+                _warn_if_stale()
+    except SystemExit:
+        raise
+    except Exception:
+        pass
     return args.func(args)
 
 

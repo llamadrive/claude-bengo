@@ -1,6 +1,6 @@
 ---
 description: claude-bengo プラグインの動作確認テストを実行
-allowed-tools: Read, Write, Glob, mcp__xlsx-editor__*, mcp__docx-editor__*, mcp__html-report__*, mcp__agent-format__*
+allowed-tools: Read, Write, Glob, mcp__xlsx-editor__get_workbook_info, mcp__xlsx-editor__read_sheet, mcp__docx-editor__get_document_info, mcp__docx-editor__read_document, mcp__html-report__get_component_examples, mcp__agent-format__render_agent_inline, Bash(python3 scripts/verify.py:*), Bash(python3 skills/_lib/audit.py --self-test:*)
 ---
 
 claude-bengo の各機能の動作を確認する。

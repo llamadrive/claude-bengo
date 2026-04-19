@@ -81,6 +81,18 @@ def main() -> int:
     encoded = urllib.parse.quote(content)
     url = f"{VIEWER_URL}#{encoded}"
 
+    # F-035: Chrome Sync / Firefox Sync がブラウザ履歴を同期する環境では、
+    # URL fragment（#以降）も Google/Mozilla アカウントにアップロードされる。
+    # 戸籍等の機微情報を含む .agent をそのまま開くと、ユーザーの意図に反する
+    # クラウド同期が発生する。ユーザーへ一度だけ警告する。
+    print(
+        "注意: ブラウザ（Chrome Sync 等）が履歴同期を有効にしている場合、"
+        "URL 全体がアカウントにアップロードされる。機密案件では viewer を"
+        "開く前に履歴同期の停止を検討してほしい。または --no-open で URL を"
+        "取得し、プライベートウィンドウに貼り付ける運用が望ましい。",
+        file=sys.stderr,
+    )
+
     # Windows long-URL advisory: even though os.startfile avoids the 8191
     # CMD limit, some browser shims truncate. Warn the user so they can
     # copy manually if the page loads blank.

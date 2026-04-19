@@ -2,6 +2,42 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.15.0] - 2026-04-19
+
+html-report MCP 依存を削除。v2.10.0 で family-tree が、v2.12.0 で
+lawsuit-analysis が `.agent` 単一出力に移行した後、html-report は `/verify`
+スモークテストが `get_component_examples` を ping するためだけに残っていた
+dead dependency。Total MCP 数が 4 → 3 に減り、初回起動時の npx 取得時間が
+短縮、npm supply chain の attack surface も 1 packagereduce。
+
+### Removed
+
+- `.mcp.json` から `html-report` サーバ
+- `skills/verify/SKILL.md` の step 3（html-report ping）
+- `commands/verify.md` の allowed-tools から `mcp__html-report__*`
+- `CLAUDE.md` MCP 利用ルールから html-report エントリ
+- README / RUNBOOK のインストール・診断手順から html-report
+
+### Changed
+
+- `/verify` 出力が 7 行 → 6 行に
+- 必要な MCP サーバ数: 4 → **3**
+  - `@knorq/xlsx-mcp-server@2.0.0`
+  - `@knorq/docx-mcp-server@2.0.0`
+  - `@agent-format/mcp@0.1.7`
+
+### Migration notes
+
+既に html-report MCP を npm install -g で事前導入した環境は、`npm uninstall
+-g @knorq/html-report-server` で removal 可能（任意。プラグイン動作には影響
+しない）。
+
+## [2.14.2] - 2026-04-19
+
+マーケットプレイス `source` フォーマットを `"./"` から `{source: "url",
+url: ".../claude-bengo.git"}` 形式へ修正。旧形式では Claude Code の
+`/plugin install` が silently fail していたため、v2.14.1 は実用上使えなかった。
+
 ## [2.14.1] - 2026-04-19
 
 弁護士向けインストール UX の改善。v2.14.0 と機能は同一で、install フローを

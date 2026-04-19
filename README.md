@@ -160,11 +160,10 @@ Claude Code 内で:
 /plugin install claude-bengo@claude-bengo
 ```
 
-必要な 4 つの MCP サーバは `.mcp.json` で自動設定される（Claude Code が起動時に `npx -y` で取得）:
+必要な 3 つの MCP サーバは `.mcp.json` で自動設定される（Claude Code が起動時に `npx -y` で取得）:
 
 - `@knorq/xlsx-mcp-server@2.0.0` — XLSX 読書
 - `@knorq/docx-mcp-server@2.0.0` — DOCX 読書・track changes
-- `@knorq/html-report-server@2.0.0` — HTML レポート生成（verify でのみ使用、v2.10.0+ はほぼ使わない）
 - `@agent-format/mcp@0.1.7` — 家系図・訴訟分析を Claude Desktop 内にインライン描画
 
 バージョンはピン留めされており、`/bengo-update` 実行時に署名付きタグ経由で更新される。初回起動時は npx キャッシュがないため各 MCP の初回取得に 30 秒程度かかる（以降はキャッシュから即起動）。
@@ -239,7 +238,6 @@ export REQUESTS_CA_BUNDLE=/path/to/company-ca-bundle.pem  # Python 用
 npm install -g \
     @knorq/xlsx-mcp-server@2.0.0 \
     @knorq/docx-mcp-server@2.0.0 \
-    @knorq/html-report-server@2.0.0 \
     @agent-format/mcp@0.1.7
 ```
 
@@ -275,7 +273,6 @@ set -e
 npm install -g \
   @knorq/xlsx-mcp-server@2.0.0 \
   @knorq/docx-mcp-server@2.0.0 \
-  @knorq/html-report-server@2.0.0 \
   @agent-format/mcp@0.1.7
 # 運用方針: 監査ログの保持数制限（例: 30本）
 echo 'export CLAUDE_BENGO_AUDIT_KEEP=30' >> "$HOME/.zshrc"
@@ -548,7 +545,6 @@ claude-bengo/
 |--------|-------------|------|---------|
 | xlsx-editor | `@knorq/xlsx-mcp-server@2.0.0` | XLSX 読書 | ✅ `.mcp.json` |
 | docx-editor | `@knorq/docx-mcp-server@2.0.0` | DOCX 読書・track changes | ✅ `.mcp.json` |
-| html-report | `@knorq/html-report-server@2.0.0` | HTML レポート（verify のみ） | ✅ `.mcp.json` |
 | agent-format | `@agent-format/mcp@0.1.7` | 家系図・訴訟分析のインライン描画 | ✅ `.mcp.json` |
 
 ### テンプレートYAML仕様

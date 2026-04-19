@@ -8,10 +8,6 @@
       "command": "npx",
       "args": ["-y", "@knorq/docx-mcp-server@2.0.0"]
     },
-    "html-report": {
-      "command": "npx",
-      "args": ["-y", "@knorq/html-report-server@2.0.0"]
-    },
     "agent-format": {
       "command": "npx",
       "args": ["-y", "@agent-format/mcp@0.1.7"]

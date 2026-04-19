@@ -104,7 +104,7 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 
 - **Excel操作**: `mcp__xlsx-editor__*` を使用する。セル読取は `read_sheet`、書込は `write_cell` / `write_cells` / `write_rows`、構造確認は `get_workbook_info`。複数セルの一括書込には `write_cells` を使用してパフォーマンスを向上させる。
 - **Word操作**: `mcp__docx-editor__*` を使用する。文書読取は `read_document`、編集は `edit_paragraph`（`track_changes: true` で修正履歴付き）。複数パラグラフの一括編集には `edit_paragraphs`（複数形）を使用する。コメントは `add_comment`。
-- **HTMLレポート**: `mcp__html-report__*` を使用する。レポート生成は `render_report`。
+- **agent-format（家系図・訴訟分析のインライン描画）**: `mcp__agent-format__*` を使用する。`.agent` ファイルを生成・表示する。
 - **filesystem MCP は使わない**。ファイル操作は Claude Code ネイティブの Read / Write / Edit / Glob を使用する。
 
 ## ファイル読取

@@ -312,10 +312,17 @@ python3 skills/family-tree/open_viewer.py --input family_tree_{YYYY-MM-DD}.agent
 相続関係説明図を `family_tree_{YYYY-MM-DD}.agent` に出力した。
 
   📱 Claude Desktop / Cursor 等 MCP Apps 対応クライアント:
-     render_agent_file ツールでインライン描画される
-     （エージェントに「このファイルを描画して」と頼む）。
+     render_agent_file ツールで家族構成を一覧確認できる（インライン描画）。
+     ※ 現時点の @agent-format/mcp@0.1.8 は jp-court 視覚プラグインを同梱
+       していないため、MCP 経由のインライン描画は generic genealogy レイアウト
+       にフォールバックする（データは同一、Japanese 法定体裁のみ省略）。
+     裁判所提出用の「最後の住所・出生・死亡・（被相続人）」ラベル、二重線
+     配偶者エッジ、PDF エクスポートが必要なら 🌐 ブラウザ viewer を使う。
 
-  🌐 ブラウザ（既定のブラウザが自動起動された）:
+  🌐 ブラウザ viewer（Claude Code 時は自動起動、MCP Apps 時は URL を印字）:
+     https://knorq-ai.github.io/agent-format/ が @agent-format/jp-court@0.1.1
+     プラグインを登録済みで、variant: "jp-court" の .agent は Japanese 法定
+     体裁でレンダリングされる。
      - 右上「Load another」で別の .agent を読込
      - section 右端「⬇ PDF」で A3 横の印刷用 HTML をダウンロード
        → ブラウザで開いて ⌘P で PDF 保存（裁判所提出用）

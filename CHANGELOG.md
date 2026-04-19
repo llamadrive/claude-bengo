@@ -2,6 +2,29 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [2.14.1] - 2026-04-19
+
+弁護士向けインストール UX の改善。v2.14.0 と機能は同一で、install フローを
+Claude Code marketplace 方式に移行する patch release。
+
+### Added
+
+- `.claude-plugin/marketplace.json` — self-marketplace 定義。Claude Code 内
+  から 2 コマンド（`/plugin marketplace add llamadrive/claude-bengo` +
+  `/plugin install claude-bengo@claude-bengo`）で導入可能に
+
+### Changed
+
+- `README.md` のインストール手順を marketplace 方式に差替え（git clone は
+  開発者向けとして残す）
+- `RUNBOOK.md` §1 をアップデート。ターミナル作業不要
+- `CHEATSHEET.md` にインストール節を追加
+
+### Migration notes
+
+既に git clone で導入済みの環境は影響を受けない。新規パイロットは
+marketplace 方式を使うことを推奨する。
+
 ## [2.14.0] - 2026-04-19
 
 Deep-review の残り 🟡 23 件 + 主要 🟢 NIT を一掃。v2.13.0 は pilot-blocker

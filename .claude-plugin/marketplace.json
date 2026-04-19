@@ -1,0 +1,41 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-bengo",
+  "description": "Japanese law firm plugin marketplace — claude-bengo for court template filling, family tree generation, legal document proofreading, and lawsuit analysis",
+  "owner": {
+    "name": "LlamaDrive",
+    "email": "support@llama-drive.com",
+    "url": "https://llama-drive.com"
+  },
+  "plugins": [
+    {
+      "name": "claude-bengo",
+      "description": "日本の法律事務所向け Claude Code プラグイン — 裁判所書式入力・相続関係説明図・訴訟分析・法令検索・決定論的計算（交通事故・養育費・遺留分等）。監査ログ付き、個人情報保護法 §25 対応。",
+      "version": "2.14.1",
+      "author": {
+        "name": "LlamaDrive",
+        "email": "support@llama-drive.com",
+        "url": "https://llama-drive.com"
+      },
+      "homepage": "https://llama-drive.com/claude-bengo",
+      "repository": "https://github.com/llamadrive/claude-bengo",
+      "license": "MIT",
+      "source": "./",
+      "category": "legal",
+      "keywords": [
+        "legal",
+        "japanese",
+        "law",
+        "lawyer",
+        "court",
+        "proofreading",
+        "family-tree",
+        "lawsuit",
+        "弁護士",
+        "法律",
+        "裁判所"
+      ],
+      "strict": false
+    }
+  ]
+}

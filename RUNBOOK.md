@@ -22,14 +22,19 @@ gpg --version         # GPG 2.x（/bengo-update で signer 検証に使う）
 
 ## 1. プラグイン配置 (1 分)
 
-```sh
-# [sh] ホームディレクトリにクローン
-git clone --depth 1 --branch v2.12.0 \
-  https://github.com/llamadrive/claude-bengo.git \
-  ~/.claude/plugins/claude-bengo
+Claude Code を起動し、**Claude Code 内で** 以下 2 行を実行する（ターミナル作業は不要）:
+
+```
+/plugin marketplace add llamadrive/claude-bengo
+/plugin install claude-bengo@claude-bengo
 ```
 
-**想定結果:** `Cloning into ...` → `done.` のみ。エラーが出た場合は既に同名ディレクトリがある可能性。
+**想定結果:** 各コマンドが「Added marketplace...」「Installed claude-bengo v2.14.0」等を返す。その後 Claude Code を再起動。
+
+**失敗時の診断:**
+- `already exists` → 前回の試行が残っている。`/plugin marketplace remove claude-bengo` で削除してから再試行
+- `network error` → 企業プロキシ環境では `HTTPS_PROXY` を設定してから Claude Code を起動する
+- `node / npm / python3 not found` → Node.js 18+ / Python 3.8+ を先にインストール
 
 ---
 

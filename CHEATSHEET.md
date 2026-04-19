@@ -12,6 +12,17 @@
 | **`/quickstart`** | 相続・離婚・交通事故の 30 分ツアー（初回用） |
 | **`/verify`** | 環境動作確認（不具合時の自己診断） |
 
+## 初回インストール
+
+Claude Code 内で 2 コマンド:
+
+```
+/plugin marketplace add llamadrive/claude-bengo
+/plugin install claude-bengo@claude-bengo
+```
+
+Claude Code を再起動し `/verify` が全 OK を出せば完了。
+
 **もしくは自然言語で:** 「離婚調停の準備したい」「戸籍から家系図作って」「民法709条」
 
 ---

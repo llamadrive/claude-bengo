@@ -243,7 +243,7 @@ def _verify_bundled_integrity(bundled_id: str) -> Optional[str]:
         # として使える。明示的に --skip-integrity フラグでのみ許可する。
         return (
             "_manifest.sha256 が存在しない。テンプレート整合性検証ができないため install を中止する。"
-            "プラグインクローンが破損している可能性がある。/bengo-update で再取得するか、"
+            "プラグインクローンが破損している可能性がある。`/plugin install claude-bengo@claude-bengo` で再取得するか、"
             "やむをえず先に進める場合は --skip-integrity を明示指定してほしい。"
         )
 
@@ -261,7 +261,7 @@ def _verify_bundled_integrity(bundled_id: str) -> Optional[str]:
                 f"テンプレート '{bundled_id}' のファイル {rel} が改ざんされている可能性がある。\n"
                 f"  expected: {expected}\n"
                 f"  actual  : {actual}\n"
-                f"プラグインを /bengo-update で再取得することを検討してほしい。"
+                f"プラグインを `/plugin install claude-bengo@claude-bengo` で再取得することを検討してほしい。"
             )
     return None
 

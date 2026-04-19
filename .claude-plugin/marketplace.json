@@ -11,7 +11,7 @@
     {
       "name": "claude-bengo",
       "description": "日本の法律事務所向け Claude Code プラグイン — 裁判所書式入力・相続関係説明図・訴訟分析・法令検索・決定論的計算（交通事故・養育費・遺留分等）。監査ログ付き、個人情報保護法 §25 対応。",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "author": {
         "name": "LlamaDrive",
         "email": "support@llama-drive.com",

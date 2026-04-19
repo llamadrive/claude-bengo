@@ -105,4 +105,4 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill template-instal
 - **matter 未設定**: Step 0 で中止、`/matter-create` を案内
 - **テンプレート ID が無効**: 同梱リストを表示して正しい ID を案内
 - **既存と衝突**: `--replace` の有無を確認、ユーザーの承諾を得てから上書き
-- **ファイル欠落**: レジストリと同梱ファイルの不整合。プラグインの再インストールを提案（`/bengo-update`）
+- **ファイル欠落**: レジストリと同梱ファイルの不整合。プラグインの再インストールを提案（`/plugin install claude-bengo@claude-bengo`）

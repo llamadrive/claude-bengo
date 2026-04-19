@@ -2,6 +2,53 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.0.1] - 2026-04-19
+
+`/bengo-update` コマンド廃止。Claude Code の標準 `/plugin install` に
+更新フローを統合する。
+
+### Rationale
+
+v2.x の `/bengo-update` は、プラグインが直接 git clone で `~/.claude/plugins/claude-bengo/`
+に置かれる前提で設計された。v2.14.1 で marketplace 方式に移行した結果、
+実際のプラグイン本体は `~/.claude/plugins/cache/claude-bengo/claude-bengo/{version}/`
+に、marketplace manifest は `~/.claude/plugins/marketplaces/claude-bengo/` に
+置かれる 2-directory 構造になった。
+
+`/bengo-update` は後者（manifest dir）しか git checkout せず、実際にロード
+される plugin cache は古いバージョンのまま残る misleading な挙動になっていた
+（"更新完了 v2 → v3.0.0" と表示しつつ、v2 がロードされ続ける）。
+
+正しい更新パスは Claude Code 標準の:
+
+```
+/plugin install claude-bengo@claude-bengo
+```
+
+これは marketplace.json の `version` を読み取り、cache を新バージョンへ
+更新する。
+
+### Removed
+
+- `commands/bengo-update.md`
+
+### Changed
+
+- README / RUNBOOK / CHEATSHEET / commands/help.md / commands/template-install.md /
+  skills/verify/SKILL.md / skills/_lib/template_lib.py の `/bengo-update` 参照を
+  `/plugin install claude-bengo@claude-bengo` に差替え
+- commands 数: 21 → 20
+
+### Migration
+
+v3.0.0 インストール済みユーザーは、Claude Code 内で:
+
+```
+/plugin install claude-bengo@claude-bengo
+```
+
+を実行すれば v3.0.1 に更新される。その後 Claude Code を再起動。
+
 ## [3.0.0] - 2026-04-19 — BREAKING CHANGE
 
 **matter ID 概念を廃止。フォルダ = 案件。**

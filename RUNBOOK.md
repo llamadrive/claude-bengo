@@ -13,7 +13,7 @@
 node --version        # v18.0.0 以上
 python3 --version     # 3.8 以上
 git --version         # 2.20 以上（signed tag 検証のため）
-gpg --version         # GPG 2.x（/bengo-update で signer 検証に使う）
+# gpg は v3.0.1 以降不要（Claude Code 標準の /plugin install が更新を担う）
 ```
 
 **想定結果:** 全てバージョン表示。1 件でも「command not found」なら、該当ツールをインストールしてから再実行。
@@ -203,12 +203,14 @@ cd && rm -rf ~/cases/smoke-test
 ## 9. 更新フローの確認 (1 分)
 
 ```
-/bengo-update
+/plugin install claude-bengo@claude-bengo
 ```
 
-**想定結果:** `git fetch --tags` → 最新タグを探す → **署名付きタグがない場合は中止**。v2.12.0 タグが `git tag -s` で署名されて GitHub に push されていれば、signer を表示して確認を求める。
+**想定結果:** Claude Code が marketplace.json を読んで最新バージョンを展開
+する。既にインストール済みの場合は「already installed」と出ることも。
+Claude Code を再起動して `/verify` で新バージョンが走っていることを確認。
 
-初回の場合「署名付きリリースが見つからない」と出ても正常（タグ署名は deployment 側の作業）。
+（v2 時代の `/bengo-update` は v3.0.1 で廃止。Claude Code 標準機能に統合した。）
 
 ---
 
@@ -223,7 +225,7 @@ cd && rm -rf ~/cases/smoke-test
 - [ ] 機密スキル実行後、`audit.py verify` が fail=0
 - [ ] 意図的改ざん後、`audit.py verify` が fail>0 で検知
 - [ ] （任意）`/family-tree` で `.agent` 生成
-- [ ] `/bengo-update` が署名付きタグのみを受け入れ
+- [ ] `/plugin install claude-bengo@claude-bengo` で更新（再起動後 /verify）
 
 ---
 

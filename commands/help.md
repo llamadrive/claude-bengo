@@ -45,7 +45,7 @@ claude-bengo には 23 コマンドがあるが、弁護士が覚えるべきな
   ?. 初めて使う・試したい → /quickstart（60 秒、同梱サンプルで出力を見せるだけ）
   ?. 全コマンド一覧 → /help --all
   ?. 環境を確認 → /verify
-  ?. プラグイン更新 → /bengo-update
+  ?. プラグイン更新 → /plugin install claude-bengo@claude-bengo
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -161,7 +161,7 @@ claude-bengo には 23 コマンドがあるが、弁護士が覚えるべきな
 
 【メンテナンス】
   /verify            動作確認
-  /bengo-update      署名付きタグから更新
+  /plugin install claude-bengo@claude-bengo  更新（Claude Code 標準）
   /help              このメニュー
 ```
 

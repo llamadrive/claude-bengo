@@ -17,7 +17,7 @@ $ARGUMENTS の値に応じて3つのモードで動作する:
 MCP サーバの疎通と fixtures の存在を確認する。
 
 **手順:**
-0. プラグインの更新を確認する: `Bash(git -C {plugin_dir} fetch --dry-run 2>&1)` で更新の有無を確認する。更新がある場合は「新しいバージョンが利用可能。`/bengo-update` で更新できる。」と案内する。
+0. プラグイン更新チェックはスキップする（v3.0.1 〜）。Claude Code の `/plugin install claude-bengo@claude-bengo` が marketplace.json の最新 version を見て更新するため、本スキルで直接 git を叩く必要はない。
 1. `mcp__xlsx-editor__get_workbook_info` を任意の fixtures XLSX に対して呼び出し、応答を確認する。
 2. `mcp__docx-editor__get_document_info` を任意の fixtures DOCX に対して呼び出し、応答を確認する。
 3. `mcp__agent-format__render_agent_inline` に極小の `.agent` 文書（例: `{"version":"0.1","name":"ping","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","config":{"proactive":false},"sections":[],"memory":{"observations":[],"preferences":{}}}`）を渡して、応答が返ることを確認する。

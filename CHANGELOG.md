@@ -2,6 +2,51 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.0.2] - 2026-04-19
+
+外部 adversarial code review で検出された v3.0.0 リファクタリングの取り残し
+（7 件の ship blocker）を修正する patch release。v3.0.0 のパイロット投入前に
+対処すべき最後の整合性ギャップ。
+
+### Fixed — CRITICAL
+
+- **workspace walk-up が `$HOME` を案件フォルダとして誤検出する問題（#1）**
+  `skills/_lib/workspace.py:find_workspace_root` は `~/.claude-bengo/`
+  （GLOBAL_ROOT、セッション ID やグローバル設定用に予約されたディレクトリ）
+  を walk-up 解決時にスキップするようになった。旧実装では `audit.py` の
+  `_get_session_id` が初回呼出で `~/.claude-bengo/` を自動作成するため、その後
+  `$HOME` 以下の任意ディレクトリから機密スキルを実行すると walk-up が `$HOME`
+  を案件フォルダとして採用し、**全クライアントの監査ログが 1 ファイルに
+  混入する** セキュリティ事故になっていた。`workspace --self-test` に
+  regression テスト #11・#12 を追加。
+
+### Fixed — Ship-blockers
+
+- `commands/quickstart.md` の `demo` 事案作成を削除された `matter.py create`
+  から `workspace.py init` ベースの mktemp フローに変更（#2）
+- `.github/workflows/ci.yml` が削除済みの `matter.py --self-test` を呼んで
+  いた → `workspace.py --self-test` + `denylist.py self-test` に差替（#3）
+- `commands/template-install.md` / `commands/template-list.md` の
+  matter.py 呼出を workspace.py に置換（#4）
+- `skills/lawsuit-analysis/SKILL.md` / `skills/template-fill/SKILL.md` の
+  `audit.py record --matter {matter_id}` プロンプト残存を削除（#5）
+- `skills/_lib/audit.py` の dead code `_resolve_matter_for_write`
+  （削除された `matter.py` の `validate_matter_id` / `matter_exists` を
+  呼んでいた AttributeError 予備軍）を削除（#5）
+- 11 個の `commands/*.md` の `allowed-tools` から
+  `Bash(python3 skills/_lib/matter.py:*)` を削除、`workspace.py:*` に置換（#6）
+- `commands/help.md` 「7. 事案（matter）を管理する」セクションと `/help --all`
+  マトリクスから `/matter-create` / `/matter-list` / `/matter-switch` /
+  `/matter-info` を削除し `/case-info` / `/audit-config` を追加、コマンド総数を
+  23 → 20 に修正（#7）
+
+### Test coverage
+
+- `workspace --self-test` 14/14（+2 regression）
+- `audit --self-test` 15/15
+- e2e 36/36
+- verify.py 40/40
+
 ## [3.0.1] - 2026-04-19
 
 `/bengo-update` コマンド廃止。Claude Code の標準 `/plugin install` に

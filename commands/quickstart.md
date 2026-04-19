@@ -62,10 +62,10 @@ description: 60 秒で試す — 同梱サンプルで claude-bengo の出力品
 
 **1. 家系図:**
 - 同梱サンプル `fixtures/family-tree/koseki-simple.pdf` を使う
-- 一時的に `demo` 事案を silently 作成する（既に存在すればスキップ）。
-  `python3 skills/_lib/matter.py create _demo --title "試用・デモ（一時）"` を Bash で呼ぶ。
-  `demo` は matter.py の RESERVED_IDS には入れていないが、名前付き予約として扱う。
-- `/family-tree fixtures/family-tree/koseki-simple.pdf` を `--matter demo` で実行
+- 試用用 tmp フォルダを `mktemp -d -t cbengo-demo` で作成し、そこで
+  `python3 skills/_lib/workspace.py init --cwd <tmp> --title demo` を呼んで
+  workspace を初期化する（audit ログと成果物がそのフォルダに閉じる）。
+- その tmp フォルダを cwd として `/family-tree fixtures/family-tree/koseki-simple.pdf` を実行
 - 出力 `.agent` を開いて:
   ```
   できた ← family_tree_YYYY-MM-DD.agent
@@ -74,29 +74,28 @@ description: 60 秒で試す — 同梱サンプルで claude-bengo の出力品
 
   この品質で自分の戸籍に試す？（y/n）
   ```
-  - y → `/matter-create` に誘導（本番 matter を作る対話）
+  - y → 案件フォルダに `cd` してから同じスキルを実行する旨を案内（`cd ~/cases/自分の案件 && claude`）
   - n → `/quickstart` メニューに戻る
 
 **2. テンプレート入力:**
 - `fixtures/template-fill/template-complaint.yaml` + `.xlsx` + `source-complaint.pdf` を使う
-- `demo` 事案に `/template-install` 代わりにサンプル yaml/xlsx を `matter_templates_dir` にコピー
-  （整合性検証は bundled template ではないので `--skip-integrity` 相当でスキップ）
-- `/template-fill fixtures/template-fill/source-complaint.pdf --template template-complaint` を実行
+- 試用フォルダ（mktemp）を `workspace.py init` で初期化し、そこにサンプル yaml/xlsx を `.claude-bengo/templates/` として配置する
+- tmp フォルダを cwd として `/template-fill fixtures/template-fill/source-complaint.pdf --template template-complaint` を実行
 - 出力 `template-complaint_filled.xlsx` を提示し、どのセルが埋まったか 1 画面サマリー
-- follow-up: 「自分の書式と PDF で試す？ → `/template-create <あなたの XLSX>`」
+- follow-up: 「自分の書式と PDF で試す？ → 自分の案件フォルダで `/template-create <あなたの XLSX>`」
 
 **3. 校正:**
 - `fixtures/typo-check/brief-with-errors.docx` を使う
-- `demo` 事案で `/typo-check fixtures/typo-check/brief-with-errors.docx` 実行
+- 試用フォルダ（mktemp）を cwd として `/typo-check fixtures/typo-check/brief-with-errors.docx` 実行
 - 出力 `brief-with-errors_reviewed.docx` の修正履歴を `mcp__docx-editor__read_document` で
   1-2 段落ぶんだけサンプル表示
-- follow-up: 「本番 matter を作って自分の書面を校正する？」
+- follow-up: 「自分の書面で試す？ → 案件フォルダに `cd` してから再実行」
 
 **4. 訴訟分析:**
 - `fixtures/lawsuit-analysis/complaint.pdf` + `answer.pdf` を使う
-- `demo` 事案で `/lawsuit-analysis fixtures/lawsuit-analysis/complaint.pdf fixtures/lawsuit-analysis/answer.pdf`
+- 試用フォルダ（mktemp）を cwd として `/lawsuit-analysis fixtures/lawsuit-analysis/complaint.pdf fixtures/lawsuit-analysis/answer.pdf`
 - 出力 `lawsuit_report_YYYY-MM-DD.agent` を提示
-- follow-up: 「本番 matter を作って自分の訴訟記録で試す？」
+- follow-up: 「自分の訴訟記録で試す？ → 案件フォルダに `cd` してから再実行」
 
 **5. 条文検索:**
 - `/law-search 民法709条` を即実行（matter 不要）
@@ -112,15 +111,15 @@ description: 60 秒で試す — 同梱サンプルで claude-bengo の出力品
 
 - サンプルファイルが見つからない場合: `fixtures/` が欠落している旨を 1 行で表示し、
   `/verify` を案内する
-- `demo` matter の作成に失敗した場合: エラー内容を 1 行で表示し、`/matter-create _demo` を
-  手動で試すよう案内する
+- 試用フォルダ（tmp）の作成や `workspace.py init` に失敗した場合: エラー内容を 1 行で表示し、
+  ユーザー側で `mkdir ~/claude-bengo-demo && cd ~/claude-bengo-demo` を実行してから再試行するよう案内する
 
 ## 避けること
 
 - QUICKSTART.md / RUNBOOK.md / README.md / CLAUDE.md の**読込を指示しない**
 - 「前提として /verify を先に...」のような checklist を**先に見せない**
 - 選ばれたシナリオ以外のコマンドを紹介しない
-- 監査ログ・matter・事案 ID の概念を**最初に説明しない**（6 を選んだ後にも説明不要）
+- 監査ログ・案件フォルダの概念を**最初に説明しない**（6 を選んだ後にも説明不要）
 
 気になったら `/help`（タスクメニュー）または `QUICKSTART.md`（長編ツアー）を
 自発的に読むはず。`/quickstart` はその入口ではない。

@@ -1,6 +1,6 @@
 ---
 description: 訴訟関連文書を分析し構造化レポート（.agent 形式）を生成
-allowed-tools: Read, Write, Glob, mcp__docx-editor__read_document, Bash(python3 skills/_lib/audit.py:*), Bash(python3 skills/_lib/matter.py:*), Bash(python3 skills/family-tree/open_viewer.py:*)
+allowed-tools: Read, Write, Glob, mcp__docx-editor__read_document, Bash(python3 skills/_lib/audit.py:*), Bash(python3 skills/_lib/workspace.py:*), Bash(python3 skills/family-tree/open_viewer.py:*)
 ---
 
 訴訟関連文書（訴状、答弁書、準備書面、証拠説明書等）を読み取り、構造化データ（タイムライン、登場人物、主張・認否・証拠）を抽出して `.agent` ファイルを生成する。

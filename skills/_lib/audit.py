@@ -209,30 +209,8 @@ def _audit_path(matter_id: Optional[str] = None) -> Path:
         return DEFAULT_AUDIT_PATH
 
 
-def _resolve_matter_for_write(matter_id: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
-    """書込用に matter_id を検証する。
-
-    戻り値: (resolved_matter_id, error_json_string)
-    - 引数 matter_id が None なら (None, None)
-    - 命名規則違反 → (None, JSON エラー)
-    - 事案ディレクトリ未作成 → (None, JSON エラー)
-    - 有効な場合 → (matter_id, None)
-    """
-    if not matter_id:
-        return None, None
-    m = _load_matter_module()
-    ok, reason = m.validate_matter_id(matter_id)
-    if not ok:
-        return None, json.dumps(
-            {"error": f"--matter の値が無効: {reason}"}, ensure_ascii=False
-        )
-    if not m.matter_exists(matter_id):
-        msg = (
-            f"エラー: matter '{matter_id}' が存在しない。\n"
-            f"先に `/matter-create {matter_id}` を実行するか、/matter-list で既存 matter を確認してほしい。"
-        )
-        return None, json.dumps({"error": msg}, ensure_ascii=False)
-    return matter_id, None
+# v3.0.0 で matter 概念が廃止されたため、旧 _resolve_matter_for_write 関数は削除された。
+# audit.py は workspace.py の walk-up 解決を使う（_audit_path 参照）。
 
 
 def _max_bytes() -> int:

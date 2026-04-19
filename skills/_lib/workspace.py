@@ -96,12 +96,19 @@ def find_workspace_root(start: Optional[Path] = None) -> Optional[Path]:
 
     git が `.git/` を探すロジックと同じ。対象ディレクトリが `.claude-bengo`
     という名前だった場合は親を優先する（混乱を避ける）。
+
+    重要: `~/.claude-bengo/` はグローバル設定用ディレクトリとして予約されている
+    ため、`$HOME` を workspace root として検出しない。そうしないと弁護士の
+    ホーム直下で機密スキルを実行するたびに「ホーム全体が案件フォルダ」扱い
+    になり、全クライアントの監査ログが一つに混ざってしまう。
     """
+    global_root_resolved = GLOBAL_ROOT.resolve() if GLOBAL_ROOT.exists() else GLOBAL_ROOT.absolute()
     p = (start or Path.cwd()).resolve()
-    # 無限ループ防止: ルートまで
     while True:
         candidate = p / WORKSPACE_DIRNAME
-        if candidate.is_dir():
+        # GLOBAL_ROOT（~/.claude-bengo/）が walk-up にヒットしても workspace 扱い
+        # しない。`$HOME` を case folder にしないための守護。
+        if candidate.is_dir() and candidate != global_root_resolved:
             return p
         parent = p.parent
         if parent == p:
@@ -522,6 +529,27 @@ def _self_test() -> int:
                 tmp2.rmdir()
             except OSError:
                 pass
+
+        # 11. CRITICAL: walk-up from $HOME must NOT return $HOME even if
+        # ~/.claude-bengo/ exists (GLOBAL_ROOT guard). Without this guard,
+        # every skill run under a user's home dir would mix all clients into
+        # one audit log.
+        check(
+            "11. walk-up from Path.home() does not return $HOME via GLOBAL_ROOT",
+            find_workspace_root(Path.home()) is None
+            or find_workspace_root(Path.home()) != Path.home(),
+        )
+
+        # 12. From a subdir of $HOME with no nested workspace, also None.
+        # (We can only verify this if the user actually has no case folders
+        # above `tempfile.gettempdir()` in their tree. On macOS
+        # /var/folders/... is outside $HOME so this works reliably.)
+        check(
+            "12. find_workspace_root skips GLOBAL_ROOT as sentinel",
+            GLOBAL_ROOT.resolve() not in [
+                p for p in [find_workspace_root(Path.home())] if p
+            ],
+        )
 
     print(f"\nworkspace self-test: {ok}/{ok + fail} passed")
     return 0 if fail == 0 else 1

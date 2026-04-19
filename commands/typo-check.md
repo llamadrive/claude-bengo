@@ -1,6 +1,6 @@
 ---
 description: 法律文書の誤字脱字・表記揺れを校正（修正履歴付き）
-allowed-tools: Read, Write, Glob, mcp__docx-editor__*, Bash(python3 skills/_lib/audit.py:*), Bash(python3 skills/_lib/matter.py:*)
+allowed-tools: Read, Write, Glob, mcp__docx-editor__*, Bash(python3 skills/_lib/audit.py:*), Bash(python3 skills/_lib/workspace.py:*)
 ---
 
 DOCX法律文書を日本語法律文書作成ルールに照合し、誤字脱字・文法エラー・表記揺れを検出する。

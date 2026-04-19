@@ -1,29 +1,20 @@
 ---
-description: 同梱テンプレート（裁判所書式雛形）をアクティブ matter にインストールする
-allowed-tools: Read, Bash(python3 skills/_lib/template_lib.py:*), Bash(python3 skills/_lib/matter.py:*), Bash(python3 skills/_lib/audit.py:*)
+description: 同梱テンプレート（裁判所書式雛形）を現在の案件フォルダにインストールする
+allowed-tools: Read, Bash(python3 skills/_lib/template_lib.py:*), Bash(python3 skills/_lib/workspace.py:*), Bash(python3 skills/_lib/audit.py:*)
 ---
 
-プラグインに同梱されている裁判所書式・実務書式の雛形（債権者一覧表、遺産目録、交通事故示談書等）をアクティブ matter のテンプレートディレクトリにコピーする。コピー後は `/template-fill` から選択・利用できる。
+プラグインに同梱されている裁判所書式・実務書式の雛形（債権者一覧表、遺産目録、交通事故示談書等）を現在の案件フォルダの `.claude-bengo/templates/` にコピーする。コピー後は `/template-fill` から選択・利用できる。
 
 $ARGUMENTS の指定方法:
 - 引数なし: 利用可能な同梱テンプレートを一覧表示する
 - テンプレート ID: `/template-install creditor-list` — 指定テンプレートをインストール
 - `--replace` 付き: `/template-install creditor-list --replace` — 既存を上書き
 
-`--matter <id>` フラグでアクティブな事案を明示指定できる。
-
 ## ワークフロー
 
-### Step 0: Matter の解決
+### Step 0: workspace の確認
 
-処理開始前に、現在アクティブな matter を解決する:
-
-```bash
-python3 skills/_lib/matter.py resolve
-```
-
-- `source=none` の場合: エラーで中止し、`/matter-create` 等の案内を表示する
-- `matter_id` が解決できた場合: ユーザーに 1 回だけアクティブ matter を確認する
+`template_lib.py install` が内部で `workspace.ensure_workspace()` を呼ぶため、CWD に `.claude-bengo/` がなければ自動作成する。意図しないフォルダでの初期化を避けるため、実行前に「このフォルダ（{cwd}）を案件フォルダとして使用する。よいか？」と 1 回確認する。
 
 ### Step 1: 引数の解析
 
@@ -49,7 +40,7 @@ python3 skills/_lib/template_lib.py install <bundled-id>
 **インストール成功後、監査ログに記録する（法律事務所のコンプライアンス要件）:**
 
 ```bash
-python3 skills/_lib/audit.py record --matter {matter_id} --skill template-install --event file_write --file "{bundled-id}.yaml,{bundled-id}.xlsx" --note "installed from bundled library"
+python3 skills/_lib/audit.py record --skill template-install --event file_write --file "{bundled-id}.yaml,{bundled-id}.xlsx" --note "installed from bundled library"
 ```
 
 ### Step 4: 完了案内
@@ -57,12 +48,12 @@ python3 skills/_lib/audit.py record --matter {matter_id} --skill template-instal
 インストール成功時、ユーザーに以下を案内する:
 
 ```
-テンプレート '{title}' を matter '{matter_id}' にインストールした。
+テンプレート '{title}' をこの案件フォルダにインストールした。
   YAML: {yaml_dst}
   XLSX: {xlsx_dst}
 
 使い方:
-  /template-list       — 現在の matter のテンプレート一覧（新テンプレートを含む）
+  /template-list       — 現在の案件フォルダのテンプレート一覧
   /template-fill       — ソース文書からこのテンプレートにデータを入力
 ```
 

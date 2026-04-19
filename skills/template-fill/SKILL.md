@@ -26,11 +26,11 @@ version: 1.0.0
 
 ## 監査ログ
 
-本スキルは処理対象のソース文書（PDF・画像）および出力 XLSX のファイル名・サイズ・SHA-256 をアクティブ matter の `./.claude-bengo/audit.jsonl` に記録する。内容は記録しない。Step 2 の読取前と Step 6 の書込後に `skills/_lib/audit.py record --matter {matter_id}` を実行する。
+本スキルは処理対象のソース文書（PDF・画像）および出力 XLSX のファイル名・サイズ・SHA-256 を現在の案件フォルダの `./.claude-bengo/audit.jsonl` に記録する。内容は記録しない。Step 2 の読取前と Step 6 の書込後に `skills/_lib/audit.py record` を実行する。
 
 ## 前提条件
 
-現在のフォルダが設定されていること。テンプレートが `/template-create` で事前登録されている必要がある。アクティブ matter の templates ディレクトリ（`~/.claude-bengo/matters/{matter_id}/templates/`）に `{id}.yaml` + `{id}.xlsx` のペアが存在すること。
+テンプレートが `/template-create` で事前登録されている必要がある。現在の案件フォルダの `./.claude-bengo/templates/` に `{id}.yaml` + `{id}.xlsx` のペアが存在すること。
 
 ## ワークフロー
 
@@ -43,8 +43,8 @@ version: 1.0.0
 Step 0 で解決した `{matter_templates_dir}/*.yaml` を Glob で検索し、`_schema.yaml` を除外する。**v2.0.0 ではテンプレートは matter ディレクトリ配下にのみ存在する。** 作業ディレクトリの `templates/` やプラグインディレクトリを検索してはならない。
 
 - **0件の場合**: ユーザーに以下の選択肢を提示する:
-  - ユーザーが $ARGUMENTS や会話で XLSX ファイルを指定している場合: 「現在の matter '{matter_id}' にはテンプレートが未登録である。この XLSX をテンプレートとして登録してからデータ入力を行うか？」と確認し、承諾されれば `skills/template-create/SKILL.md` を Read して inline でテンプレート作成フローを実行した後、続けてデータ入力に進む。
-  - XLSX の指定がない場合: 「現在の matter '{matter_id}' にはテンプレートが登録されていない。`/template-create` でテンプレートを登録してほしい。」と案内する。
+  - ユーザーが $ARGUMENTS や会話で XLSX ファイルを指定している場合: 「この案件フォルダにはテンプレートが未登録である。この XLSX をテンプレートとして登録してからデータ入力を行うか？」と確認し、承諾されれば `skills/template-create/SKILL.md` を Read して inline でテンプレート作成フローを実行した後、続けてデータ入力に進む。
+  - XLSX の指定がない場合: 「この案件フォルダにはテンプレートが登録されていない。`/template-create` でテンプレートを登録してほしい。」と案内する。
 - **1件の場合**: 自動選択し、「テンプレート『○○』を使用する。よいか？」と確認する。
 - **複数件の場合**: 各YAMLを Read で読み取り、以下のような選択肢を提示する:
 

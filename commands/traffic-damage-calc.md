@@ -1,6 +1,6 @@
 ---
 description: 交通事故の損害賠償額を赤い本基準で決定論的に計算
-allowed-tools: Read, Glob, Bash(python3 skills/traffic-damage-calc/calc.py:*), Bash(python3 skills/traffic-damage-calc/test_calc.py:*), Bash(python3 skills/_lib/matter.py:*), Bash(python3 skills/_lib/audit.py:*)
+allowed-tools: Read, Glob, Bash(python3 skills/traffic-damage-calc/calc.py:*), Bash(python3 skills/traffic-damage-calc/test_calc.py:*), Bash(python3 skills/_lib/workspace.py:*), Bash(python3 skills/_lib/audit.py:*)
 ---
 
 交通事故による人身損害の賠償額を、日弁連交通事故相談センター東京支部編「民事交通事故訴訟損害賠償額算定基準」（通称「赤い本」）の基準に従って計算する。LLM の推論ではなく、判例と実務で確立した表値・係数を用いた決定論的計算。

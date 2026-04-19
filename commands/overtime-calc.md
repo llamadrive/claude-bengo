@@ -1,6 +1,6 @@
 ---
 description: 未払残業代を労基法37条に基づいて決定論的に計算
-allowed-tools: Read, Glob, Bash(python3 skills/overtime-calc/calc.py:*), Bash(python3 skills/overtime-calc/test_calc.py:*), Bash(python3 skills/_lib/matter.py:*), Bash(python3 skills/_lib/audit.py:*)
+allowed-tools: Read, Glob, Bash(python3 skills/overtime-calc/calc.py:*), Bash(python3 skills/overtime-calc/test_calc.py:*), Bash(python3 skills/_lib/workspace.py:*), Bash(python3 skills/_lib/audit.py:*)
 ---
 
 労基法 37 条に基づく未払割増賃金を月別労働時間記録から計算する。割増率（時間外 1.25、60h超 1.5、深夜 +0.25、休日 1.35）を自動適用し、時効 3 年（改正後）の内外を区別する。

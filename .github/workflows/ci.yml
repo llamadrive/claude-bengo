@@ -55,11 +55,14 @@ jobs:
       - name: Run property-division-calc unit tests
         run: python3 skills/property-division-calc/test_calc.py
 
-      - name: Run matter.py self-tests
-        run: python3 skills/_lib/matter.py --self-test
+      - name: Run workspace.py self-tests
+        run: python3 skills/_lib/workspace.py --self-test
 
       - name: Run audit.py self-tests
         run: python3 skills/_lib/audit.py --self-test
+
+      - name: Run denylist self-tests
+        run: python3 skills/_lib/denylist.py self-test
 
       - name: Run law-search cache self-tests
         run: python3 skills/law-search/search.py self-test

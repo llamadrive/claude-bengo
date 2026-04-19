@@ -1,6 +1,6 @@
 ---
 description: 養育費・婚姻費用を令和元年改定算定方式で決定論的に計算
-allowed-tools: Read, Glob, Bash(python3 skills/child-support-calc/calc.py:*), Bash(python3 skills/child-support-calc/test_calc.py:*), Bash(python3 skills/_lib/matter.py:*), Bash(python3 skills/_lib/audit.py:*)
+allowed-tools: Read, Glob, Bash(python3 skills/child-support-calc/calc.py:*), Bash(python3 skills/child-support-calc/test_calc.py:*), Bash(python3 skills/_lib/workspace.py:*), Bash(python3 skills/_lib/audit.py:*)
 ---
 
 離婚後の養育費（民法 766条・877条）、または別居中の婚姻費用（民法 760条）を、令和元年 12 月改定の標準算定方式に基づいて計算する。東京家裁・大阪家裁公開の算定表と原理的に一致する式を用い、決定論的な目安額を提示する。

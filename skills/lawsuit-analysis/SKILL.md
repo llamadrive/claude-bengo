@@ -27,7 +27,7 @@ version: 1.0.0
 
 ## 監査ログ
 
-本スキルは処理対象の各文書のファイル名・サイズ・SHA-256 をアクティブ matter の `./.claude-bengo/audit.jsonl` に記録する。内容は記録しない。Step 2 の読取前と Step 5 の出力後に `skills/_lib/audit.py record --matter {matter_id}` を実行する。詳細は `python3 skills/_lib/audit.py --help`。
+本スキルは処理対象の各文書のファイル名・サイズ・SHA-256 を現在の案件フォルダの `./.claude-bengo/audit.jsonl` に記録する。内容は記録しない。Step 2 の読取前と Step 5 の出力後に `skills/_lib/audit.py record` を実行する。詳細は `python3 skills/_lib/audit.py --help`。
 
 ## ワークフロー
 

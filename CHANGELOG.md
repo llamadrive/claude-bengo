@@ -2,6 +2,50 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.1.5] - 2026-04-19
+
+Claude Code 公式ドキュメントに基づく marketplace 設定の修正と、更新 UX の
+整備。"already installed globally" で詰まる既知バグへの正しい対処法を
+ドキュメント化。
+
+### Fixed
+
+- `.claude-plugin/marketplace.json` から `version` フィールドを削除。
+  公式ドキュメントの明示的な推奨に従う:
+  > When possible, avoid setting the version in both places. The plugin
+  > manifest always wins silently, which can cause the marketplace version
+  > to be ignored. For relative-path plugins, set the version in the
+  > marketplace entry. For all other plugin sources, set it in the plugin
+  > manifest.
+
+  本プラグインは `url` source（relative-path ではない）のため、version は
+  `plugin.json` のみに置くのが正しい。marketplace.json の version 重複は
+  cache path / update 検出に desync を招く可能性があった。
+
+### Added — Documentation
+
+- `README.md` に「更新方法」セクションを大幅拡充。auto-update 推奨フロー、
+  手動更新（uninstall → reinstall）、"already installed globally" 既知バグの
+  言及を追加
+- `RUNBOOK.md` トラブルシューティングに「プラグイン更新が 'already
+  installed globally' で失敗する」節を追加（ゴースト状態の復旧手順含む）
+
+### Known issues upstream (not fixable on our side)
+
+以下は Claude Code 側の open bug で、本プラグインの実装では回避不能:
+
+- [#16174](https://github.com/anthropics/claude-code/issues/16174),
+  [#15791](https://github.com/anthropics/claude-code/issues/15791),
+  [#20390](https://github.com/anthropics/claude-code/issues/20390),
+  [#26513](https://github.com/anthropics/claude-code/issues/26513):
+  `/plugin install` が "already installed globally" を誤報する
+- [#38271](https://github.com/anthropics/claude-code/issues/38271),
+  [#46594](https://github.com/anthropics/claude-code/issues/46594),
+  [#31462](https://github.com/anthropics/claude-code/issues/31462):
+  `/plugin marketplace update` がインストール済みプラグインを upgrade しない
+
+RUNBOOK.md に workaround 手順を記載。
+
 ## [3.1.4] - 2026-04-19
 
 SKILL.md clean-up — バージョン履歴ノイズを全削除。

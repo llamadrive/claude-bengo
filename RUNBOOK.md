@@ -321,6 +321,46 @@ chmod 700 ~/cases/*/.claude-bengo
 - CWD のどこか上流に `.claude-bengo/` が存在している（git 的 walk-up）
 - 意図しない親フォルダの `.claude-bengo/` を削除するか、別の場所に `cd` する
 
+### プラグイン更新が "already installed globally" で失敗する
+
+Claude Code の既知のバグ（[#16174](https://github.com/anthropics/claude-code/issues/16174) 他）。
+marketplace catalogue を更新しても、`installed_plugins.json` のエントリが
+残っていると `/plugin install` が再取得を拒否する。cache ディレクトリが
+欠落している場合でも同じ症状が出る（ゴースト状態）。
+
+**推奨: auto-update を有効化する**
+
+`/plugin` → Marketplaces タブ → claude-bengo → "Enable auto-update" を選ぶ。
+Claude Code 起動時に marketplace と plugin が自動更新される。更新時は
+「`/reload-plugins` を実行してほしい」という通知が出る。
+
+**手動更新（auto-update なしの場合）**
+
+```
+/plugin marketplace update claude-bengo      ← catalogue のみ refresh
+/plugin uninstall claude-bengo@claude-bengo  ← 一度削除
+/plugin install claude-bengo@claude-bengo    ← 新バージョンで再取得
+/reload-plugins
+```
+
+**ゴースト状態の復旧（install が "already installed" と言い続ける）**
+
+Claude Code を完全終了（Cmd+Q）した上で、ターミナルから:
+
+```sh
+python3 -c "
+import json
+from pathlib import Path
+r = Path.home() / '.claude/plugins/installed_plugins.json'
+d = json.loads(r.read_text())
+d['plugins'].pop('claude-bengo@claude-bengo', None)
+r.write_text(json.dumps(d, indent=2) + chr(10))
+print('removed')
+"
+```
+
+Claude Code を起動しなおして `/plugin install claude-bengo@claude-bengo` を再実行する。
+
 ---
 
 ## リファレンス

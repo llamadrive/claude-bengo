@@ -480,15 +480,34 @@ python3 ~/.claude/plugins/claude-bengo/skills/_lib/audit.py export --format csv 
 
 ## 更新方法
 
-Claude Code 内で:
+### 推奨: auto-update を有効化する（初回 1 回だけ）
+
+Claude Code 内で `/plugin` → **Marketplaces タブ** → claude-bengo を選択 →
+**Enable auto-update**。以降は起動時に自動で最新版が取得され、更新があった
+場合は「`/reload-plugins` を実行してほしい」の通知が出る。
+
+### 手動更新（auto-update なしの場合）
+
+Claude Code は `/plugin upgrade` のような単発コマンドを提供していないため
+（2026-04 時点）、既存プラグインを一度 uninstall してから reinstall する:
 
 ```
-/plugin install claude-bengo@claude-bengo
+/plugin marketplace update claude-bengo      ← catalogue を refresh
+/plugin uninstall claude-bengo@claude-bengo  ← 削除
+/plugin install claude-bengo@claude-bengo    ← 最新版で再取得
+/reload-plugins                              ← session に反映
 ```
 
-marketplace.json の最新バージョンが自動的に cache へ展開される。`.mcp.json`
-の変更を反映するため Claude Code を再起動してほしい。v2 時代の `/bengo-update`
-は v3.0.1 で廃止された（Claude Code 標準の plugin システムに統合）。
+`.mcp.json` の変更は `/reload-plugins` では反映されないため、MCP サーバ
+バージョンが bump された release の場合は **Claude Code を完全終了（Cmd+Q）
+→ 再起動** が必要。
+
+### "already installed globally" エラーが出た場合
+
+Claude Code の既知バグ（[#16174](https://github.com/anthropics/claude-code/issues/16174) 他）
+で、`installed_plugins.json` のエントリとディスク cache が desync すると
+`/plugin install` が再取得を拒否する。RUNBOOK.md のトラブルシューティング
+「プラグイン更新が "already installed globally" で失敗する」を参照。
 
 ---
 

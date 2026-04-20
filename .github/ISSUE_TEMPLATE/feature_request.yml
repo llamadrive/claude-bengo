@@ -1,0 +1,38 @@
+name: 機能リクエスト
+description: 新しいスキル・計算機能・テンプレート・業務サポートの提案
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 解決したい業務課題
+      description: "例: 「家事事件の受任時に X が毎回手作業で時間がかかる」"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案する機能
+      description: どんなスキル・コマンド・入出力が欲しいか。
+    validations:
+      required: true
+
+  - type: textarea
+    id: legal_basis
+    attributes:
+      label: 根拠法令・文献
+      description: "計算・書式生成を伴う場合、準拠する条文・ガイドライン・標準書式（例: 赤い本、令和元年改定算定方式、家裁書式）を明記してほしい。決定論的な計算ロジックが必要なため。"
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 本プラグインの責務範囲
+      description: |
+        本プラグインは「弁護士の業務補助」であり法的助言を提供しない（弁護士法 §72）。
+        提案機能がこの範囲に収まるかの見解があれば記載してほしい。
+    validations:
+      required: false

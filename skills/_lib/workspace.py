@@ -766,11 +766,15 @@ def _self_test() -> int:
         )
 
         # 7. audit_path override via config
-        save_case_config({"audit_path": "/tmp/override-audit.jsonl"}, root)
+        # Path 同士の比較にすることで Windows (`\tmp\...`) と POSIX の
+        # 文字列表現差異を無視する。意図: audit_path() が config.audit_path
+        # をそのまま返すことの確認。
+        override_raw = "/tmp/override-audit.jsonl"
+        save_case_config({"audit_path": override_raw}, root)
         ap2 = audit_path(root)
         check(
             "7. config.audit_path overrides default",
-            str(ap2) == "/tmp/override-audit.jsonl",
+            ap2 == Path(override_raw).expanduser(),
             f"ap2={ap2}",
         )
 

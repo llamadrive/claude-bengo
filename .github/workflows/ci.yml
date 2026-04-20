@@ -39,6 +39,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install test dependencies
+        # openpyxl は template_lib --self-test が一時 xlsx を生成するために必要。
+        # プラグイン本体は python stdlib のみで動くが、テンプレ統合テストのみ
+        # 実 .xlsx の書き出しを検証する。
+        run: python3 -m pip install --upgrade pip && python3 -m pip install openpyxl
+
       - name: Run verify harness
         run: python3 scripts/verify.py
 

@@ -1,0 +1,92 @@
+name: バグ報告
+description: 動作不良・誤計算・出力の異常を報告する
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **⚠ 機密情報の注意**
+
+        本プラグインは法律事務所で使用されるため、再現手順・ログ・スクリーンショットに
+        クライアントの氏名・住所・案件番号・戸籍情報等を含めないでほしい。ダミーデータ
+        または伏せ字で再現してほしい。
+
+  - type: input
+    id: version
+    attributes:
+      label: プラグインバージョン
+      description: "`/help` の冒頭、または `.claude-plugin/plugin.json` の version フィールド"
+      placeholder: "v3.3.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python バージョン
+      description: "`python3 --version` の出力"
+      placeholder: "3.11.x"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: harness
+    attributes:
+      label: 実行ハーネス
+      options:
+        - Claude Code (CLI)
+        - Claude Desktop + Cowork
+        - その他
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: 実行したコマンド・スキル
+      description: "例: `/typo-check foo.docx` / `/traffic-damage-calc` / 自然言語で「◯◯して」"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作
+      description: エラーメッセージがある場合はそのまま貼ってほしい（PII を含まないことを確認）。
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 最小再現手順
+      description: 可能なら同梱サンプル (`samples/`) またはダミーファイルで再現してほしい。
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: pii
+    attributes:
+      label: PII チェック
+      options:
+        - label: 報告内容にクライアントの機密情報が含まれていないことを確認した。
+          required: true

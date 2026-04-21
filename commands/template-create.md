@@ -4,7 +4,9 @@ allowed-tools: Read, Write, Glob, Bash(python3 skills/_lib/copy_file.py:*), Bash
 ---
 
 XLSXファイルのセル構造を分析し、入力フィールドを特定してテンプレート定義（YAML）を作成する。
-作成した定義とXLSXのコピーは、アクティブな matter（事案）の templates ディレクトリに保存される。
+作成した定義とXLSXのコピーは、指定スコープの templates ディレクトリに保存される。
+- `--scope case` の場合: `./.claude-bengo/templates/`
+- `--scope global` の場合: `~/.claude-bengo/templates/`
 
 $ARGUMENTS: XLSXファイルのパス（任意。なければ対話で確認）。
 

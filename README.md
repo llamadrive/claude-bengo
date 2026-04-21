@@ -197,6 +197,31 @@ Claude Code / Cowork が GitHub からリポジトリを取得し、自動的に
 
 **Cowork ユーザー向けの補足**: Claude Desktop アプリを開き、左サイドバーで **Cowork タブ** に切り替え、**Customize** メニューからプラグイン管理画面に入ってもインストール可能。
 
+### 事務所規模別の推奨構成
+
+| 事務所規模 | 推奨構成 | 理由 |
+|-----------|---------|------|
+| 個人開業（1 名） | **本プラグインのみ** | 監査ログは `.claude-bengo/audit.jsonl` に SHA-256 ハッシュチェーンで記録され、HMAC 付き（盗難ノート PC での改ざん検出）。弁護士法 §23 対応に十分 |
+| 小規模（2〜5 名） | **本プラグインのみ** | 各端末のログを個別保管で運用可能。cloud は任意 |
+| 中規模（5〜20 名） | **本プラグイン + [claude-bengo-cloud](https://github.com/llamadrive/claude-bengo-cloud)** | 事務所全体の監査ログを一元化、パートナー弁護士が全員の活動を可視化 |
+| 大規模（20 名以上） | 本プラグイン + claude-bengo-cloud + S3 Object Lock 外部 export | 長期保管・外部監査・弁護士法 §23-2 照会対応 |
+
+**claude-bengo-cloud** は任意の **事務所スケール用バックエンド**（Next.js + Supabase）で、以下を追加する:
+
+- 事務所全体の監査ログダッシュボード（誰がいつ何を実行したか）
+- 案件・期日管理
+- テンプレート共有（事務所内 private + 業界 public）
+- API トークン管理（lawyer 単位の attribution 可能、v3.3.1〜）
+- 弁護士法 §23-2 照会エクスポート（filename_sha256 索引付き）
+- WORM ミラー（外部ストレージへの追記専用アーカイブ）
+
+個人開業〜小規模事務所は **プラグイン単体で完結** する設計なので、cloud を
+立てる必要はない。中規模以上で「パートナーが全員分の活動を監査したい」
+「事務所標準テンプレートを共有したい」というニーズが出てきた段階で cloud
+を導入する運用を推奨。
+
+cloud のセットアップは [llamadrive/claude-bengo-cloud](https://github.com/llamadrive/claude-bengo-cloud) の README を参照（Supabase と Vercel を用いて 30 分程度）。
+
 #### インストール確認
 
 ```

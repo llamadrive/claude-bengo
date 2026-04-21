@@ -14,7 +14,7 @@ allowed-tools: Read, Glob, Bash(python3 skills/traffic-damage-calc/calc.py:*), B
 - 遅延損害金（年3%、改正民法 404 条）
 - 過失相殺（民法 722 条 2 項）
 
-$ARGUMENTS: 対話で入力するか、JSON ファイルを指定する。`--matter <id>` フラグで明示的に事案を指定可能。
+$ARGUMENTS: 対話で入力するか、JSON ファイルを指定する。
 
 ## 使い方
 

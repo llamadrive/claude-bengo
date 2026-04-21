@@ -6,17 +6,17 @@
 `{id}.yaml` + `{id}.xlsx` のペアで配置される。`_registry.yaml` が
 利用可能なテンプレートのメタデータを列挙する。
 
-`/template-install` はアクティブな matter の `templates/` ディレクトリへ
-同梱テンプレートをコピーする。matter 未設定では動作しない（機密情報を扱う
-`template-create` / `template-fill` と同じ制約）。
+`/template-install` は現在の workspace の `templates/` ディレクトリ、または
+事務所グローバルの `~/.claude-bengo/templates/` へ同梱テンプレートをコピーする。
+case スコープでは workspace 未初期化でも現在のフォルダを自動初期化して続行する。
 
 ## CLI
 
 ```
 python3 skills/_lib/template_lib.py list [--format json]
     同梱テンプレート一覧を表示する
-python3 skills/_lib/template_lib.py install <id> [--matter <id>] [--replace]
-    指定テンプレートをアクティブ matter にコピーする
+python3 skills/_lib/template_lib.py install <id> [--scope case|global] [--replace]
+    指定テンプレートを case または global スコープへコピーする
 python3 skills/_lib/template_lib.py show <id>
     テンプレートのメタデータ詳細を表示する
 ```
@@ -74,7 +74,7 @@ def _parse_registry_entry(block: str) -> Optional[Dict[str, str]]:
     """`_registry.yaml` のエントリブロックを簡易パースする。
 
     矢印マーカー（`- id: ...`）で始まるブロックを dict に変換する。
-    複数行値は `|` スカラー相当で扱う（matter.py の _read_metadata と同じ規約）。
+    複数行値は `|` スカラー相当で扱う（旧 metadata リーダと同じ規約）。
     """
     entry: Dict[str, str] = {}
     current_key: Optional[str] = None
@@ -756,15 +756,13 @@ def _cmd_list(args: argparse.Namespace) -> int:
                 print(f"                              {desc}")
         print()
     print("インストール方法:")
-    print("  /template-install <id>         — アクティブ matter に同梱テンプレートをコピー")
+    print("  /template-install <id>         — 現在の案件フォルダに同梱テンプレートをコピー")
     print("  /template-install <id> --replace — 既存を上書き")
     return 0
 
 
 def _cmd_install(args: argparse.Namespace) -> int:
-    # v3.0.0: workspace 解決（CWD walk-up）。--matter は deprecated で無視される。
-    # ID は取得できたが存在しない場合は install_template 側で
-    # 「matter が存在しない」エラーを出させる（exit 1）
+    # v3.0.0: workspace 解決（CWD walk-up）。
 
     try:
         result = install_template(
@@ -1153,9 +1151,8 @@ def main() -> int:
     p_show = sub.add_parser("show", help="テンプレートの詳細")
     p_show.add_argument("bundled_id")
 
-    p_inst = sub.add_parser("install", help="アクティブ matter にインストール")
+    p_inst = sub.add_parser("install", help="現在の案件フォルダまたは事務所全体にインストール")
     p_inst.add_argument("bundled_id")
-    p_inst.add_argument("--matter", help="（廃止）v3.0.0+ では無視される")
     p_inst.add_argument("--replace", action="store_true", help="既存を上書き")
     p_inst.add_argument(
         "--scope",

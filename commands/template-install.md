@@ -25,7 +25,7 @@ firm 全体で使い回したい同梱書式（債権者一覧表・示談書等
 
 ### Step 0: スコープの確認
 
-デフォルトは `global`（事務所全体）。`--scope case` が指定されていれば case 側に入れる。
+デフォルトは `case`（この案件フォルダのみ）。`--scope global` が指定されていれば global 側に入れる。
 どちらのスコープでもインストール先ディレクトリは自動作成される（workspace 未初期化でも可）。
 
 ### Step 1: 引数の解析
@@ -117,7 +117,7 @@ python3 skills/_lib/audit.py record --skill template-install --event file_write 
 
 ## エラーハンドリング
 
-- **matter 未設定**: Step 0 で中止、`/matter-create` を案内
+- **workspace 未初期化**: case スコープなら現在のフォルダに `./.claude-bengo/` を自動作成して続行
 - **テンプレート ID が無効**: 同梱リストを表示して正しい ID を案内
 - **既存と衝突**: `--replace` の有無を確認、ユーザーの承諾を得てから上書き
 - **ファイル欠落**: レジストリと同梱ファイルの不整合。プラグインの再インストールを提案（`/plugin install claude-bengo@claude-bengo`）

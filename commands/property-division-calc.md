@@ -5,6 +5,6 @@ allowed-tools: Read, Glob, Bash(python3 skills/property-division-calc/calc.py:*)
 
 離婚時の夫婦共有財産を民法 768 条（清算的部分）に基づき決定論的に計算する。特有財産の除外、共有債務の控除、貢献度案分に対応。
 
-$ARGUMENTS: 対話または JSON 指定。`--matter <id>` で事案明示可。
+$ARGUMENTS: 対話または JSON 指定。
 
 まず `skills/property-division-calc/SKILL.md` を Read ツールで読み込み、そこに記載された手順に従って実行する。

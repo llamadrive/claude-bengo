@@ -5,8 +5,9 @@ allowed-tools: Read, Write, Glob, mcp__docx-editor__read_document, Bash(python3 
 
 訴訟関連文書（訴状、答弁書、準備書面、証拠説明書等）を読み取り、構造化データ（タイムライン、登場人物、主張・認否・証拠）を抽出して `.agent` ファイルを生成する。
 MCP Apps 対応環境（Claude Desktop, Cursor 等）では自動的にインライン描画、Claude Code CLI では既定のブラウザで viewer が自動起動する。
-監査ログはアクティブな matter（事案）のログに記録される。事案未設定では実行できない。
+監査ログは現在の案件フォルダ（workspace）の `./.claude-bengo/audit.jsonl` に記録される。
+`./.claude-bengo/` がまだ無ければ、実行時に現在のフォルダへ自動作成される。
 
-$ARGUMENTS: 文書ファイルのパスまたはディレクトリ（任意。なければ対話で確認）。`--matter <id>` フラグでアクティブな事案を明示指定できる。
+$ARGUMENTS: 文書ファイルのパスまたはディレクトリ（任意。なければ対話で確認）。
 
 まず `skills/lawsuit-analysis/SKILL.md` を Read ツールで読み込み、そこに記載された手順に従って実行する。

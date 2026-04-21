@@ -791,8 +791,18 @@ def _build_record(
     if rotated_from is not None:
         rec["rotated_from"] = rotated_from
 
-    # opt-in HMAC: 鍵があれば hmac フィールドを最後に付加。
-    # 検証側は hmac を除いた dict を再 serialize して一致確認する。
+    # HMAC: 鍵があれば hmac フィールドを最後に付加。
+    #
+    # v3.3.1 注記: HMAC は **プラグインローカルの改ざん検出** 用。鍵は
+    # `~/.claude-bengo/global.json` の `audit_hmac_key_hex` に保管され、
+    # `audit.py verify` が読み直したときに整合を確認する。盗まれた端末上で
+    # audit.jsonl を編集された場合の検知に有効。
+    #
+    # **クラウド側の整合性は HMAC には依存しない。** `this_hash = sha256(raw_line)`
+    # を `audit.py ingest` が送り、cloud `/api/audit/ingest` が raw_line から
+    # sha256 を再計算してチェーン整合を強制する（v3.3.1 P1）。HMAC 鍵はクラウドに
+    # 共有されていないため、cloud は HMAC を検証しない。したがって HMAC は
+    # end-to-end 保証ではなく、ローカル盗難時の検証用途のみ。
     key = _hmac_key()
     if key:
         line_without_hmac = json.dumps(rec, ensure_ascii=False)
@@ -862,7 +872,7 @@ def cmd_record(args: argparse.Namespace) -> int:
         )
         return 5
 
-    # v3.0.0: workspace resolution (matter_id deprecated, ignored if passed).
+    # v3.0.0: workspace resolution.
     # v3.3.0: 監査無効化は **本番では禁じる**。`config.audit_enabled=false` を
     # 尊重するのは `CLAUDE_BENGO_ALLOW_DISABLE_AUDIT=1` が環境変数に設定されて
     # いる時のみ（テスト・デバッグ用途）。それ以外では警告を出して強制的に
@@ -1409,6 +1419,29 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         )
         return 0
 
+    # v3.3.1: HTTPS-only guard. Bearer token must never be sent over plain HTTP.
+    # Exception: localhost for development, or explicit CLAUDE_BENGO_ALLOW_PLAINTEXT_INGEST=1.
+    from urllib.parse import urlparse
+    parsed_url = urlparse(args.url)
+    allow_plaintext = os.environ.get("CLAUDE_BENGO_ALLOW_PLAINTEXT_INGEST") == "1"
+    is_localhost = parsed_url.hostname in ("localhost", "127.0.0.1", "::1")
+    if parsed_url.scheme != "https" and not is_localhost and not allow_plaintext:
+        print(
+            json.dumps(
+                {
+                    "error": (
+                        f"ingest URL は HTTPS である必要がある（bearer token を暗号化なしで送信できない）。"
+                        f"指定されたスキーム: {parsed_url.scheme!r}。"
+                        f"開発用途で localhost 以外の http を使う場合は "
+                        f"CLAUDE_BENGO_ALLOW_PLAINTEXT_INGEST=1 を設定する。"
+                    )
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
+        )
+        return 2
+
     batch_size = max(1, min(args.batch_size, 10_000))
     sent = 0
     for i in range(0, len(entries), batch_size):
@@ -1540,13 +1573,6 @@ def _self_test() -> int:
       7. サイズ閾値超過で rotation イベントが挿入される
       8. `filename` はデフォルト空、`--log-filename` でのみ記録される
       9. `filename_sha256` は常時記録される
-     10. `--matter <id>` で事案スコープのログへルーティングされる
-     11. 存在しない matter を指定すると exit 2 で失敗する
-     12. `CLAUDE_BENGO_AUDIT_AUTO_MATTER=1` で matter が自動解決される
-     13. `verify --matter <id>` が事案スコープログを検証する
-     14. `export --matter <id>` が事案スコープログのみ読む
-     15. 異なる matter への並行書込が相互干渉しない（ロックが別）
-     16. `verify --matter <id> --all` がローテート済み事案ログを含めて検証する
     """
     import tempfile
     import subprocess
@@ -2078,10 +2104,6 @@ def main() -> int:
 
     # record
     p_rec = sub.add_parser("record", help="監査イベントを1件記録する")
-    p_rec.add_argument(
-        "--matter",
-        help="[DEPRECATED v3.0.0] 旧 matter_id。v3 では workspace 解決のため無視される。",
-    )
     p_rec.add_argument("--skill", required=True, help="スキル名（例: typo-check）")
     p_rec.add_argument("--event", required=True, help=f"イベント種別 {sorted(VALID_EVENTS)}")
     p_rec.add_argument("--file", help="対象ファイルパス")
@@ -2102,10 +2124,6 @@ def main() -> int:
 
     # export
     p_exp = sub.add_parser("export", help="監査ログをエクスポートする")
-    p_exp.add_argument(
-        "--matter",
-        help="[DEPRECATED v3.0.0] 旧 matter_id。v3 では workspace から自動解決。",
-    )
     p_exp.add_argument("--since", help="この日付以降のみ（YYYY-MM-DD）")
     p_exp.add_argument("--skill", help="このスキルの記録のみ")
     p_exp.add_argument("--format", choices=["json", "csv"], default="json", help="出力形式")
@@ -2119,10 +2137,6 @@ def main() -> int:
     p_ing = sub.add_parser(
         "ingest",
         help="監査ログを claude-bengo-cloud にアップロードする",
-    )
-    p_ing.add_argument(
-        "--matter",
-        help="[DEPRECATED v3.0.0] 旧 matter_id。v3 では workspace から自動解決。",
     )
     p_ing.add_argument(
         "--url",
@@ -2156,10 +2170,6 @@ def main() -> int:
 
     # verify
     p_ver = sub.add_parser("verify", help="ハッシュチェーンの整合性を検証する")
-    p_ver.add_argument(
-        "--matter",
-        help="[DEPRECATED v3.0.0] 旧 matter_id。v3 では workspace から自動解決。",
-    )
     p_ver.add_argument("--path", help="検証対象ファイル（workspace より優先）")
     p_ver.add_argument(
         "--all",

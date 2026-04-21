@@ -17,7 +17,7 @@ allowed-tools: Read, Glob, Bash(python3 skills/child-support-calc/calc.py:*), Ba
 3. 養育費月額 = (子の生活費 × 義務者基礎収入 / 両親基礎収入合計) / 12
 4. 婚姻費用月額 = (権利者世帯の生活費 - 権利者基礎収入) / 12
 
-$ARGUMENTS: 対話で入力するか、JSON ファイルを指定する。`--matter <id>` で事案を明示指定可能。
+$ARGUMENTS: 対話で入力するか、JSON ファイルを指定する。
 
 ## 使い方
 

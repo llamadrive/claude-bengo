@@ -13,6 +13,8 @@
     5. MCP 設定検証: .mcp.json が有効な JSON でバージョン固定されていること
     6. プラグインマニフェスト検証: .claude-plugin/plugin.json の妥当性
     7. スキル一覧: 全 SKILL.md のフロントマター確認
+    8. コマンド/ドキュメント契約検証: help 件数、stale matter 記述、不要な local 設定
+    9. consent.py セルフテスト: admin lock / grant / revoke のオフライン検証
 
 終了コード:
     0  全チェック合格（警告は許容）
@@ -339,6 +341,91 @@ def check_commands(r: Report) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 9. Repo contract lint
+# ---------------------------------------------------------------------------
+
+
+def check_repo_contracts(r: Report) -> None:
+    header("9. Repo contract lint")
+
+    cmd_files = sorted((ROOT / "commands").glob("*.md"))
+    command_count = len(cmd_files)
+
+    help_md = ROOT / "commands" / "help.md"
+    if not help_md.exists():
+        r.failed("commands/help.md: not found")
+        return
+    help_text = help_md.read_text(encoding="utf-8")
+
+    import re
+
+    counts = re.findall(r"全\s*(\d+)\s*コマンド|(\d+)\s*コマンド", help_text)
+    seen_counts = {int(a or b) for a, b in counts if (a or b)}
+    if command_count in seen_counts:
+        r.passed(f"help.md: command count matches repo ({command_count})")
+    else:
+        r.failed(f"help.md: command count drift (repo={command_count}, doc={sorted(seen_counts) or 'none'})")
+
+    template_install = ROOT / "commands" / "template-install.md"
+    if template_install.exists():
+        ti_text = template_install.read_text(encoding="utf-8")
+        if "デフォルトは `case`" in ti_text:
+            r.passed("template-install.md: default scope documented as case")
+        else:
+            r.failed("template-install.md: default scope drift (expected case)")
+    else:
+        r.failed("commands/template-install.md: not found")
+
+    forbidden_patterns = {
+        "/matter-create": "removed /matter-create reference",
+        "事案未設定": "removed '事案未設定' wording",
+        "アクティブな matter": "removed 'アクティブな matter' wording",
+        "`--matter <id>`": "removed deprecated --matter flag from command docs",
+    }
+    offenders = []
+    for path in cmd_files:
+        if path.name == "help.md":
+            # help.md may refer to the historical matter model in migration copy.
+            continue
+        text = path.read_text(encoding="utf-8")
+        for pattern, label in forbidden_patterns.items():
+            if pattern in text:
+                offenders.append(f"{path.relative_to(ROOT)}: {label}")
+    if offenders:
+        for msg in offenders:
+            r.failed(msg)
+    else:
+        r.passed("commands: no stale matter-era contract text")
+
+    local_settings = ROOT / ".claude" / "settings.local.json"
+    if local_settings.exists():
+        r.failed(".claude/settings.local.json: committed local permission file should not exist")
+    else:
+        r.passed(".claude/settings.local.json: not present")
+
+
+# ---------------------------------------------------------------------------
+# 10. consent self-test
+# ---------------------------------------------------------------------------
+
+
+def check_consent_self_test(r: Report) -> None:
+    header("10. consent.py self-test")
+    consent_py = ROOT / "skills" / "_lib" / "consent.py"
+    if not consent_py.exists():
+        r.failed("consent.py: not found")
+        return
+    rc, out, err = run([sys.executable, str(consent_py), "--self-test"], timeout=30)
+    last = (out or err).strip().splitlines()[-1] if (out or err) else ""
+    if rc == 0 and "passed" in last:
+        r.passed(f"consent.py: {last}")
+    else:
+        r.failed(f"consent.py: self-test failed ({last})")
+        for line in (out + err).splitlines()[-15:]:
+            print(f"      {line}")
+
+
+# ---------------------------------------------------------------------------
 
 
 def main() -> int:
@@ -357,6 +444,8 @@ def main() -> int:
     check_manifest(r)
     check_skills(r)
     check_commands(r)
+    check_repo_contracts(r)
+    check_consent_self_test(r)
 
     # --- Summary ---
     print()

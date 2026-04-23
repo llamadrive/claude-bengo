@@ -1,6 +1,6 @@
 ---
 description: XLSXファイルからテンプレート定義を作成・登録
-allowed-tools: Read, Write, Glob, Bash(python3 skills/_lib/copy_file.py:*), Bash(python3 skills/_lib/workspace.py:*), Bash(python3 skills/_lib/template_detect.py:*), Bash(python3 skills/_lib/pii_scan.py:*), Bash(python3 skills/_lib/template_lib.py:*), Bash(python3 skills/_lib/consent.py:*), mcp__xlsx-editor__*
+allowed-tools: Read, Write, Glob, Bash(python3 skills/_lib/copy_file.py:*), Bash(python3 skills/_lib/workspace.py:*), Bash(python3 skills/_lib/template_detect.py:*), Bash(python3 skills/_lib/pii_scan.py:*), Bash(python3 skills/_lib/template_lib.py:*), Bash(python3 skills/_lib/first_run.py:*), mcp__xlsx-editor__*
 ---
 
 XLSXファイルのセル構造を分析し、入力フィールドを特定してテンプレート定義（YAML）を作成する。

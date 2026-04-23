@@ -359,12 +359,9 @@ class PIIFoundError(ValueError):
     """global スコープへの書込時に PII が検出された場合に投げる。
 
     発生時は **ユーザー側での overridable ではない**。findings 属性に
-    検出されたレコード一覧を持つ。開発バックドア:
-    - admin lock 未設定（CI 等）: 環境変数 `CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1`
-      で続行
-    - admin lock 設定済み: 環境変数 `CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=<admin passphrase>`
-      （PBKDF2 照合）で続行。`=1` は無効化される
-    いずれもユーザー向けフラグではない。
+    検出されたレコード一覧を持つ。開発バックドア: 環境変数
+    `CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1` で続行（テスト・CI 用）。
+    ユーザー向けフラグではない。
     """
     def __init__(self, findings: List[Dict], xlsx_path: Path):
         self.findings = findings
@@ -385,13 +382,9 @@ def _check_pii_for_global(xlsx_path: Path) -> None:
 
     PII 検出時は `PIIFoundError` を投げる（ユーザーの override 不可）。
 
-    開発者バックドア（v3.3.0-iter2〜 強化）:
-    `CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL` 環境変数に **現行の admin passphrase** を
-    設定すると findings を無視して続行する。以前は `=1` で通ったが、これは
-    誰でも flip できる穴だった。現在は admin lock と同じパスフレーズが必要で、
-    事務所管理者でない開発者は使えない。
-
-    admin lock が未設定の環境では `=1` の従来挙動（テスト/CI 用）を許容する。
+    開発者バックドア: `CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1` で findings を無視
+    して続行する。テスト・CI 用の escape hatch で、env var を明示設定する
+    必要があるため偶発的な bypass は起きにくい。
     """
     here = Path(__file__).resolve().parent
     sys_path_added = False
@@ -416,47 +409,13 @@ def _check_pii_for_global(xlsx_path: Path) -> None:
     if result.get("verdict") == "clean":
         return
 
-    backdoor = os.environ.get("CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL")
-    if backdoor:
-        # admin lock があるならパスフレーズ一致が必須。無ければ `=1` で従来互換。
-        ws = _load_workspace()
-        cfg = ws.load_global_config()
-        admin_lock = cfg.get("admin_lock")
-        if isinstance(admin_lock, dict) and "hash_hex" in admin_lock:
-            # admin lock あり → passphrase match 必須
-            here2 = Path(__file__).resolve().parent
-            added2 = False
-            if str(here2) not in sys.path:
-                sys.path.insert(0, str(here2))
-                added2 = True
-            try:
-                import importlib
-                consent = importlib.import_module("consent")
-            finally:
-                if added2:
-                    try:
-                        sys.path.remove(str(here2))
-                    except ValueError:
-                        pass
-            if not consent._verify_passphrase(backdoor, admin_lock):
-                # パスフレーズ不一致 → バックドア無効
-                raise PIIFoundError(result.get("findings", []), xlsx_path)
-            # admin-verified bypass: 最小限の警告のみ（findings 件数は stderr に
-            # 流さない — 偶発的なログ流出で PII 件数という side-channel を
-            # 第三者に漏らさないため）
-            print(
-                "警告: admin passphrase により PII スキャンが bypass された。global 保存を続行する。",
-                file=sys.stderr,
-            )
-            return
-        # admin lock 未設定（開発/CI 環境）→ `=1` でも通す
-        if backdoor == "1":
-            print(
-                f"警告: admin lock 未設定かつ CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1。"
-                f"{len(result.get('findings', []))} 件の PII 検出を無視。",
-                file=sys.stderr,
-            )
-            return
+    if os.environ.get("CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL") == "1":
+        print(
+            f"警告: CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1 により "
+            f"{len(result.get('findings', []))} 件の PII 検出を無視して global 保存を続行。",
+            file=sys.stderr,
+        )
+        return
     raise PIIFoundError(result.get("findings", []), xlsx_path)
 
 
@@ -1032,65 +991,13 @@ def _self_test() -> int:
                 (pii_case_dir / f"{pii_id}.xlsx").exists(),
             )
 
-            # 10d. with no admin lock set, ALLOW_PII_ON_GLOBAL=1 bypasses (test mode)
+            # 10d. ALLOW_PII_ON_GLOBAL=1 bypasses (test / CI escape hatch)
             os.environ["CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL"] = "1"
             try:
                 r_override = promote_template(pii_id)
-                check("10d. ALLOW_PII_ON_GLOBAL=1 bypasses when no admin lock", r_override["dst_scope"] == "global")
+                check("10d. ALLOW_PII_ON_GLOBAL=1 bypasses", r_override["dst_scope"] == "global")
             finally:
                 os.environ.pop("CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL", None)
-
-            # 10d-bis. with admin lock set, =1 is NOT enough — need passphrase
-            # Setup admin lock in the tempdir-mocked global config
-            here_lib = Path(__file__).resolve().parent
-            if str(here_lib) not in sys.path:
-                sys.path.insert(0, str(here_lib))
-            import importlib
-            consent_mod = importlib.import_module("consent")
-            gr = ws.load_global_config()
-            # force-set admin lock
-            gr["admin_lock"] = consent_mod._make_admin_lock("test-admin-pass")
-            ws.save_global_config(gr)
-
-            # re-setup pii xlsx in case (demote already moved it back)
-            (pii_case_dir / f"{pii_id}.yaml").write_text(
-                f"id: {pii_id}\nfields: []\n", encoding="utf-8",
-            )
-            wb_p = openpyxl.Workbook()
-            wb_p.active["A1"] = "原告 甲野太郎"
-            wb_p.save(pii_case_dir / f"{pii_id}.xlsx")
-            # ensure not in global yet
-            (global_tdir / f"{pii_id}.yaml").unlink(missing_ok=True)
-            (global_tdir / f"{pii_id}.xlsx").unlink(missing_ok=True)
-
-            os.environ["CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL"] = "1"
-            raised_still = False
-            try:
-                promote_template(pii_id)
-            except PIIFoundError:
-                raised_still = True
-            finally:
-                os.environ.pop("CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL", None)
-            check(
-                "10d-bis. ALLOW_PII_ON_GLOBAL=1 rejected when admin lock exists",
-                raised_still,
-            )
-
-            # 10d-ter. correct admin passphrase bypasses
-            os.environ["CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL"] = "test-admin-pass"
-            try:
-                r_pass = promote_template(pii_id)
-                check(
-                    "10d-ter. correct admin passphrase in env var bypasses",
-                    r_pass["dst_scope"] == "global",
-                )
-            finally:
-                os.environ.pop("CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL", None)
-
-            # clean up admin lock for remaining tests
-            gr = ws.load_global_config()
-            gr.pop("admin_lock", None)
-            ws.save_global_config(gr)
 
             # 10e. save_user_template to global with PII is refused
             pii_src = Path(td) / "user-template.xlsx"

@@ -443,10 +443,19 @@ def _read_json(p: Path) -> Dict[str, Any]:
 
 def _write_json(p: Path, data: Dict[str, Any]) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(
+    # 一時ファイルに書いてから rename して atomicity を担保する。直接 write だと
+    # 途中でクラッシュした場合に既存のキー（HMAC 鍵・first_run フラグ等）を失う
+    # 恐れがある。os.replace は同一 FS 内で atomic。
+    tmp = p.with_suffix(p.suffix + f".tmp.{os.getpid()}")
+    tmp.write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    try:
+        os.chmod(tmp, 0o600)
+    except (OSError, NotImplementedError):
+        pass
+    os.replace(tmp, p)
     try:
         os.chmod(p, 0o600)
     except (OSError, NotImplementedError):

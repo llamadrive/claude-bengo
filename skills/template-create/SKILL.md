@@ -10,18 +10,15 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step -1: 同意ゲート（必須、最優先、v3.3.0〜）
+### Step 0: スコープの決定と workspace 解決
 
-Read ツールや xlsx-editor を呼ぶ前にまず:
+初回使用時のみ案内メッセージを表示する（2 回目以降は silent、処理は決してブロックしない）:
 
 ```bash
-python3 skills/_lib/consent.py check
+python3 skills/_lib/first_run.py notice
 ```
 
-exit 非 0 なら skill を中断して `/consent` を案内する（未設定なら admin-setup → grant、設定済みなら grant のみ）（詳細は
-`skills/template-fill/SKILL.md` の Step -1 と同じ）。
-
-### Step 0: スコープの決定と workspace 解決
+出力があれば、そのままユーザーに提示してからスコープ決定へ進む。
 
 テンプレートは **スコープ** を 2 種類持つ（v3.3.0〜）:
 
@@ -101,10 +98,9 @@ python3 skills/_lib/pii_scan.py scan --xlsx "<source.xlsx>" --json
 記入例であることもある。しかし global は全案件に波及するため、**偽陽性側に
 倒して拒否を既定とする**。
 
-**開発者バックドア（ユーザーには案内しないこと、v3.3.0-iter2〜 強化）:**
-`CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL` 環境変数は admin lock が設定されている場合、
-値として現行 admin passphrase を要求する（PBKDF2 照合）。`=1` 単体では
-無効化できない。admin lock 未設定の CI 環境でのみ `=1` が従来通り通る。
+**開発者バックドア（ユーザーには案内しないこと）:** 環境変数
+`CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1` で findings を無視して保存できる（テスト・
+CI 用 escape hatch）。通常運用では設定しない。
 
 ### Step 1: XLSXファイルの確認
 

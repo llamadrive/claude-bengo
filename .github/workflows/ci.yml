@@ -75,8 +75,8 @@ jobs:
       - name: Run audit.py self-tests
         run: python3 skills/_lib/audit.py --self-test
 
-      - name: Run consent.py self-tests
-        run: python3 skills/_lib/consent.py --self-test
+      - name: Run first_run.py self-tests
+        run: python3 skills/_lib/first_run.py --self-test
 
       - name: Run denylist self-tests
         run: python3 skills/_lib/denylist.py self-test

@@ -14,7 +14,7 @@
     6. プラグインマニフェスト検証: .claude-plugin/plugin.json の妥当性
     7. スキル一覧: 全 SKILL.md のフロントマター確認
     8. コマンド/ドキュメント契約検証: help 件数、stale matter 記述、不要な local 設定
-    9. consent.py セルフテスト: admin lock / grant / revoke のオフライン検証
+    9. first_run.py セルフテスト: 初回案内フラグの on/off オフライン検証
 
 終了コード:
     0  全チェック合格（警告は許容）
@@ -405,22 +405,22 @@ def check_repo_contracts(r: Report) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 10. consent self-test
+# 10. first_run self-test
 # ---------------------------------------------------------------------------
 
 
-def check_consent_self_test(r: Report) -> None:
-    header("10. consent.py self-test")
-    consent_py = ROOT / "skills" / "_lib" / "consent.py"
-    if not consent_py.exists():
-        r.failed("consent.py: not found")
+def check_first_run_self_test(r: Report) -> None:
+    header("10. first_run.py self-test")
+    first_run_py = ROOT / "skills" / "_lib" / "first_run.py"
+    if not first_run_py.exists():
+        r.failed("first_run.py: not found")
         return
-    rc, out, err = run([sys.executable, str(consent_py), "--self-test"], timeout=30)
+    rc, out, err = run([sys.executable, str(first_run_py), "--self-test"], timeout=30)
     last = (out or err).strip().splitlines()[-1] if (out or err) else ""
     if rc == 0 and "passed" in last:
-        r.passed(f"consent.py: {last}")
+        r.passed(f"first_run.py: {last}")
     else:
-        r.failed(f"consent.py: self-test failed ({last})")
+        r.failed(f"first_run.py: self-test failed ({last})")
         for line in (out + err).splitlines()[-15:]:
             print(f"      {line}")
 
@@ -445,7 +445,7 @@ def main() -> int:
     check_skills(r)
     check_commands(r)
     check_repo_contracts(r)
-    check_consent_self_test(r)
+    check_first_run_self_test(r)
 
     # --- Summary ---
     print()

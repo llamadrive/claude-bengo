@@ -117,26 +117,6 @@ VALID_EVENTS = {
     "calc_result",   # 計算結果（金額等の主要数値）
 }
 
-# v3.3.0-iter1〜: 機密スキル（client 由来の文書やデータに触れる可能性があるもの）は
-# audit 記録時に同意状態を確認する。ここが防御層 2 番目。SKILL.md の Step -1
-# （consent.py check）を忘れても、最初の audit record でここに引っかかり止まる。
-#
-# v3.3.0-iter2〜: debt-recalc / iryubun-calc を追加。
-# - debt-recalc: 貸金業者取引履歴 PDF をユーザーが渡す可能性
-# - iryubun-calc: 遺産評価書・取引残高証明 等の client 書類を渡す可能性
-# 純粋な数値入力型の overtime/child-support/inheritance/property-division/
-# traffic-damage は対象外（ユーザー自身が数字を入力するため）。
-CONFIDENTIAL_SKILLS = {
-    "template-fill",
-    "template-create",
-    "template-promote",
-    "family-tree",
-    "typo-check",
-    "lawsuit-analysis",
-    "debt-recalc",
-    "iryubun-calc",
-}
-
 # `/dev/null` 相当として扱うパス。`os.devnull` は POSIX では `/dev/null`、
 # Windows では `nul` を返すため、プラットフォーム差を吸収する。
 SENTINEL_PATHS = {os.devnull, "NUL", "nul", "/dev/null"}
@@ -810,39 +790,6 @@ def _build_record(
     return rec
 
 
-def _check_consent_for_confidential(skill: str) -> Optional[str]:
-    """機密スキルの audit 記録前に同意確認。通れば None、ダメなら reason 文字列。"""
-    if skill not in CONFIDENTIAL_SKILLS:
-        return None
-    if os.environ.get("CLAUDE_BENGO_ALLOW_NO_CONSENT") == "1":
-        # 開発用バックドア（自動テスト用）。ユーザーには案内しない
-        return None
-    try:
-        # consent.py を遅延 import して循環を避ける
-        import importlib
-        here = str(Path(__file__).resolve().parent)
-        added = False
-        if here not in sys.path:
-            sys.path.insert(0, here)
-            added = True
-        try:
-            consent = importlib.import_module("consent")
-        finally:
-            if added:
-                try:
-                    sys.path.remove(here)
-                except ValueError:
-                    pass
-    except ImportError:
-        return "consent_module_unavailable"
-    status = consent.consent_status()
-    if status.get("granted"):
-        return None
-    # 未同意
-    reason = status.get("reason", "unknown")
-    return f"consent_not_granted ({reason})"
-
-
 def cmd_record(args: argparse.Namespace) -> int:
     if args.event not in VALID_EVENTS:
         print(
@@ -853,24 +800,6 @@ def cmd_record(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-
-    # v3.3.0-iter1〜: 機密スキルの audit 記録前に同意ゲートを検証する。
-    # SKILL.md の Step -1 をスキップした skill も、最初の file_read を記録
-    # しようとした時点でここに引っかかり止まる。
-    consent_err = _check_consent_for_confidential(args.skill)
-    if consent_err:
-        print(
-            json.dumps(
-                {
-                    "error": f"{args.skill} は機密スキルだが同意が未取得: {consent_err}",
-                    "code": "consent_required",
-                    "hint": "`/consent` で事務所管理者パスフレーズの設定 + 同意記録を完了してから再実行してほしい。",
-                },
-                ensure_ascii=False,
-            ),
-            file=sys.stderr,
-        )
-        return 5
 
     # v3.0.0: workspace resolution.
     # v3.3.0: 監査無効化は **本番では禁じる**。`config.audit_enabled=false` を
@@ -2022,61 +1951,6 @@ def _self_test() -> int:
             "16. sentinel /dev/null honored when ALLOW_DISABLE_AUDIT=1",
             rc_t == 0 and after_t == before_t,
             f"grew={after_t - before_t}",
-        )
-
-        # 17. confidential skill audit record is blocked without consent (v3.3.0-iter1)
-        # env_w has CLAUDE_BENGO_ROOT pointing to a tempdir without global.json consent
-        proc = subprocess.run(
-            [
-                sys.executable, SELF_PATH, "record",
-                "--skill", "template-fill", "--event", "file_read",
-                "--file", "test.pdf",
-            ],
-            env=env_w,
-            cwd=str(workspace_root_a),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        add(
-            "17. confidential skill without consent → exit 5",
-            proc.returncode == 5 and b"consent_required" in proc.stderr,
-            f"rc={proc.returncode}, stderr_has_flag={b'consent_required' in proc.stderr}",
-        )
-
-        # 18. bypass env lets confidential skill log without consent (for testing)
-        env_bypass = dict(env_w, CLAUDE_BENGO_ALLOW_NO_CONSENT="1")
-        proc2 = subprocess.run(
-            [
-                sys.executable, SELF_PATH, "record",
-                "--skill", "template-fill", "--event", "file_read",
-                "--file", "test.pdf",
-            ],
-            env=env_bypass,
-            cwd=str(workspace_root_a),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        add(
-            "18. ALLOW_NO_CONSENT=1 bypass works for tests",
-            proc2.returncode == 0,
-            f"rc={proc2.returncode}",
-        )
-
-        # 19. non-confidential skill (e.g., inheritance-calc) is NOT gated
-        proc3 = subprocess.run(
-            [
-                sys.executable, SELF_PATH, "record",
-                "--skill", "inheritance-calc", "--event", "calc_run",
-            ],
-            env=env_w,
-            cwd=str(workspace_root_a),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        add(
-            "19. calc skill audit continues without consent (correct)",
-            proc3.returncode == 0,
-            f"rc={proc3.returncode}",
         )
 
 

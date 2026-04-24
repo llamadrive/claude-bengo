@@ -2,6 +2,54 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.4.0] - 2026-04-23
+
+### Removed
+
+- **`/consent` コマンドと `skills/_lib/consent.py` を削除。** 初回使用時に
+  PBKDF2 ストレッチの admin passphrase 設定 → 明示的な「同意する」キーワード
+  入力を強制していた機構を全廃する。本プラグインは Claude Code のプラグイン
+  であり、文書のクラウド送信は Claude Code 本体 (Anthropic API) の仕組みで
+  行われる。プラグイン独自のクラウド送信経路はないため、プラグイン側で
+  別途 consent を取るのは misleading かつ redundant（Anthropic の ToS が既に
+  covered）だった。
+- 7 スキル（`typo-check` / `template-fill` / `template-create` / `family-tree` /
+  `lawsuit-analysis` / `debt-recalc` / `iryubun-calc`）の `Step -1: 同意ゲート`
+  を削除。`audit.py` の `CONFIDENTIAL_SKILLS` ガード + `_check_consent_for_confidential`
+  （`record` 前の exit 5 ブロック）も同時に削除。
+- `template_lib.py` の admin-lock 連動 PII バックドアを simplify:
+  `CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1` のみで escape hatch 成立（テスト・CI 用途）。
+  従来の「admin lock 設定時はパスフレーズ一致必須」分岐は consent 削除に伴い死に
+  コードとなったため除去した。
+
+### Added
+
+- `skills/_lib/first_run.py`（非ブロッキングな初回案内モジュール）。
+  初回のみ `~/.claude-bengo/global.json` の `first_run_notice_shown_at` を見て
+  本プラグインがローカル追加する振る舞い（監査ログ等）を一言案内する。2 回目
+  以降は silently exit 0。キーワード入力・パスフレーズ設定などは一切要求
+  しない。各機密スキルの Step 0 で呼び出す。
+- CI に `first_run.py --self-test` を追加、`consent.py --self-test` は削除。
+
+### Changed
+
+- CLAUDE.md の「データプライバシー・守秘義務」節を書き直し。プラグインが
+  クラウドに送信しているかのような誤読を避け、Claude Code 本体の規約に
+  従う旨を明示する。弁護士法 §23 / §72 は遵守責任の所在を示す文脈に
+  圧縮した（同意書本文からの移植ではない）。
+- README.md の Cowork セクションから admin lock / consent 表記を除去。
+- `/help` のコマンド総数を 23 → 22（`/consent` 削除に伴う）。
+
+### Motivation
+
+solo / small-firm lawyer が最初に遭遇する UX friction が重すぎた:
+passphrase 設定 → consent keyword 入力 → preflight → fill-gate keyword →
+family-tree 4-way prompts。これで任意の出力が得られるまでに 5 つのゲートを
+通過する必要があった。Anthropic 側の ToS が既にクラウド処理を cover して
+いる以上、プラグイン独自の consent は compliance 上の load-bearing ではなく
+純粋な noise だった。本リリースは「プラグインが何を追加するか」だけを
+一言で伝え、処理自体はブロックしない方針に揃えた。
+
 ## [3.1.5] - 2026-04-19
 
 Claude Code 公式ドキュメントに基づく marketplace 設定の修正と、更新 UX の

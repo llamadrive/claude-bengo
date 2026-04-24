@@ -34,39 +34,17 @@ version: 1.0.0
 
 ## ワークフロー
 
-### Step -1: 同意ゲート（必須、最優先、v3.3.0〜）
-
-**どんな file (Read ツール経由のPDF/DOCX/XLSX) を開くよりも前に、まずここを通す。**
-
-```bash
-python3 skills/_lib/consent.py check
-```
-
-exit 0 ならばそのまま Step 0 へ進める。exit 非 0（未同意または同意バージョン不一致）
-ならば **この時点で skill を中断** し、以下を案内する:
-
-```
-⚠ 機密文書処理の初回同意が未取得のため、この skill は実行できない。
-  /consent を実行し、以下の手順で開始してほしい:
-
-  (a) 事務所管理者パスフレーズ未設定の場合、管理者本人が初回のみ:
-      python3 skills/_lib/consent.py admin-setup --passphrase "<firm-wide-pass>"
-
-  (b) 同意の記録（管理者が実施、lawyer 全体で 1 度）:
-      python3 skills/_lib/consent.py show   # 同意書を全員で確認
-      python3 skills/_lib/consent.py grant --answer "同意する" \
-        --admin-passphrase "<firm-wide-pass>"
-
-  以降、機密スキルが解禁される（consent version bump まで）。
-```
-
-consent.py check を通過しない限り、Read ツール・xlsx-editor・docx-editor 等の
-機密ファイルに触る操作は**一切行わない**。これは prompt レベルの指示ではなく、
-コンプライアンス上の必須ゲートである。
-
-### Step 0: workspace の解決
+### Step 0: workspace の解決と初回案内
 
 機密スキル実行時、CWD（または親ディレクトリ）の `.claude-bengo/` を walk-up で探す。見つからなければ CWD に silently 新規作成する。弁護士が事前に`/matter-create` のような登録を行う必要はない。
+
+続けて初回のみ案内メッセージを表示する（2 回目以降は silent、処理は決してブロックしない）:
+
+```bash
+python3 skills/_lib/first_run.py notice
+```
+
+出力があれば、そのままユーザーに提示してから Step 1 に進む。
 
 ### Step 1: テンプレート一覧の取得（case + global の両スコープ）
 

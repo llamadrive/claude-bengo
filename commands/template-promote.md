@@ -55,12 +55,8 @@ tier-2/3 firm の secrecy 事故に直結するため）。どうしても昇格
 XLSX 側を先に修正してから再実行してほしい。
 
 **開発者・CI 専用バックドア（ユーザーに案内しないこと）:** 環境変数
-`CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL` は v3.3.0-iter2〜 挙動が変わっている:
-  - admin lock が設定済みの環境では、値が **現行 admin passphrase と一致** した
-    場合のみ PII 検出を無視する（`=1` では無効）
-  - admin lock 未設定の環境（CI 等）では `=1` も許容する
-  この挙動変更により、開発フラグを知る者でも admin passphrase なしには
-  事務所の global 領域に PII を書き込めない。
+`CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1` で PII findings を無視して昇格できる。
+テスト・CI 用の escape hatch で、通常運用では設定しない。
 
 ### Step 3: 昇格実行
 

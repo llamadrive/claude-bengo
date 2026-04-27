@@ -1,18 +1,18 @@
 ---
-description: 案件スコープのテンプレートを事務所グローバルへ昇格する（全案件で使えるようにする）
+description: 案件スコープのテンプレートをユーザースコープへ昇格する（この端末の全案件で使えるようにする）
 allowed-tools: Read, Bash(python3 skills/_lib/template_lib.py:*), Bash(python3 skills/_lib/workspace.py:*), Bash(python3 skills/_lib/pii_scan.py:*)
 ---
 
 現在の案件フォルダに登録されたテンプレートを `~/.claude-bengo/templates/` に
-**移動**する（案件側からは削除）。移動後はどの案件からも `/template-fill` で
-選択できるようになる。
+**移動**する（案件側からは削除）。移動後はこの端末のどの案件からも `/template-fill`
+で選択できるようになる。
 
-$ARGUMENTS: テンプレート ID（必須）。`--replace` で global 側の既存を上書き。
+$ARGUMENTS: テンプレート ID（必須）。`--replace` で user 側の既存を上書き。
 
 ## 典型的なユースケース
 
 案件 A のために登録した独自書式が、他の案件でも使えると気づいたとき。移動すれば
-案件 A での shadowing も同時に解消される（global の 1 本にまとまる）。
+案件 A での shadowing も同時に解消される（user の 1 本にまとまる）。
 
 ## ワークフロー
 
@@ -27,7 +27,7 @@ python3 skills/_lib/workspace.py templates
 
 ### Step 2: 事前 PII 確認（必須・ハードブロック）
 
-**global に昇格すると全案件から見えるため、クライアント情報が残っていないか
+**user に昇格するとこの端末の全案件から見えるため、クライアント情報が残っていないか
 先に確認する必要がある。** 対象 XLSX に PII 形式の文字列が含まれないかを
 スキャンする:
 
@@ -50,8 +50,8 @@ python3 skills/_lib/pii_scan.py scan --xlsx "<対象の xlsx_path>" --json
 ```
 
 本コマンドは PII 検出時に **スキャン結果のみを提示して終了** する。ユーザーが
-「構わないから昇格して」と言っても実行しない（PII のまま global 配置は
-tier-2/3 firm の secrecy 事故に直結するため）。どうしても昇格させたい場合は
+「構わないから昇格して」と言っても実行しない（PII のまま user 配置は
+secrecy 事故に直結するため）。どうしても昇格させたい場合は
 XLSX 側を先に修正してから再実行してほしい。
 
 **開発者・CI 専用バックドア（ユーザーに案内しないこと）:** 環境変数
@@ -72,7 +72,7 @@ python3 skills/_lib/template_lib.py promote <id>
 戻り値 JSON:
 ```json
 {
-  "id": "...", "src_scope": "case", "dst_scope": "global",
+  "id": "...", "src_scope": "case", "dst_scope": "user",
   "src_yaml": "...", "src_xlsx": "...",
   "dst_yaml": "~/.claude-bengo/templates/{id}.yaml",
   "dst_xlsx": "~/.claude-bengo/templates/{id}.xlsx",
@@ -92,23 +92,23 @@ exit 4 時のエラー JSON:
 **`delete_failed: "False"` の通常ケース:**
 
 ```
-テンプレート '{id}' を事務所グローバルに昇格した。
+テンプレート '{id}' をユーザースコープに昇格した。
   移動先: ~/.claude-bengo/templates/{id}.{yaml,xlsx}
-  元の案件側: 削除済み（global が唯一のコピー）
+  元の案件側: 削除済み（user が唯一のコピー）
 
-以降どの案件フォルダからでも /template-fill で選択できる。
+以降この端末のどの案件フォルダからでも /template-fill で選択できる。
 同じ ID を特定案件だけカスタマイズしたくなったら /template-demote を使う。
 ```
 
 **`delete_failed: "True"` の場合（コピーは成功したが case 側の unlink に失敗）:**
 
 ```
-⚠ テンプレート '{id}' のグローバル昇格は成功したが、案件側の削除に失敗した。
-  グローバル: ~/.claude-bengo/templates/{id}.{yaml,xlsx} ✅ 新規配置
-  案件側:     {src_yaml} ⚠ 残存（手動削除が必要）
+⚠ テンプレート '{id}' のユーザー昇格は成功したが、案件側の削除に失敗した。
+  ユーザー: ~/.claude-bengo/templates/{id}.{yaml,xlsx} ✅ 新規配置
+  案件側:   {src_yaml} ⚠ 残存（手動削除が必要）
 
 現在 /template-fill は **案件側を優先** するため、このまま放置すると
-グローバル昇格が実質反映されない。以下のいずれかで解決してほしい:
+ユーザー昇格が実質反映されない。以下のいずれかで解決してほしい:
   1. 案件側ファイルを手動で rm してから /template-fill を使う
   2. 権限問題であれば解決後、/template-promote {id} --replace を再実行
   エラー詳細: {delete_error}
@@ -116,6 +116,6 @@ exit 4 時のエラー JSON:
 
 ### エラーハンドリング
 
-- global 側に同 ID がある → `exit 3`。`--replace` 併用を確認
+- user 側に同 ID がある → `exit 3`。`--replace` 併用を確認
 - 対象 ID が case 側にない → `exit 1`。案件側の登録有無を確認
 - 無効な ID 形式 → `exit 1`。パストラバーサル防御のため拒否

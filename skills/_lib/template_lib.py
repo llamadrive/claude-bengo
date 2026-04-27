@@ -7,16 +7,25 @@
 利用可能なテンプレートのメタデータを列挙する。
 
 `/template-install` は現在の workspace の `templates/` ディレクトリ、または
-事務所グローバルの `~/.claude-bengo/templates/` へ同梱テンプレートをコピーする。
+ユーザーの `~/.claude-bengo/templates/` へ同梱テンプレートをコピーする。
 case スコープでは workspace 未初期化でも現在のフォルダを自動初期化して続行する。
+
+## スコープ名（v3.5.0 リネーム）
+
+v3.5.0 で `global` → `user` にリネームした。従来の「事務所グローバル」は
+実際には端末別・lawyer 別なので user と呼ぶのが正確。次回リリースで本格的な
+firm スコープ（Shared Drive 同期フォルダ）を追加する予定。
+
+旧名 `global` は CLI / 関数引数で一代だけ受け付ける（使用時に stderr 警告）。
+次回リリースで削除する。
 
 ## CLI
 
 ```
 python3 skills/_lib/template_lib.py list [--format json]
     同梱テンプレート一覧を表示する
-python3 skills/_lib/template_lib.py install <id> [--scope case|global] [--replace]
-    指定テンプレートを case または global スコープへコピーする
+python3 skills/_lib/template_lib.py install <id> [--scope case|user] [--replace]
+    指定テンプレートを case または user スコープへコピーする
 python3 skills/_lib/template_lib.py show <id>
     テンプレートのメタデータ詳細を表示する
 ```
@@ -41,6 +50,45 @@ MANIFEST_FILE = BUNDLED_DIR / "_manifest.sha256"
 
 # 同梱テンプレート ID は conservative regex（ファイルシステム安全）
 BUNDLED_ID_RE = re.compile(r"^[a-z0-9][-a-z0-9_]{0,63}$")
+
+
+# ---------------------------------------------------------------------------
+# スコープ正規化（v3.5.0）
+# ---------------------------------------------------------------------------
+# 旧名 `global` を入力として受け付け、内部では `user` に正規化する。
+# 使用時は stderr に非推奨警告を出す。次回リリースで `global` は削除。
+
+_SCOPE_DEPRECATION_WARNED = False
+
+
+def _normalize_scope(scope: str, *, context: str = "") -> str:
+    """入力 scope を正規化する。
+
+    - "case" → "case"
+    - "user" → "user"
+    - "global" → "user"（非推奨警告付き）
+    - それ以外 → ValueError
+
+    Args:
+        scope: 入力スコープ名
+        context: 警告メッセージに含める呼出コンテキスト（例: "--scope", "save_user_template"）
+    """
+    global _SCOPE_DEPRECATION_WARNED
+    if scope == "case":
+        return "case"
+    if scope == "user":
+        return "user"
+    if scope == "global":
+        if not _SCOPE_DEPRECATION_WARNED:
+            _SCOPE_DEPRECATION_WARNED = True
+            ctx = f" ({context})" if context else ""
+            print(
+                f"注意: scope \"global\" は v3.5.0 で \"user\" にリネームされた{ctx}。"
+                "次回リリースで \"global\" は削除される。\"user\" に書き換えてほしい。",
+                file=sys.stderr,
+            )
+        return "user"
+    raise ValueError(f"scope は 'case' または 'user'。指定値: {scope!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -279,21 +327,23 @@ def install_template(
 ) -> Dict[str, str]:
     """同梱テンプレートを指定スコープのテンプレートディレクトリへコピーする。
 
-    v3.3.0 でデフォルトを `case` に戻した（以前は `global`）。tier-2/3 firm の
-    senior lawyer が無意識に firm-wide へ配置してしまい、他案件の global/
-    shadowing が混線するリスクがあるため。firm 全体で使い回したい場合は
-    `scope="global"` を明示、あるいは登録後に `/template-promote` を使う。
+    v3.3.0 でデフォルトを `case` に戻した。lawyer が無意識に user-wide へ配置
+    してしまい、他案件の shadowing が混線するリスクがあるため。端末全体で
+    使い回したい場合は `scope="user"` を明示、あるいは登録後に `/template-promote`
+    を使う。
 
-    - `scope="global"` → `~/.claude-bengo/templates/{id}.{yaml,xlsx}`
-      firm-wide 書式（同梱テンプレートは本来これ）。workspace 初期化不要。
+    - `scope="user"` → `~/.claude-bengo/templates/{id}.{yaml,xlsx}`
+      端末別・lawyer 別に全案件で共有する書式。workspace 初期化不要。
     - `scope="case"` → `<workspace>/.claude-bengo/templates/{id}.{yaml,xlsx}`
       現在の案件フォルダに限定。workspace が未初期化なら silently 初期化する。
+
+    v3.5.0: `scope="global"` は `"user"` にリネームされた。旧名も一代だけ受け付ける
+    （stderr 警告付き、次回リリースで削除）。
 
     戻り値: {yaml_dst, xlsx_dst, scope, bundled_id, replaced, integrity_verified,
              workspace_root (scope=case のみ)}
     """
-    if scope not in ("global", "case"):
-        raise ValueError(f"scope は 'global' または 'case' のどちらか。指定値: {scope!r}")
+    scope = _normalize_scope(scope, context="install_template")
 
     ws = _load_workspace()
 
@@ -316,8 +366,8 @@ def install_template(
     if not src_xlsx.exists():
         raise FileNotFoundError(f"{src_xlsx} が存在しない（レジストリと同梱ファイルの不整合）")
 
-    if scope == "global":
-        dst_dir = ws.ensure_global_templates_dir()
+    if scope == "user":
+        dst_dir = ws.ensure_user_templates_dir()
         workspace_root: Optional[str] = None
     else:
         ws.ensure_workspace()
@@ -329,7 +379,7 @@ def install_template(
     dst_xlsx = dst_dir / f"{bundled_id}.xlsx"
 
     if (dst_yaml.exists() or dst_xlsx.exists()) and not replace:
-        scope_label = "事務所グローバル" if scope == "global" else "この案件フォルダ"
+        scope_label = "ユーザースコープ" if scope == "user" else "この案件フォルダ"
         raise FileExistsError(
             f"{scope_label}に既に '{bundled_id}' が存在する。上書きには --replace を指定してほしい。"
         )
@@ -356,12 +406,13 @@ def install_template(
 
 
 class PIIFoundError(ValueError):
-    """global スコープへの書込時に PII が検出された場合に投げる。
+    """user スコープへの書込時に PII が検出された場合に投げる。
 
     発生時は **ユーザー側での overridable ではない**。findings 属性に
     検出されたレコード一覧を持つ。開発バックドア: 環境変数
     `CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1` で続行（テスト・CI 用）。
-    ユーザー向けフラグではない。
+    ユーザー向けフラグではない。env var 名は v3.5.0 リネーム前に設定された
+    ため `GLOBAL` のままにしている（CI 互換性維持）。
     """
     def __init__(self, findings: List[Dict], xlsx_path: Path):
         self.findings = findings
@@ -373,18 +424,19 @@ class PIIFoundError(ValueError):
         more = f" 他 {len(findings) - 5} 件" if len(findings) > 5 else ""
         super().__init__(
             f"{xlsx_path.name} に PII らしき記述が {len(findings)} 件検出された ({preview}{more})。"
-            " global スコープへの保存を拒否する。case スコープで登録するか、XLSX 側で PII を削除してから再実行してほしい。"
+            " user スコープへの保存を拒否する。case スコープで登録するか、XLSX 側で PII を削除してから再実行してほしい。"
         )
 
 
-def _check_pii_for_global(xlsx_path: Path) -> None:
-    """XLSX が global スコープに保存されても安全か検証する。
+def _check_pii_for_user(xlsx_path: Path) -> None:
+    """XLSX が user スコープに保存されても安全か検証する。
 
     PII 検出時は `PIIFoundError` を投げる（ユーザーの override 不可）。
 
     開発者バックドア: `CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1` で findings を無視
     して続行する。テスト・CI 用の escape hatch で、env var を明示設定する
-    必要があるため偶発的な bypass は起きにくい。
+    必要があるため偶発的な bypass は起きにくい。env var 名は v3.5.0 リネーム
+    前に設定されたため `GLOBAL` のままにしている（CI 互換性維持）。
     """
     here = Path(__file__).resolve().parent
     sys_path_added = False
@@ -412,11 +464,16 @@ def _check_pii_for_global(xlsx_path: Path) -> None:
     if os.environ.get("CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL") == "1":
         print(
             f"警告: CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL=1 により "
-            f"{len(result.get('findings', []))} 件の PII 検出を無視して global 保存を続行。",
+            f"{len(result.get('findings', []))} 件の PII 検出を無視して user 保存を続行。",
             file=sys.stderr,
         )
         return
     raise PIIFoundError(result.get("findings", []), xlsx_path)
+
+
+# v3.5.0 後方互換エイリアス（内部呼出用。次回リリースで削除）
+def _check_pii_for_global(xlsx_path: Path) -> None:
+    _check_pii_for_user(xlsx_path)
 
 
 def save_user_template(
@@ -430,36 +487,37 @@ def save_user_template(
     """ユーザー作成テンプレートを保存する（code-level PII guard 付き）。
 
     `/template-create` の Write + copy_file.py の代替。SKILL は本関数を叩くことで
-    global スコープ時の PII チェックを **必ず** 通過する。
+    user スコープ時の PII チェックを **必ず** 通過する。
+
+    v3.5.0: `scope="global"` は `"user"` にリネーム。旧名は一代だけ受け付ける。
 
     Args:
       source_xlsx: 元 XLSX のパス
       template_id: 登録 ID（ファイル名、BUNDLED_ID_RE で検証済みの英数字）
-      scope: "case" または "global"
+      scope: "case" または "user"（旧 "global" も一代は受け付ける）
       yaml_content: 書き込む YAML 定義（None なら既存 YAML を期待）
       replace: 既存を上書きするか
 
     Raises:
-      PIIFoundError: scope="global" かつ XLSX に PII 検出
+      PIIFoundError: scope="user" かつ XLSX に PII 検出
       ValueError: ID 不正
       FileExistsError: replace=False で既存衝突
     """
     if not BUNDLED_ID_RE.match(template_id):
         raise ValueError(f"無効なテンプレート ID: {template_id!r}")
-    if scope not in ("case", "global"):
-        raise ValueError(f"scope は 'case' または 'global'。指定値: {scope!r}")
+    scope = _normalize_scope(scope, context="save_user_template")
 
     source = Path(source_xlsx).expanduser()
     if not source.exists() or not source.is_file():
         raise FileNotFoundError(f"source xlsx が存在しない: {source}")
 
-    # ** CRITICAL: global 保存前に PII スキャン（code-enforced） **
-    if scope == "global":
-        _check_pii_for_global(source)
+    # ** CRITICAL: user 保存前に PII スキャン（code-enforced） **
+    if scope == "user":
+        _check_pii_for_user(source)
 
     ws = _load_workspace()
-    if scope == "global":
-        dst_dir = ws.ensure_global_templates_dir()
+    if scope == "user":
+        dst_dir = ws.ensure_user_templates_dir()
     else:
         ws.ensure_workspace()
         dst_dir = ws.templates_dir()
@@ -486,7 +544,7 @@ def save_user_template(
         "scope": scope,
         "yaml_path": str(dst_yaml),
         "xlsx_path": str(dst_xlsx),
-        "pii_scanned": "True" if scope == "global" else "False",
+        "pii_scanned": "True" if scope == "user" else "False",
     }
 
 
@@ -505,25 +563,28 @@ def _move_template(
 ) -> Dict[str, str]:
     """`{id}.yaml` + `{id}.xlsx` を src_scope → dst_scope に移す共通ロジック。
 
-    - `promote`: case → global, keep_original=False（moveに相当。案件側の shadowing を解消）
-    - `demote`:  global → case, keep_original=True（copy に相当。他案件の global は維持）
+    - `promote`: case → user, keep_original=False（moveに相当。案件側の shadowing を解消）
+    - `demote`:  user → case, keep_original=True（copy に相当。他案件の user は維持）
     - `scope` へのコピー後、src_scope のファイルを削除するかは keep_original で制御
+
+    v3.5.0: `global` → `user` リネーム。src_scope/dst_scope に旧名 `global` が
+    渡されたら `user` に正規化して警告。
 
     戻り値: {id, src_scope, dst_scope, src_yaml, src_xlsx, dst_yaml, dst_xlsx,
              replaced, kept_original}
     """
+    src_scope = _normalize_scope(src_scope, context="_move_template.src_scope")
+    dst_scope = _normalize_scope(dst_scope, context="_move_template.dst_scope")
     if src_scope == dst_scope:
         raise ValueError(f"src と dst のスコープが同じ: {src_scope}")
-    if src_scope not in ("case", "global") or dst_scope not in ("case", "global"):
-        raise ValueError(f"無効なスコープ: src={src_scope} dst={dst_scope}")
     if not BUNDLED_ID_RE.match(template_id):
         raise ValueError(f"無効なテンプレート ID: {template_id!r}")
 
     ws = _load_workspace()
 
     def _scope_paths(scope: str) -> Tuple[Path, Path, Path]:
-        if scope == "global":
-            d = ws.ensure_global_templates_dir()
+        if scope == "user":
+            d = ws.ensure_user_templates_dir()
         else:
             ws.ensure_workspace()
             d = ws.templates_dir()
@@ -532,7 +593,7 @@ def _move_template(
 
     _, src_yaml, src_xlsx = _scope_paths(src_scope)
     if not src_yaml.exists() or not src_xlsx.exists():
-        scope_label = "事務所グローバル" if src_scope == "global" else "この案件フォルダ"
+        scope_label = "ユーザースコープ" if src_scope == "user" else "この案件フォルダ"
         raise FileNotFoundError(
             f"{scope_label}にテンプレート '{template_id}' が見つからない "
             f"(yaml={src_yaml.exists()}, xlsx={src_xlsx.exists()})"
@@ -542,7 +603,7 @@ def _move_template(
     dst_yaml_existed = dst_yaml.exists()
     dst_xlsx_existed = dst_xlsx.exists()
     if (dst_yaml_existed or dst_xlsx_existed) and not replace:
-        dst_label = "事務所グローバル" if dst_scope == "global" else "この案件フォルダ"
+        dst_label = "ユーザースコープ" if dst_scope == "user" else "この案件フォルダ"
         raise FileExistsError(
             f"{dst_label}に既に '{template_id}' が存在する。上書きには --replace を指定してほしい。"
         )
@@ -643,13 +704,15 @@ def _move_template(
 
 
 def promote_template(template_id: str, replace: bool = False) -> Dict[str, str]:
-    """案件スコープ → 事務所グローバルに **移動**（案件側から削除）。
+    """案件スコープ → ユーザースコープに **移動**（案件側から削除）。
 
     典型的なユースケース: 最初は案件専用で登録した書式が他案件でも使えると
-    気づいたとき、グローバルに昇格して案件側の shadowing を解消する。
+    気づいたとき、ユーザースコープに昇格して案件側の shadowing を解消する。
 
     **v3.3.0-iter1〜: 移動前に pii_scan を通す（code-enforced hard block）。**
     PII 検出時は `PIIFoundError` を投げてファイル移動を行わない。
+
+    v3.5.0: 昇格先は "global" から "user" にリネーム。
     """
     if not BUNDLED_ID_RE.match(template_id):
         raise ValueError(f"無効なテンプレート ID: {template_id!r}")
@@ -658,27 +721,29 @@ def promote_template(template_id: str, replace: bool = False) -> Dict[str, str]:
     case_dir = ws.templates_dir()
     src_xlsx = case_dir / f"{template_id}.xlsx"
     if src_xlsx.exists():
-        _check_pii_for_global(src_xlsx)  # PIIFoundError を投げうる
+        _check_pii_for_user(src_xlsx)  # PIIFoundError を投げうる
 
     return _move_template(
         template_id,
         src_scope="case",
-        dst_scope="global",
+        dst_scope="user",
         replace=replace,
         keep_original=False,
     )
 
 
 def demote_template(template_id: str, replace: bool = False) -> Dict[str, str]:
-    """事務所グローバル → 案件スコープに **コピー**（global は維持）。
+    """ユーザースコープ → 案件スコープに **コピー**（user は維持）。
 
-    典型的なユースケース: 特定案件だけ書式を微修正したい場合、global のコピーを
-    案件スコープに置いて shadowing を作る。他案件は従来どおり global を参照する
-    ため global は残す。
+    典型的なユースケース: 特定案件だけ書式を微修正したい場合、user のコピーを
+    案件スコープに置いて shadowing を作る。他案件は従来どおり user を参照する
+    ため user は残す。
+
+    v3.5.0: 降格元は "global" から "user" にリネーム。
     """
     return _move_template(
         template_id,
-        src_scope="global",
+        src_scope="user",
         dst_scope="case",
         replace=replace,
         keep_original=True,
@@ -728,7 +793,7 @@ def _cmd_install(args: argparse.Namespace) -> int:
             args.bundled_id,
             replace=args.replace,
             skip_integrity=getattr(args, "skip_integrity", False),
-            scope=getattr(args, "scope", "global"),
+            scope=getattr(args, "scope", "case"),
         )
     except (ValueError, FileNotFoundError) as e:
         print(json.dumps({"error": str(e)}, ensure_ascii=False), file=sys.stderr)
@@ -900,24 +965,29 @@ def _self_test() -> int:
             wb_clean.active["B1"] = "金額"
             wb_clean.save(case_tdir / "promo-test.xlsx")
 
-            # 1. promote: case → global（moveなので case 側が消える）
+            # 1. promote: case → user（moveなので case 側が消える）
             result = promote_template("promo-test")
-            global_tdir = ws.global_templates_dir()
+            user_tdir = ws.user_templates_dir()
             check(
-                "1. promoted yaml exists in global",
-                (global_tdir / "promo-test.yaml").exists(),
+                "1. promoted yaml exists in user",
+                (user_tdir / "promo-test.yaml").exists(),
                 f"dst_yaml={result['dst_yaml']}",
             )
             check(
-                "2. promoted xlsx exists in global",
-                (global_tdir / "promo-test.xlsx").exists(),
+                "2. promoted xlsx exists in user",
+                (user_tdir / "promo-test.xlsx").exists(),
             )
             check(
                 "3. case side removed after promote",
                 not (case_tdir / "promo-test.yaml").exists() and not (case_tdir / "promo-test.xlsx").exists(),
             )
+            check(
+                "3b. promote result dst_scope == 'user' (v3.5.0 rename)",
+                result.get("dst_scope") == "user",
+                f"dst_scope={result.get('dst_scope')}",
+            )
 
-            # 4. demote: global → case（copy。global は残る）
+            # 4. demote: user → case（copy。user は残る）
             demo_result = demote_template("promo-test")
             check(
                 "4. demoted yaml exists in case",
@@ -925,8 +995,8 @@ def _self_test() -> int:
                 f"dst_yaml={demo_result['dst_yaml']}",
             )
             check(
-                "5. global side preserved after demote",
-                (global_tdir / "promo-test.yaml").exists(),
+                "5. user side preserved after demote",
+                (user_tdir / "promo-test.yaml").exists(),
             )
 
             # 6. collision without --replace raises
@@ -958,15 +1028,32 @@ def _self_test() -> int:
             check("9. promote of path-traversal id raises ValueError", raised3)
 
             # 10. --replace atomic swap: failure during stage → original retained
-            # sample: put a valid template globally, then try to demote with --replace
+            # sample: put a valid template in user, then try to demote with --replace
             # and verify backup cleanup (no .backup leaked). Success path smoke test.
-            global_y = global_tdir / "promo-test.yaml"
-            global_x = global_tdir / "promo-test.xlsx"
-            # Already exists from promote above. Replace and ensure no .backup left.
             _ = demote_template("promo-test", replace=True)
             leftovers = list(case_tdir.glob("*.backup")) + list(case_tdir.glob("*.staging"))
-            leftovers += list(global_tdir.glob("*.backup")) + list(global_tdir.glob("*.staging"))
+            leftovers += list(user_tdir.glob("*.backup")) + list(user_tdir.glob("*.staging"))
             check("10. no .staging/.backup left after --replace", not leftovers, f"leftovers={leftovers}")
+
+            # 10a. backward compat: _move_template accepts legacy "global" arg
+            # (wrapped via _normalize_scope; emits deprecation warning)
+            # Re-put template in case for the compat test
+            (case_tdir / "compat-test.yaml").write_text("id: compat-test\nfields: []\n", encoding="utf-8")
+            wb_compat = openpyxl.Workbook()
+            wb_compat.active["A1"] = "ラベル"
+            wb_compat.save(case_tdir / "compat-test.xlsx")
+            compat_result = _move_template(
+                "compat-test",
+                src_scope="case",
+                dst_scope="global",   # legacy name — should be accepted, normalized to "user"
+                replace=False,
+                keep_original=False,
+            )
+            check(
+                "10a. legacy dst_scope='global' is accepted and normalized to 'user'",
+                compat_result.get("dst_scope") == "user",
+                f"dst_scope={compat_result.get('dst_scope')}",
+            )
 
             # 10b. promote with PII in xlsx must raise PIIFoundError (code-enforced)
             pii_case_dir = case_tdir  # already the case templates dir
@@ -995,11 +1082,11 @@ def _self_test() -> int:
             os.environ["CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL"] = "1"
             try:
                 r_override = promote_template(pii_id)
-                check("10d. ALLOW_PII_ON_GLOBAL=1 bypasses", r_override["dst_scope"] == "global")
+                check("10d. ALLOW_PII_ON_GLOBAL=1 bypasses", r_override["dst_scope"] == "user")
             finally:
                 os.environ.pop("CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL", None)
 
-            # 10e. save_user_template to global with PII is refused
+            # 10e. save_user_template to user with PII is refused
             pii_src = Path(td) / "user-template.xlsx"
             wb2 = openpyxl.Workbook()
             wb2.active["A1"] = "原告 山田花子"
@@ -1007,12 +1094,12 @@ def _self_test() -> int:
             raised2 = False
             try:
                 save_user_template(
-                    pii_src, "user-pii-test", scope="global",
+                    pii_src, "user-pii-test", scope="user",
                     yaml_content="id: user-pii-test\nfields: []\n",
                 )
             except PIIFoundError:
                 raised2 = True
-            check("10e. save_user_template(scope=global) with PII raises", raised2)
+            check("10e. save_user_template(scope=user) with PII raises", raised2)
 
             # 10f. case scope ignores PII (local is OK)
             r_case = save_user_template(
@@ -1020,6 +1107,17 @@ def _self_test() -> int:
                 yaml_content="id: user-pii-test\nfields: []\n",
             )
             check("10f. save_user_template(scope=case) with PII succeeds", r_case["scope"] == "case")
+
+            # 10g. save_user_template accepts legacy scope="global"
+            raised_compat = False
+            try:
+                save_user_template(
+                    pii_src, "user-pii-test", scope="global",   # legacy
+                    yaml_content="id: user-pii-test\nfields: []\n",
+                )
+            except PIIFoundError:
+                raised_compat = True   # Still blocked by PII, confirming the scope was accepted
+            check("10g. save_user_template accepts legacy scope='global'", raised_compat)
 
             # 11. delete_failed flag surfaces when unlink fails (simulate by making
             # src dir read-only on POSIX. Skipped if not root and chmod can't deny).
@@ -1063,9 +1161,9 @@ def main() -> int:
     p_inst.add_argument("--replace", action="store_true", help="既存を上書き")
     p_inst.add_argument(
         "--scope",
-        choices=("global", "case"),
+        choices=("user", "global", "case"),
         default="case",
-        help="case=この案件のみ（既定、v3.3.0〜） / global=事務所全体",
+        help="case=この案件のみ（既定、v3.3.0〜） / user=この端末・lawyer 全案件（v3.5.0〜、旧 global）",
     )
     p_inst.add_argument(
         "--skip-integrity",
@@ -1086,7 +1184,7 @@ def main() -> int:
     )
     p_save.add_argument("--source", required=True, help="ソース XLSX パス")
     p_save.add_argument("--id", required=True, help="テンプレート ID")
-    p_save.add_argument("--scope", choices=("case", "global"), default="case")
+    p_save.add_argument("--scope", choices=("case", "user", "global"), default="case")
     p_save.add_argument("--yaml-file", help="書き込む YAML 定義のファイル（省略時は既存を期待）")
     p_save.add_argument("--replace", action="store_true", help="既存を上書き")
 

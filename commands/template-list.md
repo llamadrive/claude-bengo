@@ -1,9 +1,9 @@
 ---
-description: 登録済みテンプレートの一覧を表示する（事務所グローバル + この案件の両方）
+description: 登録済みテンプレートの一覧を表示する（ユーザースコープ + この案件の両方）
 allowed-tools: Read, Glob, Bash(python3 skills/_lib/workspace.py:*)
 ---
 
-事務所グローバル（`~/.claude-bengo/templates/`）と、現在の案件フォルダの
+ユーザースコープ（`~/.claude-bengo/templates/`）と、現在の案件フォルダの
 `.claude-bengo/templates/` の両方に登録されているテンプレートを一覧表示する。
 
 ### Step 1: 両スコープの一覧取得
@@ -17,10 +17,10 @@ python3 skills/_lib/workspace.py templates
 {
   "workspace_root": "...",
   "case_templates_dir": "...",
-  "global_templates_dir": "...",
+  "user_templates_dir": "...",
   "case":   [{ "id": "...", "yaml_path": "...", "xlsx_path": "...",
-               "broken": false, "missing": null, "shadowed_global": false }, ...],
-  "global": [{ "id": "...", "yaml_path": "...", "xlsx_path": "...",
+               "broken": false, "missing": null, "shadowed_user": false }, ...],
+  "user":   [{ "id": "...", "yaml_path": "...", "xlsx_path": "...",
                "broken": false, "missing": null, "shadowed": false }, ...]
 }
 ```
@@ -36,31 +36,31 @@ python3 skills/_lib/workspace.py templates
 
 ### Step 3: 表示
 
-以下の形式で表示する（case を上、global を下）:
+以下の形式で表示する（case を上、user を下）:
 
 ```
 案件 '{workspace_root の basename}' で利用可能なテンプレート:
 
 [この案件のみ] {case_templates_dir}
-  1. {title}（カテゴリ: {category} / フィールド: {N}件） ⚠ 事務所版を上書き中
+  1. {title}（カテゴリ: {category} / フィールド: {N}件） ⚠ ユーザー版を上書き中
   2. ...
 
-[事務所全体] {global_templates_dir}
+[ユーザースコープ] {user_templates_dir}
   3. {title}（カテゴリ: {category} / フィールド: {N}件）
   4. ...（上書きされている行は「— この案件で上書き中」と付記）
 
 操作:
-  /template-fill                   — テンプレートにデータを入力する
-  /template-create                 — 新規登録（既定: この案件のみ）
-  /template-create --scope global  — 事務所全体に登録（PII 検出時は自動拒否）
-  /template-install                — 同梱書式をインストール（既定: この案件のみ）
-  /template-promote <id>           — 案件→事務所全体に昇格（PII code-gate）
-  /template-demote <id>            — 事務所全体→案件にコピー
+  /template-fill                 — テンプレートにデータを入力する
+  /template-create               — 新規登録（既定: この案件のみ）
+  /template-create --scope user  — ユーザースコープに登録（PII 検出時は自動拒否）
+  /template-install              — 同梱書式をインストール（既定: この案件のみ）
+  /template-promote <id>         — 案件→ユーザーに昇格（PII code-gate）
+  /template-demote <id>          — ユーザー→案件にコピー
 ```
 
-- `case` 側エントリで `shadowed_global: true` のものは `⚠ 事務所版を上書き中` を併記
-- `global` 側エントリで `shadowed: true` のものは `— この案件で上書き中` を併記
-- **`broken: true` のエントリは `⚠ {missing}欠落（再登録が必要）` を併記**。これらは `/template-fill` では使えないが、案件/グローバルどちらにどう残っているかを示すため必ず表示する
+- `case` 側エントリで `shadowed_user: true` のものは `⚠ ユーザー版を上書き中` を併記
+- `user` 側エントリで `shadowed: true` のものは `— この案件で上書き中` を併記
+- **`broken: true` のエントリは `⚠ {missing}欠落（再登録が必要）` を併記**。これらは `/template-fill` では使えないが、どのスコープにどう残っているかを示すため必ず表示する
 - 両方 0 件の場合は以下を案内:
 
 ```

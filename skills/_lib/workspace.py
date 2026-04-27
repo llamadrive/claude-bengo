@@ -169,22 +169,37 @@ def templates_dir(start: Optional[Path] = None) -> Path:
     return workspace_dir(start) / TEMPLATES_SUBDIR
 
 
-def global_templates_dir() -> Path:
-    """事務所グローバルのテンプレートディレクトリ（`~/.claude-bengo/templates/`）。
+def user_templates_dir() -> Path:
+    """ユーザースコープのテンプレートディレクトリ（`~/.claude-bengo/templates/`）。
 
-    全案件で共有する firm-wide 書式（債権者一覧表・示談書・遺産目録等）を置く。
-    `/template-create --scope global` および `/template-install` のデフォルト保存先。
+    この lawyer の全案件で共有する個人ベンチ（起案中・プライベート版・
+    オフライン sandbox）を置く。v3.5.0 で `global_templates_dir()` からリネームされた
+    （事務所スコープ firm を別途導入するため。firm が現在の "事務所全体" の
+    意味で、user は "この端末のこの lawyer" の意味）。
     """
     return GLOBAL_ROOT / TEMPLATES_SUBDIR
 
 
-def ensure_global_templates_dir() -> Path:
-    """グローバルテンプレートディレクトリを 0o700 で冪等に作成して返す。"""
-    d = global_templates_dir()
+def ensure_user_templates_dir() -> Path:
+    """ユーザーテンプレートディレクトリを 0o700 で冪等に作成して返す。"""
+    d = user_templates_dir()
     d.mkdir(parents=True, exist_ok=True)
     _chmod_owner_only(GLOBAL_ROOT)
     _chmod_owner_only(d)
     return d
+
+
+# ----- v3.5.0 後方互換エイリアス（次回リリースで削除） -----------------------
+# 旧名 `global_templates_dir` / `ensure_global_templates_dir` を呼んでいる
+# プラグイン外のコードが壊れないようにするための薄いラッパ。
+# 内部の呼出は新名に統一済み。
+
+def global_templates_dir() -> Path:
+    return user_templates_dir()
+
+
+def ensure_global_templates_dir() -> Path:
+    return ensure_user_templates_dir()
 
 
 def outputs_dir(start: Optional[Path] = None) -> Path:
@@ -270,18 +285,25 @@ def allocate_output_path(
 
 
 def resolve_template(template_id: str, start: Optional[Path] = None) -> Optional[Dict[str, Any]]:
-    """`{id}.yaml` + `{id}.xlsx` を case → global の順で探索する。
+    """`{id}.yaml` + `{id}.xlsx` を case → user の順で探索する。
 
-    precedence: case-local が同 ID の global を shadow する（案件専用の
+    precedence: case-local が同 ID の user を shadow する（案件専用の
     カスタマイズ版を置ける）。見つからなければ None。
 
-    戻り値: {id, scope, yaml_path, xlsx_path} or None
+    v3.5.0 で "global" スコープを "user" にリネーム。`scope` は新名 "user" を返すが、
+    旧名で分岐する legacy automation のために `scope_legacy` で旧値も併記する
+    （次回リリース 3.6.0 で `scope_legacy` を削除）。
+
+    戻り値: {id, scope, scope_legacy, yaml_path, xlsx_path} or None
     """
     if not template_id:
         return None
+    # 旧名アライアス: scope の新→旧マッピング。同一名（"case"）はそのまま、
+    # "user" だけ旧名 "global" を併記する。
+    legacy_alias = {"user": "global", "case": "case"}
     for scope, tdir in (
         ("case", templates_dir(start)),
-        ("global", global_templates_dir()),
+        ("user", user_templates_dir()),
     ):
         yaml_p = tdir / f"{template_id}.yaml"
         xlsx_p = tdir / f"{template_id}.xlsx"
@@ -289,6 +311,7 @@ def resolve_template(template_id: str, start: Optional[Path] = None) -> Optional
             return {
                 "id": template_id,
                 "scope": scope,
+                "scope_legacy": legacy_alias[scope],
                 "yaml_path": str(yaml_p),
                 "xlsx_path": str(xlsx_p),
                 "templates_dir": str(tdir),
@@ -297,10 +320,17 @@ def resolve_template(template_id: str, start: Optional[Path] = None) -> Optional
 
 
 def list_all_templates(start: Optional[Path] = None) -> Dict[str, List[Dict[str, Any]]]:
-    """case + global の全テンプレートを列挙する。
+    """case + user の全テンプレートを列挙する。
 
-    戻り値: {"case": [{id, yaml_path, xlsx_path, broken, missing, shadowed_global}, ...],
-             "global": [...]}
+    v3.5.0 で "global" スコープを "user" にリネーム。新キーは `"user"` だが、
+    legacy 互換のため `"global"` キーも一代だけ同じデータを返す（次回リリース
+    3.6.0 で `"global"` を削除）。case エントリの `shadowed_user` も同様に
+    旧名 `shadowed_global` を併記する。
+
+    戻り値: {"case": [{id, yaml_path, xlsx_path, broken, missing,
+                       shadowed_user, shadowed_global}, ...],
+             "user": [...],
+             "global": [...]   # legacy alias of "user", removed in 3.6.0}
 
     - 整合なエントリ: yaml と xlsx 両方存在 → `broken: False`
     - 破損エントリ: yaml または xlsx のいずれか欠落 → `broken: True`
@@ -335,14 +365,18 @@ def list_all_templates(start: Optional[Path] = None) -> Dict[str, List[Dict[str,
         return out
 
     case_items = _scan(templates_dir(start))
-    global_items = _scan(global_templates_dir())
+    user_items = _scan(user_templates_dir())
     case_ids = {e["id"] for e in case_items}
-    global_ids = {e["id"] for e in global_items}
+    user_ids = {e["id"] for e in user_items}
     for e in case_items:
-        e["shadowed_global"] = e["id"] in global_ids
-    for e in global_items:
+        shadowed = e["id"] in user_ids
+        e["shadowed_user"] = shadowed
+        e["shadowed_global"] = shadowed   # legacy alias, removed in 3.6.0
+    for e in user_items:
         e["shadowed"] = e["id"] in case_ids
-    return {"case": case_items, "global": global_items}
+    # legacy "global" bucket aliases "user" data (same list reference; safe because
+    # callers treat the listing as read-only and we delete the alias in 3.6.0).
+    return {"case": case_items, "user": user_items, "global": user_items}
 
 
 def metadata_path(start: Optional[Path] = None) -> Path:
@@ -528,12 +562,17 @@ def templates_list(start: Optional[Path] = None) -> List[str]:
     return sorted(p.stem for p in tdir.glob("*.yaml") if p.name != "_schema.yaml")
 
 
-def global_templates_list() -> List[str]:
-    """グローバルスコープのテンプレート ID 一覧。"""
-    d = global_templates_dir()
+def user_templates_list() -> List[str]:
+    """ユーザースコープのテンプレート ID 一覧。"""
+    d = user_templates_dir()
     if not d.exists():
         return []
     return sorted(p.stem for p in d.glob("*.yaml") if p.name != "_schema.yaml")
+
+
+# v3.5.0 後方互換: 旧名エイリアス（次回リリースで削除）
+def global_templates_list() -> List[str]:
+    return user_templates_list()
 
 
 # ---------------------------------------------------------------------------
@@ -605,22 +644,30 @@ def _cmd_info(args: argparse.Namespace) -> int:
 
 
 def _cmd_templates(args: argparse.Namespace) -> int:
-    """case + global の両スコープのテンプレートを JSON で返す。"""
+    """case + user の両スコープのテンプレートを JSON で返す。
+
+    v3.5.0: legacy 互換のため `global_templates_dir` / `global` キーも一代だけ
+    返す（次回リリース 3.6.0 で削除）。新コードは `user_templates_dir` / `user`
+    を読むべき。
+    """
     start = Path(args.cwd).expanduser() if args.cwd else None
     listing = list_all_templates(start)
+    user_dir_str = str(user_templates_dir())
     out = {
         "workspace_root": str(resolve_workspace(start)),
         "case_templates_dir": str(templates_dir(start)),
-        "global_templates_dir": str(global_templates_dir()),
+        "user_templates_dir": user_dir_str,
+        "global_templates_dir": user_dir_str,   # legacy alias, removed in 3.6.0
         "case": listing["case"],
-        "global": listing["global"],
+        "user": listing["user"],
+        "global": listing["user"],              # legacy alias, removed in 3.6.0
     }
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return 0
 
 
 def _cmd_resolve_template(args: argparse.Namespace) -> int:
-    """特定 ID のテンプレートを case → global の順で解決する。"""
+    """特定 ID のテンプレートを case → user の順で解決する。"""
     start = Path(args.cwd).expanduser() if args.cwd else None
     found = resolve_template(args.id, start)
     if not found:
@@ -869,6 +916,70 @@ def _self_test() -> int:
             "11f. good entry not broken",
             case_ids.get("good", {}).get("broken") is False,
         )
+        check(
+            "11d2. list_all_templates returns 'user' bucket (v3.5.0 rename)",
+            "user" in listing,
+            f"keys={list(listing)}",
+        )
+        check(
+            "11d2-legacy. list_all_templates also returns 'global' alias bucket (removed in 3.6.0)",
+            "global" in listing and listing["global"] == listing["user"],
+            f"keys={list(listing)}",
+        )
+        # case エントリが user 側を shadowing している場合、shadowed_user と
+        # legacy `shadowed_global` が両方 True で並ぶこと
+        for e in listing.get("case", []):
+            if e.get("shadowed_user"):
+                check(
+                    f"11d2-shadow-legacy. case '{e['id']}' has both shadowed_user and shadowed_global",
+                    e.get("shadowed_user") is True and e.get("shadowed_global") is True,
+                    f"e={e}",
+                )
+                break
+        check(
+            "11d3. global_templates_dir alias still callable",
+            global_templates_dir() == user_templates_dir(),
+        )
+        check(
+            "11d4. resolve_template returns scope='case' for case-scoped templates",
+            (resolve_template("good", root) or {}).get("scope") == "case",
+        )
+        # Verify user-scope returns "user" (not "global"). Need temporary GLOBAL_ROOT.
+        import sys as _sys_rt
+        _mod = _sys_rt.modules[__name__]
+        _orig_gr = _mod.GLOBAL_ROOT
+        _fake_user = (Path(td) / "fake-home-user" / ".claude-bengo")
+        _fake_user.mkdir(parents=True, exist_ok=True)
+        _mod.GLOBAL_ROOT = _fake_user
+        try:
+            _utdir = _fake_user / TEMPLATES_SUBDIR
+            _utdir.mkdir(exist_ok=True)
+            (_utdir / "only-user.yaml").write_text("id: only-user\nfields: []\n", encoding="utf-8")
+            (_utdir / "only-user.xlsx").write_bytes(b"x")
+            _res = resolve_template("only-user", root) or {}
+            check(
+                "11d5. resolve_template returns scope='user' (renamed from 'global')",
+                _res.get("scope") == "user",
+                f"got={_res.get('scope')}",
+            )
+            check(
+                "11d6. resolve_template also returns scope_legacy='global' (removed in 3.6.0)",
+                _res.get("scope_legacy") == "global",
+                f"scope_legacy={_res.get('scope_legacy')}",
+            )
+            # case エントリは scope_legacy も "case"（legacy_alias の同名マッピング）
+            (root / WORKSPACE_DIRNAME / TEMPLATES_SUBDIR / "case-only.yaml").write_text(
+                "id: case-only\nfields: []\n", encoding="utf-8",
+            )
+            (root / WORKSPACE_DIRNAME / TEMPLATES_SUBDIR / "case-only.xlsx").write_bytes(b"x")
+            _res_case = resolve_template("case-only", root) or {}
+            check(
+                "11d7. resolve_template case scope: scope_legacy='case' (no rename)",
+                _res_case.get("scope") == "case" and _res_case.get("scope_legacy") == "case",
+                f"got={_res_case}",
+            )
+        finally:
+            _mod.GLOBAL_ROOT = _orig_gr
 
         # 11g. ensure_workspace refuses to init under GLOBAL_ROOT
         # monkey-patch GLOBAL_ROOT to a tempdir-based path so the test runs hermetically

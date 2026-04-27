@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """XLSX/文字列の簡易 PII プリフライト（v3.2.0〜）。
 
-`/template-create --scope global` と `/template-promote` の前に、テンプレート
+`/template-create --scope user` と `/template-promote` の前に、テンプレート
 XLSX に **実クライアントのデータが残っていないか** を決定論的にスキャンする。
 
 これは置換や削除は行わない。検出結果（カテゴリ・セル位置・抜粋）を返すのみ。

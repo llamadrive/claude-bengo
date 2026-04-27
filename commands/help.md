@@ -139,8 +139,8 @@ v3.0.0 で旧 matter ID 概念は廃止された。**フォルダ = 案件**。
   /template-create  独自 XLSX 書式を登録
   /template-list    登録済み書式の一覧
   /template-fill    PDF からデータを抽出して書式に自動入力
-  /template-promote 案件書式を事務所グローバルに昇格
-  /template-demote  事務所グローバル書式を案件側へコピー
+  /template-promote 案件書式をユーザースコープ（端末全案件）に昇格
+  /template-demote  ユーザースコープ書式を案件側へコピー
 
 【ドキュメント処理】
   /family-tree       戸籍から相続関係説明図を生成

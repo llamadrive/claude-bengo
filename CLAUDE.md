@@ -5,7 +5,7 @@
 ユーザーがこのプラグインを初めて使用する場合（会話の最初のメッセージで法律関連の作業を依頼された場合、または「何ができる？」「使い方は？」と聞かれた場合）、以下の案内を日本語で表示する:
 
 ```
-claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v3.4.0
+claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v3.5.0
 
 まず試したい?  /quickstart と打つだけ。同梱サンプルで 60 秒で出力を見せる。
 気に入ったら自分の案件に進める。事前登録は一切不要。
@@ -149,22 +149,22 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 - 非対応フォーマット: 「このファイル形式には対応していない。対応形式: PDF, DOCX, XLSX, PNG, JPG」
 - ファイルを暗黙にスキップしない。処理できないファイルは必ずユーザーに報告する。
 
-## テンプレート（v3.3.0 〜）
+## テンプレート
 
 テンプレートは 2 つのスコープで保存される:
 
-- **案件スコープ**（**既定**、安全側）: `{workspace_root}/.claude-bengo/templates/{id}.yaml` + `{id}.xlsx`。
+- **案件スコープ (`case`)**（**既定**、安全側）: `{workspace_root}/.claude-bengo/templates/{id}.yaml` + `{id}.xlsx`。
   その案件限定で、他案件に波及しない。試し登録・案件固有の派生版に安全。
-- **事務所グローバル**: `~/.claude-bengo/templates/{id}.yaml` + `{id}.xlsx`。
-  全案件で見える firm-wide 書式。**PII 混入ゼロが必須**（`pii_scan.py` でハードブロック）。
+- **ユーザースコープ (`user`)**: `~/.claude-bengo/templates/{id}.yaml` + `{id}.xlsx`。
+  この端末・lawyer の全案件で見える書式。**PII 混入ゼロが必須**（`pii_scan.py` でハードブロック）。
 
 `/template-fill` は `python3 skills/_lib/workspace.py resolve-template <id>` で
-**case → global の順**に自動解決する（同 ID は case が shadow）。
+**case → user の順**に自動解決する（同 ID は case が shadow）。
 
-- `/template-create` で新規登録（既定: case。`--scope global` で firm 全体）
+- `/template-create` で新規登録（既定: case。`--scope user` でこの端末全案件）
 - `/template-install` で同梱書式をインストール（既定: case）
-- `/template-promote` で case → global に昇格（PII 検出時は拒否）
-- `/template-demote` で global → case にコピー（案件限定カスタマイズ）
+- `/template-promote` で case → user に昇格（PII 検出時は拒否）
+- `/template-demote` で user → case にコピー（案件限定カスタマイズ）
 - `/template-list` で両スコープを一覧
 - `/template-fill` で選択・入力（出力は `{workspace_root}/outputs/` 直下、タイムスタンプ秒単位）
 

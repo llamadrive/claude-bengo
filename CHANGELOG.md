@@ -2,6 +2,37 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.5.0] - 2026-04-27
+
+### Changed
+
+- **テンプレートスコープの命名を `global` → `user` にリネーム。** 従来の
+  「事務所グローバル」は実際には端末別・lawyer 別であり、`~/.claude-bengo/templates/`
+  に置かれる。事務所全員で共有する真の firm スコープ（Shared Drive 同期フォルダ経由）
+  を別途導入する準備として、命名を正確化した。
+  - 影響範囲: `--scope`, `resolve_template()` 戻り値の `scope` キー,
+    `list_all_templates()` の `"user"` バケット名,
+    `_move_template()` の `src_scope` / `dst_scope`, `save_user_template()` の `scope`,
+    `install_template()` の `scope`, `promote_template()` / `demote_template()` の
+    内部 scope 文字列。
+  - 利用者側ファイル配置（`~/.claude-bengo/templates/`）は不変。マイグレーション不要。
+
+### Deprecated
+
+- `--scope global` および `scope="global"` を CLI / 関数引数で渡すと stderr に警告を
+  出して `user` として処理する。次回リリース（3.6.0）で削除予定。
+- `workspace.global_templates_dir()` / `ensure_global_templates_dir()` /
+  `global_templates_list()` を thin alias として残す（同じく次回リリースで削除）。
+- `workspace.py templates` JSON 出力に legacy alias フィールドを併記:
+  `global_templates_dir` （= `user_templates_dir`）、`"global"` バケット
+  （= `"user"` と同データ）、case エントリの `shadowed_global` （= `shadowed_user`）。
+  3.6.0 で削除。
+- `workspace.py resolve-template` JSON 出力に `scope_legacy` フィールドを追加
+  （`scope == "user"` のとき `"global"`、`case` のときは `"case"`）。
+  legacy automation が `scope == "global"` で分岐するケース向け。3.6.0 で削除。
+- 環境変数 `CLAUDE_BENGO_ALLOW_PII_ON_GLOBAL` は名前を維持（CI 互換性維持のため。
+  v3.6.0 以降に rename を検討）。
+
 ## [3.4.0] - 2026-04-23
 
 ### Removed

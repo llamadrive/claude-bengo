@@ -868,6 +868,12 @@ def _cmd_install(args: argparse.Namespace) -> int:
             skip_integrity=getattr(args, "skip_integrity", False),
             scope=getattr(args, "scope", "case"),
         )
+    except FirmUnavailableError as e:
+        print(json.dumps(
+            {"error": str(e), "code": "firm_unavailable", "state": e.state, "path": e.path},
+            ensure_ascii=False,
+        ), file=sys.stderr)
+        return 6
     except (ValueError, FileNotFoundError) as e:
         print(json.dumps({"error": str(e)}, ensure_ascii=False), file=sys.stderr)
         return 1
@@ -936,6 +942,12 @@ def _cmd_save_user(args: argparse.Namespace) -> int:
             yaml_content=yaml_content,
             replace=args.replace,
         )
+    except FirmUnavailableError as e:
+        print(json.dumps(
+            {"error": str(e), "code": "firm_unavailable", "state": e.state, "path": e.path},
+            ensure_ascii=False,
+        ), file=sys.stderr)
+        return 6
     except PIIFoundError as e:
         print(
             json.dumps(
@@ -1315,6 +1327,70 @@ def _self_test() -> int:
                 )
 
             ws.unset_firm_templates_path()
+
+            # ---- 13l-13o. CLI _cmd_install / _cmd_save_user catch FirmUnavailableError ----
+            # Both code paths must return exit 6 with structured error, not crash.
+            # We exercise them by calling the function objects directly with a forged
+            # argparse namespace, since spawning a subprocess would re-init env/HOME.
+            class _NS:
+                def __init__(self, **kw): self.__dict__.update(kw)
+
+            # 13l. _cmd_install with --scope firm while unconfigured
+            import io as _io_test
+            saved_err = sys.stderr
+            sys.stderr = _io_test.StringIO()
+            try:
+                rc_inst = _cmd_install(_NS(
+                    bundled_id="creditor-list",
+                    replace=False,
+                    skip_integrity=False,
+                    scope="firm",
+                ))
+            finally:
+                err_inst = sys.stderr.getvalue()
+                sys.stderr = saved_err
+            check(
+                "13l. _cmd_install firm-unconfigured returns exit 6",
+                rc_inst == 6,
+                f"rc={rc_inst}",
+            )
+            check(
+                "13m. _cmd_install firm-unconfigured emits structured error JSON",
+                '"code": "firm_unavailable"' in err_inst and '"state": "unconfigured"' in err_inst,
+                f"stderr={err_inst[:200]}",
+            )
+
+            # 13n. _cmd_save_user with --scope firm while unconfigured
+            clean_src_cli = Path(td) / "cli-firm-clean.xlsx"
+            wb_cli = openpyxl.Workbook()
+            wb_cli.active["A1"] = "金額"
+            wb_cli.save(clean_src_cli)
+            yaml_cli = Path(td) / "cli-firm-clean.yaml"
+            yaml_cli.write_text("id: cli-firm-clean\nfields: []\n", encoding="utf-8")
+
+            saved_err = sys.stderr
+            sys.stderr = _io_test.StringIO()
+            try:
+                rc_save = _cmd_save_user(_NS(
+                    source=str(clean_src_cli),
+                    id="cli-firm-clean",
+                    scope="firm",
+                    yaml_file=str(yaml_cli),
+                    replace=False,
+                ))
+            finally:
+                err_save = sys.stderr.getvalue()
+                sys.stderr = saved_err
+            check(
+                "13n. _cmd_save_user firm-unconfigured returns exit 6",
+                rc_save == 6,
+                f"rc={rc_save}",
+            )
+            check(
+                "13o. _cmd_save_user firm-unconfigured emits structured error JSON",
+                '"code": "firm_unavailable"' in err_save and '"state": "unconfigured"' in err_save,
+                f"stderr={err_save[:200]}",
+            )
         finally:
             ws.GLOBAL_ROOT = orig_global_root
             ws.GLOBAL_CONFIG_FILE = orig_global_cfg

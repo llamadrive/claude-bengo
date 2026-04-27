@@ -5,7 +5,7 @@
 ユーザーがこのプラグインを初めて使用する場合（会話の最初のメッセージで法律関連の作業を依頼された場合、または「何ができる？」「使い方は？」と聞かれた場合）、以下の案内を日本語で表示する:
 
 ```
-claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v3.5.0
+claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラグイン v3.6.0
 
 まず試したい?  /quickstart と打つだけ。同梱サンプルで 60 秒で出力を見せる。
 気に入ったら自分の案件に進める。事前登録は一切不要。
@@ -43,9 +43,10 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
   /inheritance-calc    — 法定相続分を決定論的に計算する
 
 ■ その他:
-  /law-search      — e-Gov法令APIから条文を検索・参照する（2,078法令対応）
-  /audit-config    — 監査ログ設定（記録先・HMAC・クラウド同期）
-  /case-info       — 現在の案件フォルダの状態を表示
+  /law-search          — e-Gov法令APIから条文を検索・参照する（2,078法令対応）
+  /audit-config        — 監査ログ設定（記録先・HMAC・クラウド同期）
+  /case-info           — 現在の案件フォルダの状態を表示
+  /template-firm-setup — 事務所共有テンプレート用フォルダを 1 度だけ設定（OS 同期フォルダ）
 
 ■ 初めて使う場合:
   /quickstart と打つだけ。同梱サンプルで家系図・校正・訴訟分析等の出力を
@@ -151,21 +152,27 @@ claude-bengo（クロード弁護）— 法律事務所向け Claude Code プラ
 
 ## テンプレート
 
-テンプレートは 2 つのスコープで保存される:
+テンプレートは 3 つのスコープで保存される:
 
 - **案件スコープ (`case`)**（**既定**、安全側）: `{workspace_root}/.claude-bengo/templates/{id}.yaml` + `{id}.xlsx`。
   その案件限定で、他案件に波及しない。試し登録・案件固有の派生版に安全。
+- **事務所スコープ (`firm`)**: 事務所全員で共有するテンプレートディレクトリ。
+  実体は OS の同期クライアント（Google Drive for desktop / Dropbox / OneDrive 等）が
+  マウントしているローカルパス。各 lawyer が `/template-firm-setup <local_path>` で
+  1 度だけ設定する。**PII 混入ゼロが必須**（`pii_scan.py` でハードブロック）。
 - **ユーザースコープ (`user`)**: `~/.claude-bengo/templates/{id}.yaml` + `{id}.xlsx`。
-  この端末・lawyer の全案件で見える書式。**PII 混入ゼロが必須**（`pii_scan.py` でハードブロック）。
+  この端末・lawyer 限定の書式。**PII 混入ゼロが必須**（`pii_scan.py` でハードブロック）。
 
 `/template-fill` は `python3 skills/_lib/workspace.py resolve-template <id>` で
-**case → user の順**に自動解決する（同 ID は case が shadow）。
+**case → firm → user の順**に自動解決する（case が firm を shadow、firm が user を shadow）。
+firm が未設定または unreachable な場合は silently スキップして case → user で解決する。
 
-- `/template-create` で新規登録（既定: case。`--scope user` でこの端末全案件）
-- `/template-install` で同梱書式をインストール（既定: case）
-- `/template-promote` で case → user に昇格（PII 検出時は拒否）
-- `/template-demote` で user → case にコピー（案件限定カスタマイズ）
-- `/template-list` で両スコープを一覧
+- `/template-firm-setup <path>` で firm スコープのローカルパスを設定（1 度だけ）
+- `/template-create` で新規登録（既定: case。`--scope firm` / `--scope user` も可）
+- `/template-install` で同梱書式をインストール（既定: case。`--scope firm` / `--scope user` も可）
+- `/template-promote` で case → user / firm に昇格（PII 検出時は拒否）
+- `/template-demote` で user / firm → case にコピー（案件限定カスタマイズ）
+- `/template-list` で全 3 スコープを一覧
 - `/template-fill` で選択・入力（出力は `{workspace_root}/outputs/` 直下、タイムスタンプ秒単位）
 
 フォーマット仕様はプラグインの `templates/_schema.yaml` を参照する。

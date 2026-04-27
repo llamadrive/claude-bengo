@@ -46,16 +46,17 @@ python3 skills/_lib/first_run.py notice
 
 出力があれば、そのままユーザーに提示してから Step 1 に進む。
 
-### Step 1: テンプレート一覧の取得（case + user の両スコープ）
+### Step 1: テンプレート一覧の取得（case + firm + user の全スコープ）
 
 ```bash
 python3 skills/_lib/workspace.py templates
 ```
 
-戻り値 JSON の `case` と `user` の両配列をマージする。**同じ `id` が両方にある場合は
-case が user を shadow する**（`/template-fill` の実ルックアップは
-`python3 skills/_lib/workspace.py resolve-template <id>` で case → user の順に
-自動解決される）。プラグインディレクトリ・CWD の `templates/` は検索してはならない。
+戻り値 JSON の `case` / `firm` / `user` 配列をマージする。**case が firm を shadow し、
+firm が user を shadow する**。実ルックアップは `python3 skills/_lib/workspace.py
+resolve-template <id>` で **case → firm → user の順** に自動解決される。
+firm が未設定または unreachable な場合は silently スキップされる。
+プラグインディレクトリ・CWD の `templates/` は検索してはならない。
 
 - **両方とも 0 件の場合**:
   - ユーザーが $ARGUMENTS や会話で XLSX ファイルを指定している場合: 「テンプレートが未登録である。この XLSX をテンプレートとして登録してからデータ入力を行うか？」と確認し、承諾されれば `skills/template-create/SKILL.md` を Read して inline でテンプレート作成フローを実行した後、続けてデータ入力に進む。
@@ -67,11 +68,13 @@ case が user を shadow する**（`/template-fill` の実ルックアップは
 利用可能なテンプレート:
 
 [この案件のみ]
-  1. 特殊物件の財産目録（カテゴリ: 家事事件 / フィールド: 15件）⚠ ユーザー版を上書き中
+  1. 特殊物件の財産目録（カテゴリ: 家事事件 / フィールド: 15件）⚠ 事務所版を上書き中
 
-[ユーザースコープ]
+[事務所スコープ]
   2. 財産目録（カテゴリ: 家事事件 / フィールド: 12件）— この案件で上書き中
   3. 証拠説明書（カテゴリ: 民事訴訟 / フィールド: 8件）
+
+[ユーザースコープ]
   4. 委任状（カテゴリ: 共通 / フィールド: 5件）
 
   ---
@@ -80,13 +83,17 @@ case が user を shadow する**（`/template-fill` の実ルックアップは
 どのテンプレートを使用するか？（番号または名前で指定）
 ```
 
+`firm_status` が `unconfigured` の場合は `[事務所スコープ]` を出さない。
+`unreachable` の場合は `[事務所スコープ] (unreachable)` と表示し、続けて
+「同期クライアントを起動するか `/template-firm-setup` でパスを再設定してほしい」と案内する。
+
 ユーザーが「0」または「新しい」「別の書式」等と回答した場合は、`skills/template-create/SKILL.md` を Read して template-create フローを inline 実行する。
 
 選択後は `resolve-template` CLI で以降のパスを解決する:
 
 ```bash
 python3 skills/_lib/workspace.py resolve-template <id>
-# → {"id": "...", "scope": "case|user", "yaml_path": "...", "xlsx_path": "...", "templates_dir": "..."}
+# → {"id": "...", "scope": "case|firm|user", "yaml_path": "...", "xlsx_path": "...", "templates_dir": "..."}
 ```
 
 以降 `{template_yaml}` / `{template_xlsx}` / `{template_scope}` として参照する。

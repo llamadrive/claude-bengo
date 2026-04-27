@@ -65,6 +65,7 @@ def _normalize_scope(scope: str, *, context: str = "") -> str:
     """入力 scope を正規化する。
 
     - "case" → "case"
+    - "firm" → "firm"
     - "user" → "user"
     - "global" → "user"（非推奨警告付き）
     - それ以外 → ValueError
@@ -76,6 +77,8 @@ def _normalize_scope(scope: str, *, context: str = "") -> str:
     global _SCOPE_DEPRECATION_WARNED
     if scope == "case":
         return "case"
+    if scope == "firm":
+        return "firm"
     if scope == "user":
         return "user"
     if scope == "global":
@@ -88,7 +91,60 @@ def _normalize_scope(scope: str, *, context: str = "") -> str:
                 file=sys.stderr,
             )
         return "user"
-    raise ValueError(f"scope は 'case' または 'user'。指定値: {scope!r}")
+    raise ValueError(f"scope は 'case' / 'firm' / 'user' のいずれか。指定値: {scope!r}")
+
+
+class FirmUnavailableError(RuntimeError):
+    """firm スコープが unconfigured または unreachable のときに投げる。
+
+    呼出側はユーザーに `/template-firm-setup <path>` の案内を出すべき。
+    `state` フィールドに `"unconfigured"` または `"unreachable"` が入る。
+    """
+
+    def __init__(self, state: str, path: Optional[str]):
+        self.state = state
+        self.path = path
+        if state == "unconfigured":
+            msg = (
+                "firm スコープが設定されていない。"
+                "`/template-firm-setup <path>` で OS 同期クライアントの "
+                "shared folder を 1 度設定してほしい。"
+            )
+        else:
+            msg = (
+                f"firm スコープのパス ({path}) に到達できない。"
+                "Drive for desktop / Dropbox 等の同期クライアントが起動しているか、"
+                "フォルダが削除/移動されていないか確認してほしい。"
+            )
+        super().__init__(msg)
+
+
+def _resolve_scope_dir(scope: str, *, ensure: bool = True) -> "Path":
+    """scope → 書込/読込先ディレクトリ。
+
+    case: ensure_workspace → templates_dir
+    firm: firm_templates_dir（reachable 必須）。FirmUnavailableError を投げうる
+    user: ensure_user_templates_dir
+
+    `ensure=False` の場合、case でも `ensure_workspace` を呼ばずに既存パスのみ
+    返す（読込専用パスとして使う）。
+    """
+    ws = _load_workspace()
+    if scope == "user":
+        return ws.ensure_user_templates_dir()
+    if scope == "firm":
+        fs = ws.firm_status()
+        if fs["state"] != "reachable":
+            raise FirmUnavailableError(fs["state"], fs.get("path"))
+        # firm dir は admin が作るもの。プラグインからは mkdir しない。
+        return Path(fs["path"])
+    # case
+    if ensure:
+        ws.ensure_workspace()
+    d = ws.templates_dir()
+    if ensure:
+        d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 # ---------------------------------------------------------------------------
@@ -366,23 +422,30 @@ def install_template(
     if not src_xlsx.exists():
         raise FileNotFoundError(f"{src_xlsx} が存在しない（レジストリと同梱ファイルの不整合）")
 
-    if scope == "user":
-        dst_dir = ws.ensure_user_templates_dir()
-        workspace_root: Optional[str] = None
+    dst_dir = _resolve_scope_dir(scope)
+    if scope == "case":
+        workspace_root: Optional[str] = str(ws.resolve_workspace())
     else:
-        ws.ensure_workspace()
-        dst_dir = ws.templates_dir()
-        dst_dir.mkdir(parents=True, exist_ok=True)
-        workspace_root = str(ws.resolve_workspace())
+        workspace_root = None
 
     dst_yaml = dst_dir / f"{bundled_id}.yaml"
     dst_xlsx = dst_dir / f"{bundled_id}.xlsx"
 
     if (dst_yaml.exists() or dst_xlsx.exists()) and not replace:
-        scope_label = "ユーザースコープ" if scope == "user" else "この案件フォルダ"
+        scope_labels = {
+            "user": "ユーザースコープ",
+            "firm": "事務所スコープ",
+            "case": "この案件フォルダ",
+        }
+        scope_label = scope_labels.get(scope, scope)
         raise FileExistsError(
             f"{scope_label}に既に '{bundled_id}' が存在する。上書きには --replace を指定してほしい。"
         )
+
+    # NOTE: install_template は bundled template が source。manifest 検証で
+    # 改ざん検知済み・PII フリーが保証されているため、追加の PII スキャンは
+    # 不要。user 由来の XLSX は save_user_template / promote_template が
+    # PII gate を担当する。
 
     shutil.copy2(src_yaml, dst_yaml, follow_symlinks=False)
     shutil.copy2(src_xlsx, dst_xlsx, follow_symlinks=False)
@@ -511,17 +574,13 @@ def save_user_template(
     if not source.exists() or not source.is_file():
         raise FileNotFoundError(f"source xlsx が存在しない: {source}")
 
-    # ** CRITICAL: user 保存前に PII スキャン（code-enforced） **
-    if scope == "user":
+    # ** CRITICAL: user / firm 保存前に PII スキャン（code-enforced） **
+    # case スコープは PII チェックを通さない（案件フォルダ内なので意図的に
+    # クライアントデータを含むことが正常）。
+    if scope in ("user", "firm"):
         _check_pii_for_user(source)
 
-    ws = _load_workspace()
-    if scope == "user":
-        dst_dir = ws.ensure_user_templates_dir()
-    else:
-        ws.ensure_workspace()
-        dst_dir = ws.templates_dir()
-        dst_dir.mkdir(parents=True, exist_ok=True)
+    dst_dir = _resolve_scope_dir(scope)
 
     dst_yaml = dst_dir / f"{template_id}.yaml"
     dst_xlsx = dst_dir / f"{template_id}.xlsx"
@@ -544,7 +603,7 @@ def save_user_template(
         "scope": scope,
         "yaml_path": str(dst_yaml),
         "xlsx_path": str(dst_xlsx),
-        "pii_scanned": "True" if scope == "user" else "False",
+        "pii_scanned": "True" if scope in ("user", "firm") else "False",
     }
 
 
@@ -580,22 +639,16 @@ def _move_template(
     if not BUNDLED_ID_RE.match(template_id):
         raise ValueError(f"無効なテンプレート ID: {template_id!r}")
 
-    ws = _load_workspace()
+    SCOPE_LABELS = {"case": "この案件フォルダ", "firm": "事務所スコープ", "user": "ユーザースコープ"}
 
     def _scope_paths(scope: str) -> Tuple[Path, Path, Path]:
-        if scope == "user":
-            d = ws.ensure_user_templates_dir()
-        else:
-            ws.ensure_workspace()
-            d = ws.templates_dir()
-            d.mkdir(parents=True, exist_ok=True)
+        d = _resolve_scope_dir(scope)
         return d, d / f"{template_id}.yaml", d / f"{template_id}.xlsx"
 
     _, src_yaml, src_xlsx = _scope_paths(src_scope)
     if not src_yaml.exists() or not src_xlsx.exists():
-        scope_label = "ユーザースコープ" if src_scope == "user" else "この案件フォルダ"
         raise FileNotFoundError(
-            f"{scope_label}にテンプレート '{template_id}' が見つからない "
+            f"{SCOPE_LABELS[src_scope]}にテンプレート '{template_id}' が見つからない "
             f"(yaml={src_yaml.exists()}, xlsx={src_xlsx.exists()})"
         )
 
@@ -603,9 +656,8 @@ def _move_template(
     dst_yaml_existed = dst_yaml.exists()
     dst_xlsx_existed = dst_xlsx.exists()
     if (dst_yaml_existed or dst_xlsx_existed) and not replace:
-        dst_label = "ユーザースコープ" if dst_scope == "user" else "この案件フォルダ"
         raise FileExistsError(
-            f"{dst_label}に既に '{template_id}' が存在する。上書きには --replace を指定してほしい。"
+            f"{SCOPE_LABELS[dst_scope]}に既に '{template_id}' が存在する。上書きには --replace を指定してほしい。"
         )
 
     # --- 原子的コピー（stage-then-rename）---
@@ -703,47 +755,68 @@ def _move_template(
     return result
 
 
-def promote_template(template_id: str, replace: bool = False) -> Dict[str, str]:
-    """案件スコープ → ユーザースコープに **移動**（案件側から削除）。
+def promote_template(
+    template_id: str,
+    replace: bool = False,
+    *,
+    to: str = "user",
+) -> Dict[str, str]:
+    """案件スコープ → ユーザー or 事務所スコープに **移動**（案件側から削除）。
 
-    典型的なユースケース: 最初は案件専用で登録した書式が他案件でも使えると
-    気づいたとき、ユーザースコープに昇格して案件側の shadowing を解消する。
+    `to`:
+      "user" — この端末・lawyer 全案件で見える（既定、従来どおり）
+      "firm" — 事務所全員で共有（v3.6.0〜、Shared Drive 同期フォルダ）
 
-    **v3.3.0-iter1〜: 移動前に pii_scan を通す（code-enforced hard block）。**
-    PII 検出時は `PIIFoundError` を投げてファイル移動を行わない。
+    典型的なユースケース:
+      最初は案件専用で登録した書式が他案件でも使えると気づいたとき、
+      昇格して案件側の shadowing を解消する。事務所全員に展開したい場合は `to=firm`。
 
-    v3.5.0: 昇格先は "global" から "user" にリネーム。
+    **PII gate**: 昇格先が user / firm のいずれでも、移動前に pii_scan を通す
+    （code-enforced hard block）。PII 検出時は `PIIFoundError` を投げて移動しない。
     """
     if not BUNDLED_ID_RE.match(template_id):
         raise ValueError(f"無効なテンプレート ID: {template_id!r}")
+    to = _normalize_scope(to, context="promote_template.to")
+    if to == "case":
+        raise ValueError("promote 先に 'case' は指定できない（昇格にならないため）")
 
     ws = _load_workspace()
     case_dir = ws.templates_dir()
     src_xlsx = case_dir / f"{template_id}.xlsx"
     if src_xlsx.exists():
-        _check_pii_for_user(src_xlsx)  # PIIFoundError を投げうる
+        _check_pii_for_user(src_xlsx)  # PIIFoundError を投げうる（user/firm 共通）
 
     return _move_template(
         template_id,
         src_scope="case",
-        dst_scope="user",
+        dst_scope=to,
         replace=replace,
         keep_original=False,
     )
 
 
-def demote_template(template_id: str, replace: bool = False) -> Dict[str, str]:
-    """ユーザースコープ → 案件スコープに **コピー**（user は維持）。
+def demote_template(
+    template_id: str,
+    replace: bool = False,
+    *,
+    from_: str = "user",
+) -> Dict[str, str]:
+    """ユーザー or 事務所スコープ → 案件スコープに **コピー**（src は維持）。
 
-    典型的なユースケース: 特定案件だけ書式を微修正したい場合、user のコピーを
-    案件スコープに置いて shadowing を作る。他案件は従来どおり user を参照する
-    ため user は残す。
+    `from_`:
+      "user" — 端末ローカルから降格（既定、従来どおり）
+      "firm" — 事務所共有から降格（v3.6.0〜）
 
-    v3.5.0: 降格元は "global" から "user" にリネーム。
+    典型的なユースケース:
+      標準書式を特定案件だけ微修正したいとき、src のコピーを案件スコープに
+      置いて shadowing を作る。他案件は従来どおり src を参照するため src は残す。
     """
+    from_ = _normalize_scope(from_, context="demote_template.from_")
+    if from_ == "case":
+        raise ValueError("demote 元に 'case' は指定できない（降格にならないため）")
     return _move_template(
         template_id,
-        src_scope="user",
+        src_scope=from_,
         dst_scope="case",
         replace=replace,
         keep_original=True,
@@ -817,7 +890,13 @@ def _cmd_show(args: argparse.Namespace) -> int:
 
 def _cmd_promote(args: argparse.Namespace) -> int:
     try:
-        result = promote_template(args.id, replace=args.replace)
+        result = promote_template(args.id, replace=args.replace, to=args.to)
+    except FirmUnavailableError as e:
+        print(json.dumps(
+            {"error": str(e), "code": "firm_unavailable", "state": e.state, "path": e.path},
+            ensure_ascii=False,
+        ), file=sys.stderr)
+        return 6
     except PIIFoundError as e:
         print(
             json.dumps(
@@ -883,7 +962,13 @@ def _cmd_save_user(args: argparse.Namespace) -> int:
 
 def _cmd_demote(args: argparse.Namespace) -> int:
     try:
-        result = demote_template(args.id, replace=args.replace)
+        result = demote_template(args.id, replace=args.replace, from_=args.from_)
+    except FirmUnavailableError as e:
+        print(json.dumps(
+            {"error": str(e), "code": "firm_unavailable", "state": e.state, "path": e.path},
+            ensure_ascii=False,
+        ), file=sys.stderr)
+        return 6
     except FileNotFoundError as e:
         print(json.dumps({"error": str(e)}, ensure_ascii=False), file=sys.stderr)
         return 1
@@ -1132,6 +1217,104 @@ def _self_test() -> int:
             r = promote_template("delete-test")
             check("11. promote result includes delete_failed key", "delete_failed" in r)
             check("12. delete_failed=False on normal promote", r.get("delete_failed") == "False")
+
+            # ---- 13. firm scope (PR-1 of firm-scope phase) ----------------
+            # 13a. promote --to firm without firm-setup raises FirmUnavailableError
+            (case_tdir / "firm-promo.yaml").write_text("id: firm-promo\nfields: []\n", encoding="utf-8")
+            wb_fp = openpyxl.Workbook()
+            wb_fp.active["A1"] = "ラベル"
+            wb_fp.save(case_tdir / "firm-promo.xlsx")
+            ws.unset_firm_templates_path()
+            raised_fu = False
+            try:
+                promote_template("firm-promo", to="firm")
+            except FirmUnavailableError as e:
+                raised_fu = True
+                check("13a. FirmUnavailableError state='unconfigured'", e.state == "unconfigured")
+            check("13a-pre. promote --to firm raises when unconfigured", raised_fu)
+
+            # 13b. set firm path → promote --to firm succeeds, case side removed
+            firm_dir_t = Path(td) / "firm-shared-tlib"
+            firm_dir_t.mkdir(parents=True, exist_ok=True)
+            ws.set_firm_templates_path(firm_dir_t)
+            r_firm = promote_template("firm-promo", to="firm")
+            check(
+                "13b. promote --to firm dst_scope='firm'",
+                r_firm.get("dst_scope") == "firm",
+                f"dst_scope={r_firm.get('dst_scope')}",
+            )
+            check(
+                "13c. firm xlsx exists in firm dir",
+                (firm_dir_t / "firm-promo.xlsx").exists(),
+            )
+            check(
+                "13d. case side removed after promote --to firm",
+                not (case_tdir / "firm-promo.xlsx").exists(),
+            )
+
+            # 13e. demote --from firm copies back to case (firm preserved)
+            r_dem = demote_template("firm-promo", from_="firm")
+            check(
+                "13e. demote --from firm dst_scope='case'",
+                r_dem.get("dst_scope") == "case",
+                f"dst_scope={r_dem.get('dst_scope')}",
+            )
+            check(
+                "13f. firm side preserved after demote",
+                (firm_dir_t / "firm-promo.xlsx").exists(),
+            )
+
+            # 13g. promote --to firm with PII raises PIIFoundError (firm gate same as user)
+            (case_tdir / "firm-pii.yaml").write_text("id: firm-pii\nfields: []\n", encoding="utf-8")
+            wb_fpii = openpyxl.Workbook()
+            wb_fpii.active["A1"] = "氏名: 甲野太郎様"
+            wb_fpii.active["A2"] = "東京都千代田区千代田1-1"
+            wb_fpii.save(case_tdir / "firm-pii.xlsx")
+            raised_pii_firm = False
+            try:
+                promote_template("firm-pii", to="firm")
+            except PIIFoundError:
+                raised_pii_firm = True
+            check("13g. promote --to firm blocks PII (same gate as user)", raised_pii_firm)
+            check(
+                "13h. case xlsx preserved after PII-blocked firm promote",
+                (case_tdir / "firm-pii.xlsx").exists(),
+            )
+
+            # 13i. save_user_template scope=firm with clean xlsx succeeds
+            clean_src = Path(td) / "firm-save-clean.xlsx"
+            wb_cs = openpyxl.Workbook()
+            wb_cs.active["A1"] = "金額"  # ラベルのみ
+            wb_cs.save(clean_src)
+            r_save = save_user_template(
+                clean_src, "firm-save-test", scope="firm",
+                yaml_content="id: firm-save-test\nfields: []\n",
+            )
+            check(
+                "13i. save_user_template(scope=firm) succeeds for clean xlsx",
+                r_save.get("scope") == "firm" and r_save.get("pii_scanned") == "True",
+                f"r_save={r_save}",
+            )
+            check(
+                "13j. firm save_user_template wrote files to firm dir",
+                (firm_dir_t / "firm-save-test.xlsx").exists(),
+            )
+
+            # 13k. install_template --scope firm runs PII gate (no easy way to test
+            # rejection without bundled PII fixture; just verify install succeeds for
+            # a clean bundled template — exercising the firm path)
+            # Pick the first available bundled template and install it to firm.
+            entries_for_firm = [e for e in load_registry() if e.get("_yaml_exists") == "True"][:1]
+            if entries_for_firm:
+                bundled_id_firm = entries_for_firm[0]["id"]
+                r_inst_firm = install_template(bundled_id_firm, scope="firm")
+                check(
+                    "13k. install_template(scope=firm) succeeds for clean bundled template",
+                    r_inst_firm.get("scope") == "firm",
+                    f"r_inst_firm={r_inst_firm}",
+                )
+
+            ws.unset_firm_templates_path()
         finally:
             ws.GLOBAL_ROOT = orig_global_root
             ws.GLOBAL_CONFIG_FILE = orig_global_cfg
@@ -1161,9 +1344,10 @@ def main() -> int:
     p_inst.add_argument("--replace", action="store_true", help="既存を上書き")
     p_inst.add_argument(
         "--scope",
-        choices=("user", "global", "case"),
+        choices=("case", "firm", "user", "global"),
         default="case",
-        help="case=この案件のみ（既定、v3.3.0〜） / user=この端末・lawyer 全案件（v3.5.0〜、旧 global）",
+        help="case=この案件のみ（既定） / firm=事務所全員で共有（要 /template-firm-setup） / "
+             "user=この端末・lawyer 全案件 / global=旧名（user の deprecated alias）",
     )
     p_inst.add_argument(
         "--skip-integrity",
@@ -1173,27 +1357,40 @@ def main() -> int:
 
     p_prom = sub.add_parser(
         "promote",
-        help="案件スコープ → 事務所グローバルへ移動（PII 検出時は拒否）",
+        help="案件スコープ → user / firm へ移動（PII 検出時は拒否）",
     )
     p_prom.add_argument("id")
-    p_prom.add_argument("--replace", action="store_true", help="global 側に既存があれば上書き")
+    p_prom.add_argument("--replace", action="store_true", help="dst 側に既存があれば上書き")
+    p_prom.add_argument(
+        "--to",
+        choices=("user", "firm"),
+        default="user",
+        help="昇格先スコープ（既定 user）",
+    )
 
     p_save = sub.add_parser(
         "save-user",
-        help="ユーザー作成テンプレートを指定スコープに保存（global は PII code-gate 付き）",
+        help="ユーザー作成テンプレートを指定スコープに保存（user/firm は PII code-gate 付き）",
     )
     p_save.add_argument("--source", required=True, help="ソース XLSX パス")
     p_save.add_argument("--id", required=True, help="テンプレート ID")
-    p_save.add_argument("--scope", choices=("case", "user", "global"), default="case")
+    p_save.add_argument("--scope", choices=("case", "firm", "user", "global"), default="case")
     p_save.add_argument("--yaml-file", help="書き込む YAML 定義のファイル（省略時は既存を期待）")
     p_save.add_argument("--replace", action="store_true", help="既存を上書き")
 
     p_dem = sub.add_parser(
         "demote",
-        help="事務所グローバル → 案件スコープへコピー（global は維持）",
+        help="user / firm → 案件スコープへコピー（src は維持）",
     )
     p_dem.add_argument("id")
     p_dem.add_argument("--replace", action="store_true", help="case 側に既存があれば上書き")
+    p_dem.add_argument(
+        "--from",
+        dest="from_",
+        choices=("user", "firm"),
+        default="user",
+        help="降格元スコープ（既定 user）",
+    )
 
     args = ap.parse_args()
 

@@ -8,17 +8,18 @@ allowed-tools: Read, Bash(python3 skills/_lib/template_lib.py:*), Bash(python3 s
 $ARGUMENTS の指定方法:
 - 引数なし: 利用可能な同梱テンプレートを一覧表示する
 - テンプレート ID: `/template-install creditor-list` — 指定テンプレートをインストール（既定: **この案件のみ**）
-- `--scope user` 付き: `/template-install creditor-list --scope user` — 端末全案件（この lawyer の全案件）にインストール
+- `--scope firm` 付き: `/template-install creditor-list --scope firm` — 事務所全員で共有（要 `/template-firm-setup`）
+- `--scope user` 付き: `/template-install creditor-list --scope user` — この端末・lawyer 全案件
 - `--replace` 付き: `/template-install creditor-list --replace` — 既存を上書き
 
 ## スコープの考え方
 
 既定は **case スコープ**（この案件フォルダのみ）。他案件と混線させる事故を
-避けるため、明示的に `--scope user` が指定されない限り user には置かない。
+避けるため、明示的にスコープを指定しない限り case に置く。
 
-端末全案件で使い回したい同梱書式（債権者一覧表・示談書等）は、
-`/template-install creditor-list --scope user` で 1 度だけ user 配置する。
-判断に迷ったら case に入れておき、後で `/template-promote` で昇格してよい。
+事務所全員で使い回したい標準書式は `--scope firm`（要 `/template-firm-setup`）。
+端末・lawyer 限定で使い回したい場合は `--scope user`。判断に迷ったら case に
+入れておき、後で `/template-promote --to firm` または `--to user` で昇格してよい。
 
 ## ワークフロー
 
@@ -44,7 +45,7 @@ python3 skills/_lib/template_lib.py list
 ### Step 3: インストール
 
 ```bash
-python3 skills/_lib/template_lib.py install <bundled-id> [--scope user|case]
+python3 skills/_lib/template_lib.py install <bundled-id> [--scope case|firm|user]
 ```
 
 戻り値 JSON の `yaml_dst` と `xlsx_dst` にコピーされる。`--replace` なしで既存と衝突した場合はエラー（exit 3）。上書きしたい場合はユーザーに確認し、承諾されれば `--replace` 付きで再実行する。

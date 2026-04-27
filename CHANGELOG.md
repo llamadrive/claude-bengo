@@ -2,7 +2,7 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
-## [3.6.0] - Unreleased
+## [3.6.0] - 2026-04-27
 
 ### Added
 

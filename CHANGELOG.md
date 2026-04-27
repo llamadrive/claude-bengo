@@ -2,6 +2,48 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.6.0] - Unreleased
+
+### Added
+
+- **新スコープ `firm`** — 事務所全員で共有するテンプレートディレクトリ。
+  実体は OS の同期クライアント（Google Drive for desktop / Dropbox / OneDrive /
+  SMB マウント等）が同期しているローカルパス。プラグインは認証や upload を
+  行わず、ローカルディレクトリとして読み書きするだけ。OS が同期と権限管理を担当する。
+  - resolver order: **case → firm → user**（case が firm を shadow、firm が user を shadow）
+  - firm が unconfigured または unreachable な場合は silently スキップ
+- **`/template-firm-setup <path>`** — firm スコープのローカルパスを 1 度だけ設定する
+  新コマンド。設定は `~/.claude-bengo/global.json` の `firm_templates_path` に書く。
+  パス検証（実在・ディレクトリ・`~/.claude-bengo/` 配下でない）を通過すると、
+  対象フォルダに `README_claude-bengo.txt` を 1 度だけ書く（PII 警告）。
+  `--unset` で削除。
+- `workspace.py` 新 API: `firm_templates_dir() -> Optional[Path]`,
+  `firm_status() -> {state, path}`, `set_firm_templates_path()`,
+  `unset_firm_templates_path()`, CLI subcommands `firm-setup` / `firm-status`.
+- `template_lib.py`: `--scope firm` を `install` / `save-user` で受け付ける。
+  `promote --to firm` / `demote --from firm` で firm との行き来をサポート。
+  firm 書込時の PII gate は user と同じ（`pii_scan.py` ハードブロック）。
+- 新 exception: `FirmUnavailableError` （exit 6）— firm が unconfigured または
+  unreachable の状態で firm 操作が試みられたときに投げる。
+
+### Changed
+
+- `workspace.py templates` JSON 出力に `firm_templates_dir` / `firm_status` /
+  `firm` バケットを追加（v3.5.0 で追加された `global` legacy alias は維持）。
+- `case` エントリに `shadowed_firm: bool` を追加（`shadowed_user` と並列）。
+- `resolve_template()` JSON の `scope` フィールドが `"firm"` を返すケースが追加された。
+- `/template-create` / `/template-install` / `/template-promote` / `/template-demote` /
+  `/template-list` / `/template-fill` のドキュメントを 3 スコープ前提に更新。
+
+### Notes
+
+- bundled テンプレートのインストール（`/template-install`）は manifest 検証で
+  改ざん検知済みのため、firm スコープでも追加 PII スキャンは走らない。user 由来の
+  XLSX については `/template-create` / `/template-promote` が PII gate を担当する。
+- 後続 PR で予定している hardening: 正準化 XLSX ハッシュ + fill-time PII 再スキャン
+  + case-local sidecar cache、TOCTOU 対策の temp-copy、shape-diff つきの
+  shadow drift 警告 UX、parent-mount-vs-leaf を区別した reachability remediation。
+
 ## [3.5.0] - 2026-04-27
 
 ### Changed

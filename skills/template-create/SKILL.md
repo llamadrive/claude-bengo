@@ -20,13 +20,16 @@ python3 skills/_lib/first_run.py notice
 
 出力があれば、そのままユーザーに提示してからスコープ決定へ進む。
 
-テンプレートは **スコープ** を 2 種類持つ:
+テンプレートは **スコープ** を 3 種類持つ:
 
 - `case`（**既定**、安全側）— この案件フォルダ限定。`<workspace>/.claude-bengo/templates/` に保存。
   他案件には影響しないため、試しに登録してみる・案件固有の派生版を作る、といった
-  用途に安全。端末全体で使い回したくなったら後から `/template-promote` で昇格できる。
-- `user`                     — この端末・lawyer の全案件で使い回す書式。`~/.claude-bengo/templates/` に保存。
-  全案件から見えるため、**PII 混入ゼロが必須**（以下のガード参照）。
+  用途に安全。後から `/template-promote --to user|firm` で昇格できる。
+- `firm` — 事務所全員で共有。`/template-firm-setup` で設定された OS 同期フォルダに保存。
+  事務所全員から見えるため、**PII 混入ゼロが必須**（以下のガード参照）。
+  unconfigured または unreachable の場合は使えない（FirmUnavailableError、案内あり）。
+- `user` — この端末・lawyer 限定。`~/.claude-bengo/templates/` に保存。
+  この端末の全案件から見えるため、**PII 混入ゼロが必須**（以下のガード参照）。
 
 **優先順**: 実行時は $ARGUMENTS の `--scope` フラグがあればそれを採用。なければ
 以下を 1 度だけ尋ねる:
@@ -34,10 +37,15 @@ python3 skills/_lib/first_run.py notice
 ```
 このテンプレートの使い回しの範囲は？
   1. この案件のみ（推奨・既定） — {cwd の basename} 限定で安全
-  2. この端末・lawyer 全案件    — user スコープ（クライアント情報の混入に注意）
+  2. 事務所全員で共有           — firm スコープ（要 /template-firm-setup、PII 混入注意）
+  3. この端末・lawyer 全案件    — user スコープ（PII 混入注意）
 
 番号で回答（未回答は 1）:
 ```
+
+選択肢 2 を選んだ場合、`firm-status` が `reachable` でないとエラーになる。事前に
+`python3 skills/_lib/workspace.py firm-status` を呼んで確認するか、エラーが返ったら
+`/template-firm-setup <path>` を案内する。
 
 スコープが決まったら保存先ディレクトリを解決する:
 

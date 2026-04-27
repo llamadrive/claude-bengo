@@ -189,6 +189,81 @@ def ensure_user_templates_dir() -> Path:
     return d
 
 
+# ---------------------------------------------------------------------------
+# firm スコープ（v3.6.0〜）
+# ---------------------------------------------------------------------------
+# 事務所全員で共有するテンプレートを置くディレクトリ。実体は OS の同期クライアント
+# （Google Drive for desktop / Dropbox / OneDrive / SMB マウント等）が同期している
+# ローカルパス。プラグインは認証や upload を行わず、ローカルディレクトリとして
+# 読み書きするだけ。OS が同期と権限管理を担当する。
+#
+# パスは `~/.claude-bengo/global.json` の `firm_templates_path` キーに保存する。
+# 各 lawyer が `/template-firm-setup <path>` で 1 度だけ設定する（admin が共有
+# する Drive folder のローカルマウントパスは端末ごとに異なるため、case-local
+# ではなく端末-global に置く）。
+#
+# 設定されていない場合は firm スコープが「unconfigured」となり、
+# `firm_templates_dir()` は None を返す。resolve_template / list_all_templates は
+# silently スキップする。
+
+FIRM_TEMPLATES_PATH_FIELD = "firm_templates_path"
+
+
+def firm_templates_dir() -> Optional[Path]:
+    """事務所スコープのテンプレートディレクトリ。設定されていなければ None。
+
+    `~/.claude-bengo/global.json` の `firm_templates_path` から読む。設定済みでも
+    ランタイムで存在しない場合（Drive 未マウント・フォルダ削除等）は **設定値を
+    そのまま返す** — 呼出側が `path.exists()` で reachability を判定する。
+    （tri-state: unconfigured / configured-unreachable / reachable）
+    """
+    cfg = load_global_config()
+    p = cfg.get(FIRM_TEMPLATES_PATH_FIELD)
+    if not p or not isinstance(p, str):
+        return None
+    return Path(p).expanduser()
+
+
+def firm_status() -> Dict[str, Any]:
+    """firm スコープの状態を返す。
+
+    戻り値:
+      {"state": "unconfigured" | "unreachable" | "reachable",
+       "path": str | None}
+
+    PR1 では unreachable をさらに parent-mount-vs-leaf に分けない（シンプルに
+    path.exists() のみで判定）。詳細な remediation UX は後続 PR で対応する。
+    """
+    p = firm_templates_dir()
+    if p is None:
+        return {"state": "unconfigured", "path": None}
+    if p.is_dir():
+        return {"state": "reachable", "path": str(p)}
+    return {"state": "unreachable", "path": str(p)}
+
+
+def set_firm_templates_path(path: Path) -> Path:
+    """firm スコープのパスを設定する（global config に書く）。
+
+    `path` は実在する絶対パスでなければならない（呼出側 `/template-firm-setup`
+    で検証する）。本関数は冪等で、上書きを許可する。
+    """
+    cfg = load_global_config()
+    cfg[FIRM_TEMPLATES_PATH_FIELD] = str(path)
+    save_global_config(cfg)
+    return path
+
+
+def unset_firm_templates_path() -> bool:
+    """firm スコープのパスを削除する。設定があれば True、無ければ False。"""
+    cfg = load_global_config()
+    if FIRM_TEMPLATES_PATH_FIELD in cfg:
+        cfg.pop(FIRM_TEMPLATES_PATH_FIELD, None)
+        save_global_config(cfg)
+        return True
+    return False
+
+
 # ----- v3.5.0 後方互換エイリアス（次回リリースで削除） -----------------------
 # 旧名 `global_templates_dir` / `ensure_global_templates_dir` を呼んでいる
 # プラグイン外のコードが壊れないようにするための薄いラッパ。
@@ -285,26 +360,32 @@ def allocate_output_path(
 
 
 def resolve_template(template_id: str, start: Optional[Path] = None) -> Optional[Dict[str, Any]]:
-    """`{id}.yaml` + `{id}.xlsx` を case → user の順で探索する。
+    """`{id}.yaml` + `{id}.xlsx` を case → firm → user の順で探索する。
 
-    precedence: case-local が同 ID の user を shadow する（案件専用の
-    カスタマイズ版を置ける）。見つからなければ None。
+    precedence:
+    - case が最優先（案件専用カスタマイズが他を shadow する）
+    - firm が次（事務所全員で共有する標準書式が user 個人版より優先される。
+      admin が firm 側を更新したら全員に伝播するため）
+    - user が最後（個人ベンチ・オフライン sandbox）
 
-    v3.5.0 で "global" スコープを "user" にリネーム。`scope` は新名 "user" を返すが、
-    旧名で分岐する legacy automation のために `scope_legacy` で旧値も併記する
-    （次回リリース 3.6.0 で `scope_legacy` を削除）。
+    firm が unconfigured または unreachable の場合は silently スキップする。
+    見つからなければ None。
 
-    戻り値: {id, scope, scope_legacy, yaml_path, xlsx_path} or None
+    戻り値: {id, scope, scope_legacy, yaml_path, xlsx_path, templates_dir} or None
+    `scope_legacy` は v3.5.0 互換 (`user` → `"global"`、それ以外は同名)。3.6.0 で削除。
     """
     if not template_id:
         return None
-    # 旧名アライアス: scope の新→旧マッピング。同一名（"case"）はそのまま、
-    # "user" だけ旧名 "global" を併記する。
-    legacy_alias = {"user": "global", "case": "case"}
-    for scope, tdir in (
+    legacy_alias = {"user": "global", "case": "case", "firm": "firm"}
+    candidates: List[Tuple[str, Path]] = [
         ("case", templates_dir(start)),
-        ("user", user_templates_dir()),
-    ):
+    ]
+    firm_dir = firm_templates_dir()
+    if firm_dir is not None and firm_dir.is_dir():
+        candidates.append(("firm", firm_dir))
+    candidates.append(("user", user_templates_dir()))
+
+    for scope, tdir in candidates:
         yaml_p = tdir / f"{template_id}.yaml"
         xlsx_p = tdir / f"{template_id}.xlsx"
         if yaml_p.exists() and xlsx_p.exists():
@@ -320,23 +401,18 @@ def resolve_template(template_id: str, start: Optional[Path] = None) -> Optional
 
 
 def list_all_templates(start: Optional[Path] = None) -> Dict[str, List[Dict[str, Any]]]:
-    """case + user の全テンプレートを列挙する。
+    """case + firm + user の全テンプレートを列挙する。
 
-    v3.5.0 で "global" スコープを "user" にリネーム。新キーは `"user"` だが、
-    legacy 互換のため `"global"` キーも一代だけ同じデータを返す（次回リリース
-    3.6.0 で `"global"` を削除）。case エントリの `shadowed_user` も同様に
-    旧名 `shadowed_global` を併記する。
+    firm は設定されていない、または unreachable な場合は空リストを返す
+    （キー自体は常に存在する。呼出側が `firm_status()` で reachability を確認）。
 
-    戻り値: {"case": [{id, yaml_path, xlsx_path, broken, missing,
-                       shadowed_user, shadowed_global}, ...],
-             "user": [...],
+    v3.5.0 互換のため `"global"` キーも `"user"` と同じデータを返す（3.6.0 で削除）。
+    case エントリの `shadowed_user` / `shadowed_global` も同様に並記。
+
+    戻り値: {"case": [...{shadowed_user, shadowed_firm, shadowed_global}],
+             "firm": [...{shadowed: bool (case が shadow しているか)}],
+             "user": [...{shadowed: bool}],
              "global": [...]   # legacy alias of "user", removed in 3.6.0}
-
-    - 整合なエントリ: yaml と xlsx 両方存在 → `broken: False`
-    - 破損エントリ: yaml または xlsx のいずれか欠落 → `broken: True`
-      `missing` に欠落しているファイルの種別（"yaml" または "xlsx"）が入る。
-      `resolve_template()` はスキップするが、**/template-list は必ず警告付きで
-      表示する**（半端な状態を silently 隠さないため）。
     """
     def _scan(tdir: Path) -> List[Dict[str, Any]]:
         if not tdir.exists():
@@ -366,17 +442,32 @@ def list_all_templates(start: Optional[Path] = None) -> Dict[str, List[Dict[str,
 
     case_items = _scan(templates_dir(start))
     user_items = _scan(user_templates_dir())
+    firm_dir = firm_templates_dir()
+    firm_items = _scan(firm_dir) if (firm_dir is not None and firm_dir.is_dir()) else []
+
     case_ids = {e["id"] for e in case_items}
+    firm_ids = {e["id"] for e in firm_items}
     user_ids = {e["id"] for e in user_items}
+
     for e in case_items:
-        shadowed = e["id"] in user_ids
-        e["shadowed_user"] = shadowed
-        e["shadowed_global"] = shadowed   # legacy alias, removed in 3.6.0
-    for e in user_items:
+        e["shadowed_user"] = e["id"] in user_ids
+        e["shadowed_firm"] = e["id"] in firm_ids
+        # legacy alias for v3.5.0 callers; removed in 3.6.0
+        e["shadowed_global"] = e["shadowed_user"]
+    for e in firm_items:
+        # case が同 ID を持つと resolver で case が勝つ（firm を shadow）
         e["shadowed"] = e["id"] in case_ids
+    for e in user_items:
+        # case か firm のどちらかが同 ID を持つと user を shadow する
+        e["shadowed"] = e["id"] in case_ids or e["id"] in firm_ids
     # legacy "global" bucket aliases "user" data (same list reference; safe because
     # callers treat the listing as read-only and we delete the alias in 3.6.0).
-    return {"case": case_items, "user": user_items, "global": user_items}
+    return {
+        "case": case_items,
+        "firm": firm_items,
+        "user": user_items,
+        "global": user_items,
+    }
 
 
 def metadata_path(start: Optional[Path] = None) -> Path:
@@ -644,25 +735,125 @@ def _cmd_info(args: argparse.Namespace) -> int:
 
 
 def _cmd_templates(args: argparse.Namespace) -> int:
-    """case + user の両スコープのテンプレートを JSON で返す。
+    """case + firm + user の全スコープのテンプレートを JSON で返す。
+
+    firm セクションは `firm_status` フィールドで reachability を伝える
+    （unconfigured / unreachable / reachable）。unconfigured/unreachable の場合は
+    `firm` リストは空。
 
     v3.5.0: legacy 互換のため `global_templates_dir` / `global` キーも一代だけ
-    返す（次回リリース 3.6.0 で削除）。新コードは `user_templates_dir` / `user`
-    を読むべき。
+    返す（次回リリース 3.6.0 で削除）。
     """
     start = Path(args.cwd).expanduser() if args.cwd else None
     listing = list_all_templates(start)
     user_dir_str = str(user_templates_dir())
+    fs = firm_status()
     out = {
         "workspace_root": str(resolve_workspace(start)),
         "case_templates_dir": str(templates_dir(start)),
+        "firm_templates_dir": fs["path"],
+        "firm_status": fs["state"],
         "user_templates_dir": user_dir_str,
         "global_templates_dir": user_dir_str,   # legacy alias, removed in 3.6.0
         "case": listing["case"],
+        "firm": listing["firm"],
         "user": listing["user"],
         "global": listing["user"],              # legacy alias, removed in 3.6.0
     }
     print(json.dumps(out, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _cmd_firm_setup(args: argparse.Namespace) -> int:
+    """firm スコープのテンプレートディレクトリを設定する。
+
+    `path` は実在するディレクトリでなければならない（OS 同期クライアントが
+    マウントしているローカルパスを想定）。設定は `~/.claude-bengo/global.json`
+    の `firm_templates_path` に書く。冪等で、既存値を上書きする。
+
+    `--unset` で設定を削除する。
+    """
+    if args.unset:
+        removed = unset_firm_templates_path()
+        print(json.dumps(
+            {"unset": removed, "message": "firm スコープ設定を削除した。" if removed
+             else "firm スコープ設定はもともと無かった。"},
+            ensure_ascii=False,
+        ))
+        return 0
+
+    if not args.path:
+        print(json.dumps(
+            {"error": "path 引数が必要。`/template-firm-setup <local_path>` で指定。"},
+            ensure_ascii=False,
+        ), file=sys.stderr)
+        return 1
+
+    p = Path(args.path).expanduser().resolve()
+    if not p.exists():
+        print(json.dumps(
+            {"error": f"パスが存在しない: {p}",
+             "hint": "OS の同期クライアント（Drive for desktop / Dropbox 等）が"
+                     "マウントしている実在するディレクトリを指定してほしい。"},
+            ensure_ascii=False,
+        ), file=sys.stderr)
+        return 1
+    if not p.is_dir():
+        print(json.dumps(
+            {"error": f"ディレクトリではない: {p}"},
+            ensure_ascii=False,
+        ), file=sys.stderr)
+        return 1
+    # global root と同一・配下は拒否（user スコープと混線するため）
+    if _is_under(p, _global_root_resolved()):
+        print(json.dumps(
+            {"error": f"`~/.claude-bengo/` 配下を firm パスに指定できない: {p}",
+             "hint": "user スコープと混線する。OS 同期クライアントの shared folder を指定してほしい。"},
+            ensure_ascii=False,
+        ), file=sys.stderr)
+        return 1
+
+    set_firm_templates_path(p)
+
+    # 初回設定時に README を置く（既存の場合は触らない）
+    readme = p / "README_claude-bengo.txt"
+    readme_created = False
+    if not readme.exists():
+        try:
+            readme.write_text(
+                "このフォルダは claude-bengo の firm スコープ用テンプレート共有ディレクトリ。\n"
+                "\n"
+                "- このフォルダのファイルは事務所全員（このフォルダにアクセスできる全員）\n"
+                "  から見える。**PII（クライアント名・連絡先・口座番号等）を含むファイルを\n"
+                "  置かない**。\n"
+                "- /template-promote --to firm でアップロード時、PII スキャンが自動的に\n"
+                "  かかる。検出時はアップロードがブロックされる。\n"
+                "- このフォルダ内の YAML / XLSX を直接編集しないでほしい。\n"
+                "  /template-promote または /template-create --scope firm を経由すること。\n",
+                encoding="utf-8",
+            )
+            readme_created = True
+        except OSError:
+            # README 書込失敗は致命的ではない（設定自体は成功）
+            pass
+
+    print(json.dumps(
+        {
+            "ok": True,
+            "firm_templates_path": str(p),
+            "readme_created": readme_created,
+            "message": f"firm スコープを {p} に設定した。",
+        },
+        ensure_ascii=False,
+        indent=2,
+    ))
+    return 0
+
+
+def _cmd_firm_status(args: argparse.Namespace) -> int:
+    """firm スコープの reachability を JSON で返す。"""
+    fs = firm_status()
+    print(json.dumps(fs, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -1020,6 +1211,132 @@ def _self_test() -> int:
             ],
         )
 
+        # ---- 13. firm scope (PR-1 of firm-scope phase) ----------------------
+        # Hermetic: monkey-patch GLOBAL_ROOT so set_firm_templates_path writes
+        # to a temp global.json and doesn't pollute the user's real home.
+        import sys as _sys_firm
+        _mod_firm = _sys_firm.modules[__name__]
+        _orig_gr_firm = _mod_firm.GLOBAL_ROOT
+        _orig_gcf_firm = _mod_firm.GLOBAL_CONFIG_FILE
+        _fake_home_firm = (Path(td) / "firm-test-home" / ".claude-bengo")
+        _fake_home_firm.mkdir(parents=True, exist_ok=True)
+        _mod_firm.GLOBAL_ROOT = _fake_home_firm
+        _mod_firm.GLOBAL_CONFIG_FILE = _fake_home_firm / "global.json"
+        try:
+            # 13a. unconfigured: firm_status reports unconfigured, firm_templates_dir None
+            unset_firm_templates_path()  # ensure clean slate
+            fs0 = firm_status()
+            check(
+                "13a. firm unconfigured initially",
+                fs0["state"] == "unconfigured" and firm_templates_dir() is None,
+                f"fs0={fs0}",
+            )
+
+            # 13b. configure firm: set to a real directory; reachable
+            firm_dir = Path(td) / "firm-shared"
+            firm_dir.mkdir(parents=True, exist_ok=True)
+            set_firm_templates_path(firm_dir)
+            fs1 = firm_status()
+            check(
+                "13b. firm reachable after set_firm_templates_path",
+                fs1["state"] == "reachable" and Path(fs1["path"]) == firm_dir,
+                f"fs1={fs1}",
+            )
+
+            # 13c. listing now has firm bucket
+            firm_listing = list_all_templates(root)
+            check(
+                "13c. list_all_templates has 'firm' key",
+                "firm" in firm_listing,
+                f"keys={list(firm_listing)}",
+            )
+
+            # 13d. resolve_template walks case → firm → user
+            # Put a unique id in firm only — should resolve as scope='firm'
+            (firm_dir / "firm-only.yaml").write_text("id: firm-only\nfields: []\n", encoding="utf-8")
+            (firm_dir / "firm-only.xlsx").write_bytes(b"x")
+            r_firm = resolve_template("firm-only", root) or {}
+            check(
+                "13d. resolve_template returns scope='firm' for firm-only template",
+                r_firm.get("scope") == "firm",
+                f"got={r_firm.get('scope')}",
+            )
+
+            # 13e. case shadows firm (case wins)
+            tdir_case = root / WORKSPACE_DIRNAME / TEMPLATES_SUBDIR
+            (tdir_case / "shared-id.yaml").write_text("id: shared-id\nfields: [{tag: 'case'}]\n", encoding="utf-8")
+            (tdir_case / "shared-id.xlsx").write_bytes(b"case")
+            (firm_dir / "shared-id.yaml").write_text("id: shared-id\nfields: [{tag: 'firm'}]\n", encoding="utf-8")
+            (firm_dir / "shared-id.xlsx").write_bytes(b"firm")
+            r_shared = resolve_template("shared-id", root) or {}
+            check(
+                "13e. case shadows firm (case wins)",
+                r_shared.get("scope") == "case",
+                f"got={r_shared.get('scope')}",
+            )
+
+            # 13f. firm shadows user
+            user_tdir_firm = _fake_home_firm / TEMPLATES_SUBDIR
+            user_tdir_firm.mkdir(exist_ok=True)
+            (user_tdir_firm / "firm-vs-user.yaml").write_text("id: firm-vs-user\nfields: [{tag: 'user'}]\n", encoding="utf-8")
+            (user_tdir_firm / "firm-vs-user.xlsx").write_bytes(b"user")
+            (firm_dir / "firm-vs-user.yaml").write_text("id: firm-vs-user\nfields: [{tag: 'firm'}]\n", encoding="utf-8")
+            (firm_dir / "firm-vs-user.xlsx").write_bytes(b"firm")
+            r_fvu = resolve_template("firm-vs-user", root) or {}
+            check(
+                "13f. firm shadows user (firm wins)",
+                r_fvu.get("scope") == "firm",
+                f"got={r_fvu.get('scope')}",
+            )
+
+            # 13g. shadowing flags surface in list_all_templates
+            l2 = list_all_templates(root)
+            firm_entries = {e["id"]: e for e in l2["firm"]}
+            case_entries = {e["id"]: e for e in l2["case"]}
+            check(
+                "13g. firm entry shadowed=True when case has same id",
+                firm_entries.get("shared-id", {}).get("shadowed") is True,
+                f"firm_entries={list(firm_entries)}",
+            )
+            check(
+                "13h. case entry shadowed_firm=True when firm has same id",
+                case_entries.get("shared-id", {}).get("shadowed_firm") is True,
+                f"case_entries={list(case_entries)}",
+            )
+
+            # 13i. firm unreachable: rename firm dir, status reports unreachable
+            firm_dir_renamed = firm_dir.with_name("firm-shared-moved")
+            firm_dir.rename(firm_dir_renamed)
+            fs_unr = firm_status()
+            check(
+                "13i. firm unreachable after path renamed",
+                fs_unr["state"] == "unreachable",
+                f"fs_unr={fs_unr}",
+            )
+            # resolver silently skips firm; case-only template still resolves as case
+            r_skip = resolve_template("good", root) or {}
+            check(
+                "13j. resolver silently skips unreachable firm (case still resolves)",
+                r_skip.get("scope") == "case",
+                f"got={r_skip}",
+            )
+            firm_dir_renamed.rename(firm_dir)  # restore
+
+            # 13k. unset clears the config and returns True
+            removed = unset_firm_templates_path()
+            check(
+                "13k. unset_firm_templates_path returns True when set",
+                removed is True and firm_templates_dir() is None,
+            )
+            # 13l. unset on already-empty returns False
+            check(
+                "13l. unset_firm_templates_path returns False when already unset",
+                unset_firm_templates_path() is False,
+            )
+        finally:
+            _mod_firm.GLOBAL_ROOT = _orig_gr_firm
+            _mod_firm.GLOBAL_CONFIG_FILE = _orig_gcf_firm
+
     print(f"\nworkspace self-test: {ok}/{ok + fail} passed")
     return 0 if fail == 0 else 1
 
@@ -1042,14 +1359,28 @@ def main() -> int:
     p_info.add_argument("--cwd", help="Path to inspect")
     p_info.set_defaults(func=_cmd_info)
 
-    p_tpl = sub.add_parser("templates", help="List templates in case + global scope as JSON")
+    p_tpl = sub.add_parser("templates", help="List templates in case + firm + user scope as JSON")
     p_tpl.add_argument("--cwd", help="Path (default CWD)")
     p_tpl.set_defaults(func=_cmd_templates)
 
-    p_rt = sub.add_parser("resolve-template", help="Resolve a template by id (case-first, then global)")
+    p_rt = sub.add_parser("resolve-template", help="Resolve a template by id (case → firm → user)")
     p_rt.add_argument("id")
     p_rt.add_argument("--cwd", help="Path (default CWD)")
     p_rt.set_defaults(func=_cmd_resolve_template)
+
+    p_fs = sub.add_parser(
+        "firm-setup",
+        help="Configure firm-scope template directory (OS-synced shared folder)",
+    )
+    p_fs.add_argument("path", nargs="?", help="Local path to a directory the OS sync client mounts")
+    p_fs.add_argument("--unset", action="store_true", help="Remove the firm-scope path setting")
+    p_fs.set_defaults(func=_cmd_firm_setup)
+
+    p_fst = sub.add_parser(
+        "firm-status",
+        help="Report firm-scope reachability (unconfigured/unreachable/reachable)",
+    )
+    p_fst.set_defaults(func=_cmd_firm_status)
 
     p_out = sub.add_parser("outputs", help="Ensure and print the outputs directory path")
     p_out.add_argument("--cwd", help="Path (default CWD)")

@@ -160,11 +160,11 @@ Cowork でこれらを動かすには、**Claude Desktop の `claude_desktop_con
 Cowork は VM 内で動くため自分で `claude_desktop_config.json` を編集できないが、**同じ Claude Desktop アプリの「Code」タブで動く Claude Code はホスト OS 上で動く**ため、設定ファイルを直接編集できる。Code タブを開き、以下のように依頼する:
 
 ```
-@agent-format/mcp を Claude Desktop の MCP 設定に追加してほしい。
-Cowork から呼び出せるようにしたい。
+@agent-format/mcp@0.1.9 を Claude Desktop の MCP 設定に追加してほしい。
+Cowork から呼び出せるようにしたい。バージョンは pin したまま入れて。
 ```
 
-Claude Code が `claude_desktop_config.json` の場所を特定し、必要な JSON を追記する。完了後、Claude Desktop を再起動すれば Cowork 側にも反映される。`xlsx-editor` / `docx-editor` も同じ要領で頼める。
+Claude Code が `claude_desktop_config.json` の場所を特定し、必要な JSON を追記する。完了後、Claude Desktop を再起動すれば Cowork 側にも反映される。`xlsx-editor` / `docx-editor` も同じ要領で頼める（バージョンは本リポジトリの `.mcp.json` と同じ pin を指定する）。
 
 #### 自分で編集する場合
 
@@ -178,11 +178,13 @@ Claude Code が `claude_desktop_config.json` の場所を特定し、必要な J
   "mcpServers": {
     "agent-format": {
       "command": "npx",
-      "args": ["-y", "@agent-format/mcp"]
+      "args": ["-y", "@agent-format/mcp@0.1.9"]
     }
   }
 }
 ```
+
+> バージョン pin (`@0.1.9`) は本リポジトリの `.mcp.json` と揃えてある。pin を外すと Cowork 側の挙動が upstream の最新リリースに引きずられて非決定的になる（また supply-chain 上のリスクも上がる）ため、必ず pin したまま追記すること。新しい pin に切り替える場合は、本プラグインの `.mcp.json` 側も同時に更新する。
 
 追加後、Claude Desktop を再起動する。`/family-tree` や `/lawsuit-analysis` を Cowork で実行すると、生成された `.agent` がチャット内に直接描画される。
 

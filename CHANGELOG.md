@@ -2,6 +2,23 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
+## [3.6.1] - Unreleased
+
+### Fixed
+
+- **README の Claude Cowork セクションの不正確な記述を修正**。従来 "Cowork を再起動すれば 3 つの MCP サーバが起動する" と記載していたが、Cowork は Apple 仮想マシン内で動作するため、プラグインの `.mcp.json` に書かれた `npx` 起動の stdio MCP サーバは VM 内で spawn できない。Claude Code 側のみ起動する旨に訂正した。
+- `/family-tree` / `/lawsuit-analysis` のスキル別差分表に「Cowork のチャット内インライン描画は `agent-format` MCP を desktop-config に bridge した場合のみ機能する」旨を追記した。
+
+### Added (docs only)
+
+- README に新節「Claude Cowork で MCP サーバを動かす」を追加。Cowork で `agent-format`（推奨）/ `xlsx-editor` / `docx-editor` を有効化するための Desktop SDK bridge 手順を記載した。
+  - **非エンジニア向けの簡単な経路**: Claude Desktop の Code タブを開き、Claude Code に `claude_desktop_config.json` への追加を依頼するだけで完了する（Cowork の VM はホスト設定ファイルを編集できないが、同じアプリ内の Code タブはホスト OS 上で動くため可能）。
+  - **手動経路**: `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS）/ `%APPDATA%\Claude\claude_desktop_config.json`（Windows）に直接 JSON を追記する手順。
+
+### Notes
+
+- プラグインのコード・スキル・テンプレートに変更はない。docs only リリース。
+
 ## [3.6.0] - 2026-04-27
 
 ### Added

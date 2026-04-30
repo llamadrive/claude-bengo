@@ -22,25 +22,25 @@
 #### 既存ユーザーのアップグレード手順
 
 既存の `claude-bengo` インストールから `bengo-toolkit` への移行は、
-ローカルに登録された marketplace 名も `claude-bengo` から `bengo-toolkit`
+ローカルに登録された marketplace 名も `claude-bengo` から `llamadrive`
 に変わるため、marketplace の再登録が必要となる。**4 ステップ**で完了する:
 
 ```
 /plugin uninstall claude-bengo@claude-bengo       ← 旧プラグインを削除
 /plugin marketplace remove claude-bengo           ← 旧 marketplace 登録を削除
-/plugin marketplace add llamadrive/claude-bengo   ← 新名 (bengo-toolkit) で再登録
-/plugin install bengo-toolkit@bengo-toolkit       ← 新プラグインを取得
+/plugin marketplace add llamadrive/claude-bengo   ← 新名 (llamadrive) で再登録
+/plugin install bengo-toolkit@llamadrive          ← 新プラグインを取得
 ```
 
 `/plugin marketplace update claude-bengo` だけで済ませようとすると、
 ローカルの marketplace 名は古いまま残り、`/plugin install
-bengo-toolkit@bengo-toolkit` が「unknown marketplace」で失敗する。
+bengo-toolkit@llamadrive` が「unknown marketplace」で失敗する。
 remove + add の再登録が必要な点に留意してほしい。
 
 なお、`.claude/settings.json`（プロジェクトレベル）または `~/.claude/settings.json`
 （ユーザーレベル）に `enabledPlugins` で旧 `claude-bengo@claude-bengo`
 のキーを書いている場合は、上記 4 ステップに加えて当該キーを
-`bengo-toolkit@bengo-toolkit` に書き換える必要がある。settings の
+`bengo-toolkit@llamadrive` に書き換える必要がある。settings の
 auto-migration は行われない。
 
 **監査ログ・HMAC 鍵・案件フォルダはこの手順で一切触れないため、移行に
@@ -67,7 +67,12 @@ auto-migration は行われない。
   `/bengo-toolkit:family-tree` のようになる（ユーザーが namespace 付き
   呼び出しをしていた場合のみ影響する。bare `/family-tree` は変わらず動く）。
 - **マーケットプレイス名**: `.claude-plugin/marketplace.json` の top-level
-  `name` および `plugins[0].name` を `bengo-toolkit` に変更。
+  `name` を `claude-bengo` → **`llamadrive`** に変更（plugins[0].name は
+  `bengo-toolkit` を維持）。これによりインストールコマンドが
+  `bengo-toolkit@bengo-toolkit` のような同名重複を避け、Anthropic 公式
+  マーケットプレイス (`@claude-plugins-official`) と同様に「発行者名」
+  パターンに揃う。今後 LlamaDrive が追加プラグインを公開する際にも、
+  同じマーケットプレイスに含めることができる。
 - **マーケットプレイス description の修正**:
   - `Ships HMAC-chained audit logs for compliance with 個人情報保護法 §25`
     という記述は不正確だった。§25 は委託先監督義務であり、ローカル監査

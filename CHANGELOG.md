@@ -2,7 +2,18 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
-## [3.6.1] - Unreleased
+## [3.6.2] - Unreleased
+
+### Changed
+
+- **`marketplace.json` のメタデータを公式マーケットプレイス審査向けに整理**:
+  - top-level `description` を 4 機能のみの記載から、決定論的計算機 7 種・e-Gov 法令検索・HMAC チェーン監査ログまで含めた完全な機能リストに拡張した。
+  - plugin entry の `description` を日本語のみから**英日バイリンガル**に変更。Anthropic 側のレビュアと、海外で日本案件を扱う lawyer の双方が機能スコープを判断できるようにした。
+  - `keywords` に `calculator` / `audit-log` を追加（discovery 改善）。
+  - **`"strict": false` を削除**してデフォルト (`true`) に戻した。本リポジトリは `plugin.json` がメタデータのみ・`marketplace.json` も components を declare していないため、現状の `false` 設定では「marketplace entry が定義の全て」というセマンティクスに反する空定義になっていた。デフォルトの `strict: true` の方が plugin.json + auto-discovery のセマンティクスと整合する。
+- プラグインの code・skill・template に変更はない。マーケットプレイス審査向けのメタデータ整備のみのリリース。
+
+## [3.6.1] - 2026-04-28
 
 ### Fixed
 

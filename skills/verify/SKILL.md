@@ -6,7 +6,7 @@ version: 1.0.0
 
 # 動作確認（verify）
 
-claude-bengo プラグインの各機能が正常に動作するか確認する。
+bengo-toolkit プラグインの各機能が正常に動作するか確認する。
 
 ## モード
 
@@ -29,7 +29,7 @@ MCP サーバの疎通と fixtures の存在を確認する。
 **出力:**
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  claude-bengo 動作確認レポート
+  bengo-toolkit 動作確認レポート
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [1] xlsx-editor MCP ............. OK
   [2] docx-editor MCP ............. OK
@@ -84,7 +84,7 @@ $ARGUMENTS に `template-fill`, `family-tree`, `typo-check`, `lawsuit-analysis`,
 **出力（例）:**
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  claude-bengo 動作確認レポート（全テスト）
+  bengo-toolkit 動作確認レポート（全テスト）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [1] MCP サーバ接続 ............. OK
   [2] /template-fill ............. OK (15/15 fields)

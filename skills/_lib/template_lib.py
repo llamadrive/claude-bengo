@@ -1405,7 +1405,7 @@ def _self_test() -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="claude-bengo 同梱テンプレート管理")
+    ap = argparse.ArgumentParser(description="bengo-toolkit 同梱テンプレート管理")
     ap.add_argument("--self-test", action="store_true", help="同梱テンプレートの整合性をチェックする")
     sub = ap.add_subparsers(dest="command")
 

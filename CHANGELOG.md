@@ -37,6 +37,12 @@
 bengo-toolkit@bengo-toolkit` が「unknown marketplace」で失敗する。
 remove + add の再登録が必要な点に留意してほしい。
 
+なお、`.claude/settings.json`（プロジェクトレベル）または `~/.claude/settings.json`
+（ユーザーレベル）に `enabledPlugins` で旧 `claude-bengo@claude-bengo`
+のキーを書いている場合は、上記 4 ステップに加えて当該キーを
+`bengo-toolkit@bengo-toolkit` に書き換える必要がある。settings の
+auto-migration は行われない。
+
 **監査ログ・HMAC 鍵・案件フォルダはこの手順で一切触れないため、移行に
 よってデータが失われることはない**（`.claude-bengo/` ディレクトリ名は
 据え置く設計）。

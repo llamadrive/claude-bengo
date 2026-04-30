@@ -22,15 +22,24 @@
 #### 既存ユーザーのアップグレード手順
 
 既存の `claude-bengo` インストールから `bengo-toolkit` への移行は、
-**1 度の uninstall + install で完了する**。
+ローカルに登録された marketplace 名も `claude-bengo` から `bengo-toolkit`
+に変わるため、marketplace の再登録が必要となる。**4 ステップ**で完了する:
 
 ```
-/plugin uninstall claude-bengo@claude-bengo
-/plugin install bengo-toolkit@bengo-toolkit
+/plugin uninstall claude-bengo@claude-bengo       ← 旧プラグインを削除
+/plugin marketplace remove claude-bengo           ← 旧 marketplace 登録を削除
+/plugin marketplace add llamadrive/claude-bengo   ← 新名 (bengo-toolkit) で再登録
+/plugin install bengo-toolkit@bengo-toolkit       ← 新プラグインを取得
 ```
 
-または `/plugin marketplace add llamadrive/claude-bengo` を再実行して、
-Marketplaces タブで bengo-toolkit を選択しても良い。
+`/plugin marketplace update claude-bengo` だけで済ませようとすると、
+ローカルの marketplace 名は古いまま残り、`/plugin install
+bengo-toolkit@bengo-toolkit` が「unknown marketplace」で失敗する。
+remove + add の再登録が必要な点に留意してほしい。
+
+**監査ログ・HMAC 鍵・案件フォルダはこの手順で一切触れないため、移行に
+よってデータが失われることはない**（`.claude-bengo/` ディレクトリ名は
+据え置く設計）。
 
 #### 変更されないもの（後方互換）
 

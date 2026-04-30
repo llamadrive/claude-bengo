@@ -1,8 +1,8 @@
 ---
-description: タスクから claude-bengo の機能を探す対話型メニュー
+description: タスクから bengo-toolkit の機能を探す対話型メニュー
 ---
 
-claude-bengo には 23 コマンドがあるが、弁護士が覚えるべきなのは `/help` ただ 1 つ。
+bengo-toolkit には 23 コマンドがあるが、弁護士が覚えるべきなのは `/help` ただ 1 つ。
 このコマンドは「今日何をしたい？」をタスク別に聞き、該当する機能へ誘導する。
 
 ## $ARGUMENTS の扱い
@@ -17,7 +17,7 @@ claude-bengo には 23 コマンドがあるが、弁護士が覚えるべきな
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  claude-bengo — 今日何をしたい？
+  bengo-toolkit — 今日何をしたい？
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   1. 📄 書類を作成する
@@ -45,7 +45,7 @@ claude-bengo には 23 コマンドがあるが、弁護士が覚えるべきな
   ?. 初めて使う・試したい → /quickstart（60 秒、同梱サンプルで出力を見せるだけ）
   ?. 全コマンド一覧 → /help --all
   ?. 環境を確認 → /verify
-  ?. プラグイン更新 → /plugin install claude-bengo@claude-bengo
+  ?. プラグイン更新 → /plugin install bengo-toolkit@llamadrive
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -163,7 +163,7 @@ v3.0.0 で旧 matter ID 概念は廃止された。**フォルダ = 案件**。
 【メンテナンス】
   /quickstart        60 秒で試す（同梱サンプル）
   /verify            動作確認
-  /plugin install claude-bengo@claude-bengo  更新（Claude Code 標準）
+  /plugin install bengo-toolkit@llamadrive  更新（Claude Code 標準）
   /help              このメニュー
 ```
 

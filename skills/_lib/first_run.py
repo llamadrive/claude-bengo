@@ -26,7 +26,7 @@ from typing import Dict
 
 
 NOTICE_TEXT = """
-claude-bengo（クロード弁護）へようこそ。
+bengo-toolkit へようこそ。
 
 本プラグインは Claude Code 上で動くツール群で、文書の送受信は Claude Code
 本体 (Anthropic API) の仕組みで行われる。プラグイン独自のクラウド送信経路

@@ -2,7 +2,107 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
-## [3.6.2] - Unreleased
+## [3.7.0] - Unreleased
+
+### ⚠ Breaking — プラグイン名を `claude-bengo` から `bengo-toolkit` に変更
+
+本リリースで、プラグイン名を `claude-bengo` から **`bengo-toolkit`** に変更する。
+理由は 2 つ:
+
+1. **ブランド衝突の回避**: 公式マーケットプレイス (`claude-plugins-official`)
+   の提出フォームに「You may not use brand names you do not own in the name
+   of your plugin.」とある。`claude` は Anthropic 社のブランドで LlamaDrive
+   は所有していないため、審査で指摘されるリスクが高い。先回りして "bengo"
+   ベースの命名に統一する。
+2. **プラグインらしい名前**: `bengo` 単独では generic すぎ、`bengo-jp` は
+   web サイト名のような印象になる。`bengo-toolkit` は Anthropic の既存
+   プラグイン (`pr-review-toolkit`) と命名規則が揃い、「ツールキット」と
+   一目で分かる。
+
+#### 既存ユーザーのアップグレード手順
+
+既存の `claude-bengo` インストールから `bengo-toolkit` への移行は、
+ローカルに登録された marketplace 名も `claude-bengo` から `llamadrive`
+に変わるため、marketplace の再登録が必要となる。**4 ステップ**で完了する:
+
+```
+/plugin uninstall claude-bengo@claude-bengo       ← 旧プラグインを削除
+/plugin marketplace remove claude-bengo           ← 旧 marketplace 登録を削除
+/plugin marketplace add llamadrive/claude-bengo   ← 新名 (llamadrive) で再登録
+/plugin install bengo-toolkit@llamadrive          ← 新プラグインを取得
+```
+
+`/plugin marketplace update claude-bengo` だけで済ませようとすると、
+ローカルの marketplace 名は古いまま残り、`/plugin install
+bengo-toolkit@llamadrive` が「unknown marketplace」で失敗する。
+remove + add の再登録が必要な点に留意してほしい。
+
+なお、`.claude/settings.json`（プロジェクトレベル）または `~/.claude/settings.json`
+（ユーザーレベル）に `enabledPlugins` で旧 `claude-bengo@claude-bengo`
+のキーを書いている場合は、上記 4 ステップに加えて当該キーを
+`bengo-toolkit@llamadrive` に書き換える必要がある。settings の
+auto-migration は行われない。
+
+**監査ログ・HMAC 鍵・案件フォルダはこの手順で一切触れないため、移行に
+よってデータが失われることはない**（`.claude-bengo/` ディレクトリ名は
+据え置く設計）。
+
+#### 変更されないもの（後方互換）
+
+- **GitHub リポジトリ URL**: `github.com/llamadrive/claude-bengo` のまま。
+  GitHub が自動的にリダイレクトするため、`/plugin marketplace add llamadrive/claude-bengo`
+  も引き続き機能する。リポジトリ自体の rename は将来の決定として保留する。
+- **案件フォルダ内のローカル状態**: `<案件>/.claude-bengo/audit.jsonl` ・
+  `<案件>/.claude-bengo/templates/` ・ `~/.claude-bengo/global.json`
+  （HMAC 鍵・初回案内フラグ）はそのまま使い続けられる。**監査ログは
+  失われない**。これらのディレクトリ名は v4.0 まで `claude-bengo` のまま据え置く。
+- **環境変数**: `CLAUDE_BENGO_AUDIT_HMAC_KEY` / `CLAUDE_BENGO_AUDIT_PATH`
+  / `CLAUDE_BENGO_AUDIT_HMAC_KEY_HEX` などはそのまま機能する。事務所側の
+  shell rc を書き換える必要はない。
+
+### Changed
+
+- **プラグイン名**: `.claude-plugin/plugin.json` の `name` を `claude-bengo`
+  → `bengo-toolkit`。これにより slash command の名前空間も
+  `/bengo-toolkit:family-tree` のようになる（ユーザーが namespace 付き
+  呼び出しをしていた場合のみ影響する。bare `/family-tree` は変わらず動く）。
+- **マーケットプレイス名**: `.claude-plugin/marketplace.json` の top-level
+  `name` を `claude-bengo` → **`llamadrive`** に変更（plugins[0].name は
+  `bengo-toolkit` を維持）。これによりインストールコマンドが
+  `bengo-toolkit@bengo-toolkit` のような同名重複を避け、Anthropic 公式
+  マーケットプレイス (`@claude-plugins-official`) と同様に「発行者名」
+  パターンに揃う。今後 LlamaDrive が追加プラグインを公開する際にも、
+  同じマーケットプレイスに含めることができる。
+- **マーケットプレイス description の修正**:
+  - `Ships HMAC-chained audit logs for compliance with 個人情報保護法 §25`
+    という記述は不正確だった。§25 は委託先監督義務であり、ローカル監査
+    ログ単独では §25 履行とはならない。新しい description は機能を中立的に
+    説明し、コンプライアンス主張を行わない。
+- **`audit.py` docstring の法的引用を修正**: 従来「弁護士法第23条および
+  個人情報保護法第25条を遵守するために」と書いていたが、ログ単体で
+  これらを「遵守」することはできない。新しい記述は (1) **個人情報保護法
+  第23条 (安全管理措置)** が要求する処理記録の保管を補助する位置付け、
+  (2) 弁護士法第23条 (秘密保持義務) の履行を「裏付ける証跡」とする位置付け、
+  (3) 委託先監督 (§25) は別途必要である旨を明記する、と訂正した。
+- **README ・ RUNBOOK ・ QUICKSTART ・ CHEATSHEET ・ SECURITY ・ CLAUDE.md ・
+  各 SKILL.md / commands/\*.md** のうち、`/plugin install claude-bengo@claude-bengo`
+  などのインストール例とプラグインキャッシュパス
+  (`~/.claude/plugins/cache/claude-bengo/claude-bengo/`) を新名称に置換した。
+  履歴 CHANGELOG エントリ (v3.6.x 以前) はそのまま据え置く（過去の
+  リリース時点での情報を改ざんしない）。
+- README の「§25 委託先監督義務チェックリスト」セクションは**そのまま**
+  残す。これは正しい記述（lawyer's office が Anthropic を委託先として
+  監督する際の 8 項目チェックリストで、監査ログはその 1 項目）。
+
+### Notes
+
+- プラグインのコード本体・スキル動作・テンプレート・計算結果は一切変わらない。
+  rename とドキュメント整理のみ。
+- `marketplace.json` は今後 `claude-plugins-official` への提出フォーム
+  (https://claude.ai/settings/plugins/submit) に提出される。提出時の
+  pinned SHA は v3.7.0 タグの commit。
+
+## [3.6.2] - 2026-04-28
 
 ### Changed
 

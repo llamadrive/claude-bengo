@@ -1,12 +1,12 @@
 ---
 name: verify
-description: This skill should be used when the user asks to "verify", "test", "check installation", "動作確認", "テスト", "ヘルスチェック", or wants to verify that the claude-bengo plugin is working correctly.
+description: This skill should be used when the user asks to "verify", "test", "check installation", "動作確認", "テスト", "ヘルスチェック", or wants to verify that the bengo-toolkit plugin is working correctly.
 version: 1.0.0
 ---
 
 # 動作確認（verify）
 
-claude-bengo プラグインの各機能が正常に動作するか確認する。
+bengo-toolkit プラグインの各機能が正常に動作するか確認する。
 
 ## モード
 
@@ -17,7 +17,7 @@ $ARGUMENTS の値に応じて3つのモードで動作する:
 MCP サーバの疎通と fixtures の存在を確認する。
 
 **手順:**
-0. プラグイン更新チェックはスキップする。Claude Code の `/plugin install claude-bengo@claude-bengo` が marketplace.json の最新 version を見て更新する。
+0. プラグイン更新チェックはスキップする。Claude Code の `/plugin install bengo-toolkit@llamadrive` が marketplace.json の最新 version を見て更新する。
 0.5. **MCP サプライチェーン整合性（v3.3.0〜 必須）:** `python3 scripts/verify_mcp_integrity.py` を実行し、`.mcp.json` の各依存パッケージの npm integrity が `scripts/mcp_pinned.json` と一致することを確認する。不一致の場合は他の検証に進まず、即座にサプライチェーン改ざんの可能性を報告する（機密文書処理を継続してはならない）。
 1. `mcp__xlsx-editor__get_workbook_info` を任意の fixtures XLSX に対して呼び出し、応答を確認する。
 2. `mcp__docx-editor__get_document_info` を任意の fixtures DOCX に対して呼び出し、応答を確認する。
@@ -29,7 +29,7 @@ MCP サーバの疎通と fixtures の存在を確認する。
 **出力:**
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  claude-bengo 動作確認レポート
+  bengo-toolkit 動作確認レポート
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [1] xlsx-editor MCP ............. OK
   [2] docx-editor MCP ............. OK
@@ -84,7 +84,7 @@ $ARGUMENTS に `template-fill`, `family-tree`, `typo-check`, `lawsuit-analysis`,
 **出力（例）:**
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  claude-bengo 動作確認レポート（全テスト）
+  bengo-toolkit 動作確認レポート（全テスト）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [1] MCP サーバ接続 ............. OK
   [2] /template-fill ............. OK (15/15 fields)

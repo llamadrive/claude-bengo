@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""claude-bengo 同梱テンプレートのレジストリと `/template-install` バックエンド。
+"""bengo-toolkit 同梱テンプレートのレジストリと `/template-install` バックエンド。
 
 同梱テンプレートはプラグインディレクトリの `templates/_bundled/{id}/` に
 `{id}.yaml` + `{id}.xlsx` のペアで配置される。`_registry.yaml` が
@@ -347,7 +347,7 @@ def _verify_bundled_integrity(bundled_id: str) -> Optional[str]:
         # として使える。明示的に --skip-integrity フラグでのみ許可する。
         return (
             "_manifest.sha256 が存在しない。テンプレート整合性検証ができないため install を中止する。"
-            "プラグインクローンが破損している可能性がある。`/plugin install claude-bengo@claude-bengo` で再取得するか、"
+            "プラグインクローンが破損している可能性がある。`/plugin install bengo-toolkit@llamadrive` で再取得するか、"
             "やむをえず先に進める場合は --skip-integrity を明示指定してほしい。"
         )
 
@@ -365,7 +365,7 @@ def _verify_bundled_integrity(bundled_id: str) -> Optional[str]:
                 f"テンプレート '{bundled_id}' のファイル {rel} が改ざんされている可能性がある。\n"
                 f"  expected: {expected}\n"
                 f"  actual  : {actual}\n"
-                f"プラグインを `/plugin install claude-bengo@claude-bengo` で再取得することを検討してほしい。"
+                f"プラグインを `/plugin install bengo-toolkit@llamadrive` で再取得することを検討してほしい。"
             )
     return None
 
@@ -1405,7 +1405,7 @@ def _self_test() -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="claude-bengo 同梱テンプレート管理")
+    ap = argparse.ArgumentParser(description="bengo-toolkit 同梱テンプレート管理")
     ap.add_argument("--self-test", action="store_true", help="同梱テンプレートの整合性をチェックする")
     sub = ap.add_subparsers(dest="command")
 

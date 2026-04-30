@@ -3,8 +3,9 @@ description: 現在の案件フォルダ（workspace）の状態を表示する
 allowed-tools: Read, Bash(python3 skills/_lib/workspace.py info:*), Bash(python3 skills/_lib/audit.py verify:*)
 ---
 
-現在の CWD（または指定ディレクトリ）の workspace 状態を要約する。claude-bengo
-は案件フォルダごとに `.claude-bengo/` を持つ。このコマンドはその中身を読み、
+現在の CWD（または指定ディレクトリ）の workspace 状態を要約する。bengo-toolkit
+は案件フォルダごとに `.claude-bengo/` を持つ（ディレクトリ名は v3.7.0 でのリネーム
+時にも互換性のため据え置き）。このコマンドはその中身を読み、
 監査ログの件数・テンプレート数・メタデータを可視化する。
 
 ## $ARGUMENTS
@@ -23,7 +24,7 @@ python3 skills/_lib/workspace.py info
 未初期化の場合は以下を表示:
 
 ```
-このフォルダ（~/cases/new-case）は claude-bengo の案件フォルダとして
+このフォルダ（~/cases/new-case）は bengo-toolkit の案件フォルダとして
 初期化されていない。機密スキル（/typo-check, /family-tree 等）を実行すると
 自動的に `.claude-bengo/` が作成される。事前登録したい場合:
 

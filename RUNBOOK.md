@@ -32,7 +32,7 @@ Claude Code を起動し、**Claude Code 内で** 以下 2 行を実行する（
 **想定結果:** 各コマンドが「Added marketplace...」「Installed bengo-toolkit v3.7.0」等を返す（バージョンは `.claude-plugin/plugin.json` が単一情報源）。その後 Claude Code を再起動。
 
 **失敗時の診断:**
-- `already exists` → 前回の試行が残っている。`/plugin marketplace remove bengo-toolkit` で削除してから再試行
+- `already exists` → 前回の試行が残っている。`/plugin marketplace remove llamadrive` で削除してから再試行
 - `network error` → 企業プロキシ環境では `HTTPS_PROXY` を設定してから Claude Code を起動する
 - `node / npm / python3 not found` → Node.js 18+ / Python 3.8+ を先にインストール
 
@@ -145,7 +145,7 @@ cd ~/cases/smoke-test && claude
 # [sh] cd ~/cases/smoke-test 前提
 ls -la .claude-bengo/
 cat .claude-bengo/audit.jsonl | head -5
-python3 ~/.claude/plugins/cache/bengo-toolkit/bengo-toolkit/{VERSION}/skills/_lib/audit.py verify
+python3 ~/.claude/plugins/cache/llamadrive/bengo-toolkit/{VERSION}/skills/_lib/audit.py verify
 ```
 
 **想定結果:**
@@ -174,7 +174,7 @@ log.write_text(tampered)
 print('tampered:', log)
 "
 
-python3 ~/.claude/plugins/cache/bengo-toolkit/bengo-toolkit/{VERSION}/skills/_lib/audit.py verify
+python3 ~/.claude/plugins/cache/llamadrive/bengo-toolkit/{VERSION}/skills/_lib/audit.py verify
 ```
 
 **想定結果:** `FAIL line X: prev_hash mismatch` と表示され exit 1。
@@ -265,7 +265,7 @@ export CLAUDE_BENGO_AUDIT_KEEP=10
 エクスポートスクリプト例（cron で日次実行）:
 
 ```bash
-python3 ~/.claude/plugins/bengo-toolkit/skills/_lib/audit.py export \
+python3 ~/.claude/plugins/cache/llamadrive/bengo-toolkit/{VERSION}/skills/_lib/audit.py export \
   --format csv --since $(date -v-1d +%Y-%m-%d) \
   > /path/to/export/audit-$(date +%Y-%m-%d).csv
 # その後、aws s3 cp で Object Lock 有効なバケットへアップロード
@@ -330,14 +330,14 @@ marketplace catalogue を更新しても、`installed_plugins.json` のエント
 
 **推奨: auto-update を有効化する**
 
-`/plugin` → Marketplaces タブ → bengo-toolkit → "Enable auto-update" を選ぶ。
+`/plugin` → Marketplaces タブ → llamadrive → "Enable auto-update" を選ぶ。
 Claude Code 起動時に marketplace と plugin が自動更新される。更新時は
 「`/reload-plugins` を実行してほしい」という通知が出る。
 
 **手動更新（auto-update なしの場合）**
 
 ```
-/plugin marketplace update bengo-toolkit      ← catalogue のみ refresh
+/plugin marketplace update llamadrive         ← catalogue のみ refresh
 /plugin uninstall bengo-toolkit@llamadrive  ← 一度削除
 /plugin install bengo-toolkit@llamadrive    ← 新バージョンで再取得
 /reload-plugins

@@ -63,7 +63,7 @@
 
 5. **監査ログを確認:**
    ```bash
-   python3 ~/.claude/plugins/bengo-toolkit/skills/_lib/audit.py verify
+   python3 ~/.claude/plugins/cache/llamadrive/bengo-toolkit/{VERSION}/skills/_lib/audit.py verify
    ```
    ハッシュチェーン整合性と改ざん検知を確認する。
 

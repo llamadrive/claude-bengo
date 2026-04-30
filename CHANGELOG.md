@@ -2,7 +2,25 @@
 
 本プロジェクトの変更履歴を [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) 形式で記録する。バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従う。
 
-## [3.7.0] - Unreleased
+## [Unreleased]
+
+### Changed
+
+- **GitHub リポジトリを `llamadrive/claude-bengo` から `llamadrive/bengo-toolkit` にリネームした。** GitHub が自動的に redirect を設定するため、旧 URL を使った `git clone` や `/plugin marketplace add llamadrive/claude-bengo` も引き続き機能する。
+- **`marketplace.json` ・ `plugin.json` の URL を新名に更新**:
+  - `repository`: `github.com/llamadrive/bengo-toolkit`
+  - `source.url`: `github.com/llamadrive/bengo-toolkit.git`
+  - `homepage`: `llama-drive.com/bengo-toolkit`（LP の URL 変更と同期）
+- **`SECURITY.md` ・ `.github/ISSUE_TEMPLATE/config.yml`** の Security Advisory ・ Discussions URL を新リポジトリに更新。
+- **`skills/law-search/search.py` の HTTP User-Agent** を `bengo-toolkit/{version} (+github.com/llamadrive/bengo-toolkit)` に更新（e-Gov API への発信元情報）。
+- **README ・ RUNBOOK ・ CHEATSHEET ・ QUICKSTART** のインストール例 (`/plugin marketplace add llamadrive/bengo-toolkit`) と Issues URL を canonical に更新。
+
+### Notes
+
+- プラグイン本体・スキル・テンプレート・計算結果は変更なし。URL 整理のみ。
+- v3.7.0 タグ後の followup chore のため、version bump は行わない（次回機能追加時にまとめて bump）。
+
+## [3.7.0] - 2026-04-30
 
 ### ⚠ Breaking — プラグイン名を `claude-bengo` から `bengo-toolkit` に変更
 
@@ -49,9 +67,7 @@ auto-migration は行われない。
 
 #### 変更されないもの（後方互換）
 
-- **GitHub リポジトリ URL**: `github.com/llamadrive/claude-bengo` のまま。
-  GitHub が自動的にリダイレクトするため、`/plugin marketplace add llamadrive/claude-bengo`
-  も引き続き機能する。リポジトリ自体の rename は将来の決定として保留する。
+- **GitHub リポジトリ URL**: v3.7.0 リリース時点では `github.com/llamadrive/claude-bengo` のまま据え置いた（リネームは別の chore に分離）。GitHub が自動的にリダイレクトするため、旧 URL を使った `/plugin marketplace add llamadrive/claude-bengo` も引き続き機能する。**v3.7.0 リリース直後の chore で `github.com/llamadrive/bengo-toolkit` にリネーム済み。** 詳細は本 CHANGELOG の Unreleased 節を参照。
 - **案件フォルダ内のローカル状態**: `<案件>/.claude-bengo/audit.jsonl` ・
   `<案件>/.claude-bengo/templates/` ・ `~/.claude-bengo/global.json`
   （HMAC 鍵・初回案内フラグ）はそのまま使い続けられる。**監査ログは

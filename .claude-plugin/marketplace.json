@@ -16,12 +16,12 @@
         "email": "support@llama-drive.com",
         "url": "https://llama-drive.com"
       },
-      "homepage": "https://llama-drive.com/claude-bengo",
-      "repository": "https://github.com/llamadrive/claude-bengo",
+      "homepage": "https://llama-drive.com/bengo-toolkit",
+      "repository": "https://github.com/llamadrive/bengo-toolkit",
       "license": "MIT",
       "source": {
         "source": "url",
-        "url": "https://github.com/llamadrive/claude-bengo.git"
+        "url": "https://github.com/llamadrive/bengo-toolkit.git"
       },
       "category": "legal",
       "keywords": [

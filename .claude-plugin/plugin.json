@@ -1,7 +1,7 @@
 {
-  "name": "claude-bengo",
+  "name": "bengo-toolkit",
   "description": "Japanese law firm plugin for Claude Code — court template filling, family tree generation (相続関係説明図), legal document proofreading, and lawsuit analysis",
-  "version": "3.6.2",
+  "version": "3.7.0",
   "author": {
     "name": "LlamaDrive",
     "url": "https://llama-drive.com"

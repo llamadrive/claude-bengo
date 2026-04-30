@@ -6,7 +6,7 @@
 > 使うときの実戦ツアー。ここは 30 分かかる読み物。読まなくても `/quickstart`
 > から入れば機能は使える。
 
-このドキュメントは **claude-bengo を既に試して、自分の案件で使うか決めた
+このドキュメントは **bengo-toolkit を既に試して、自分の案件で使うか決めた
 弁護士向け**の実戦サンプル集。実務に近い 3 シナリオ（相続・離婚・交通事故）
 を端から端まで歩く。
 
@@ -63,7 +63,7 @@
 
 5. **監査ログを確認:**
    ```bash
-   python3 ~/.claude/plugins/claude-bengo/skills/_lib/audit.py verify
+   python3 ~/.claude/plugins/bengo-toolkit/skills/_lib/audit.py verify
    ```
    ハッシュチェーン整合性と改ざん検知を確認する。
 

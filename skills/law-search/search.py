@@ -56,7 +56,7 @@ def _plugin_version() -> str:
     return "unknown"
 
 
-USER_AGENT = f"claude-bengo/{_plugin_version()} (+https://github.com/llamadrive/claude-bengo)"
+USER_AGENT = f"bengo-toolkit/{_plugin_version()} (+https://github.com/llamadrive/bengo-toolkit)"
 REQUEST_TIMEOUT = 30  # 秒
 CACHE_TTL_SECONDS = 24 * 60 * 60  # 24 時間
 LEGACY_CACHE_SUBDIR = "claude-bengo"  # 旧キャッシュ（共有 tmp 下）— 参照しない

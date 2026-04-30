@@ -25,7 +25,7 @@ git --version         # 2.20 以上（signed tag 検証のため）
 Claude Code を起動し、**Claude Code 内で** 以下 2 行を実行する（ターミナル作業は不要）:
 
 ```
-/plugin marketplace add llamadrive/claude-bengo
+/plugin marketplace add llamadrive/bengo-toolkit
 /plugin install bengo-toolkit@llamadrive
 ```
 

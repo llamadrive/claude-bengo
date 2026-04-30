@@ -6,7 +6,7 @@
 
 **公開 Issue は作らないでほしい。** GitHub Security Advisory から非公開で報告してほしい:
 
-https://github.com/llamadrive/claude-bengo/security/advisories/new
+https://github.com/llamadrive/bengo-toolkit/security/advisories/new
 
 受付後の対応目安:
 

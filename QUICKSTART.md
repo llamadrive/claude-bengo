@@ -175,7 +175,7 @@
 ## パイロット期間中のフィードバック
 
 ### バグ・機能要望
-GitHub Issues: https://github.com/llamadrive/claude-bengo/issues
+GitHub Issues: https://github.com/llamadrive/bengo-toolkit/issues
 
 報告時に含めてほしい情報:
 - プラグインバージョン（`/verify` の出力末尾に表示される）

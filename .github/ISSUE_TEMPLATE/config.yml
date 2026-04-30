@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: セキュリティ脆弱性の報告
-    url: https://github.com/llamadrive/claude-bengo/security/advisories/new
+    url: https://github.com/llamadrive/bengo-toolkit/security/advisories/new
     about: 機密情報漏洩・認可バイパス・コード実行等の脆弱性は GitHub Security Advisory から非公開で報告してほしい。
   - name: 使い方の質問
-    url: https://github.com/llamadrive/claude-bengo/discussions
+    url: https://github.com/llamadrive/bengo-toolkit/discussions
     about: バグではない一般的な質問・ユースケース相談は Discussions へ。

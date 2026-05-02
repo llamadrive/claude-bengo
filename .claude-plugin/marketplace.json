@@ -4,7 +4,7 @@
   "description": "LlamaDrive plugin marketplace for Japanese law firms. Currently hosts bengo-toolkit (court templates, family tree generation 相続関係説明図, document proofreading, lawsuit analysis, deterministic legal calculators, e-Gov law search, tamper-evident local audit logs). Future LlamaDrive plugins will be added here.",
   "owner": {
     "name": "LlamaDrive",
-    "email": "support@llama-drive.com",
+    "email": "founders@ai-fract.com",
     "url": "https://llama-drive.com"
   },
   "plugins": [
@@ -13,7 +13,7 @@
       "description": "Japanese law firm plugin for Claude Code — court template filling, family tree generation (相続関係説明図), legal document proofreading, lawsuit analysis, e-Gov law search, and deterministic legal calculators (traffic damages, child support, debt recalc, overtime, iryubun, property division, inheritance). Ships HMAC-chained, append-only local audit logs (tamper-evident records of which documents were processed, when, and by which skill — without storing document contents). 日本の法律事務所向け Claude Code プラグイン — 裁判所書式入力・相続関係説明図・訴訟分析・法令検索・決定論的計算（交通事故・養育費・遺留分等）。",
       "author": {
         "name": "LlamaDrive",
-        "email": "support@llama-drive.com",
+        "email": "founders@ai-fract.com",
         "url": "https://llama-drive.com"
       },
       "homepage": "https://llama-drive.com/bengo-toolkit",
